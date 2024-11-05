@@ -40,17 +40,21 @@ body {
 }
 
 .container {
-  padding: 24px;
+  padding: 20px;
   background-color: var(--card-bg-color);
-  border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05),
+              0 8px 25px rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 13px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .logo-title {
@@ -87,9 +91,9 @@ h1 {
   background-color: var(--secondary-color);
   border-radius: 12px;
   margin-bottom: 24px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
   overflow: hidden;
-  transition: box-shadow 0.3s ease;
 }
 
 .style-preview:hover {
@@ -104,21 +108,24 @@ h1 {
 
 .style-selection {
   margin-bottom: 16px;
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.5);
 }
 
 #styleSelector {
   width: 100%;
   padding: 12px;
   font-size: 16px;
-  border: 1px solid var(--light-text-color);
+  border: 1px solid rgba(0, 0, 0, 0.15);
   border-radius: 12px;
-  background-color: #fff;
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
   appearance: none;
   background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238E49E7' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 16px center;
   background-size: 14px;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   cursor: pointer;
 }
 
@@ -136,6 +143,8 @@ h1 {
 
 .custom-style-input {
   margin-bottom: 16px;
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.5);
 }
 
 #customStyleDescription {
@@ -182,6 +191,22 @@ h1 {
   transform: translateY(-1px);
 }
 
+#applyAllSites {
+  background-color: var(--primary-color);
+}
+
+#applyAllSites:hover {
+  background-color: #f7ae51;
+}
+
+#shareAllSites {
+  background-color: #f7ae51;
+}
+
+#shareAllSites:hover {
+  background-color: #7B3ED6;
+}
+
 #generateAIStyle {
   background-color: var(--primary-color);
 }
@@ -206,6 +231,10 @@ h1 {
   background-color: #7B3ED6;
 }
 
+#applyElementStyle:hover {
+  background-color: #f7ae51;
+}
+
 #loadingIndicator {
   text-align: center;
   margin-top: 20px;
@@ -228,11 +257,14 @@ h1 {
 
 .scope-selection {
   margin-bottom: 16px;
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.5);
 }
 
 .radio-group {
   display: flex;
-  background: rgba(142, 73, 231, 0.1);
+  background: rgba(142, 73, 231, 0.06);
+  border: 1px solid rgba(142, 73, 231, 0.1);
   border-radius: 12px;
   padding: 4px;
   gap: 4px;
@@ -277,7 +309,7 @@ h1 {
   gap: 8px;
   background-color: transparent;
   color: var(--primary-color);
-  border: 2px solid var(--primary-color);
+  border: 1.5px solid var(--primary-color);
   border-radius: 8px;
   padding: 10px 16px;
   font-size: 14px;
@@ -352,52 +384,61 @@ h1 {
   margin-top: 16px;
 }
 
-/* 代码编辑器标签页 */
+/* 代码编辑器标签页样式优化 */
 .code-tabs {
   display: flex;
-  gap: 4px;
-  margin-bottom: 8px;
+  background: rgba(142, 73, 231, 0.06);
+  border: 1px solid rgba(142, 73, 231, 0.1);
+  border-radius: 8px;
+  padding: 4px;
+  margin-bottom: 12px;
 }
 
 .code-tab {
+  flex: 1;
   padding: 8px 16px;
   border: none;
-  background: rgba(142, 73, 231, 0.1);
+  background: transparent;
   color: var(--primary-color);
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
   transition: all 0.2s ease;
+  text-align: center;
 }
 
 .code-tab.active {
   background: var(--primary-color);
   color: white;
+  box-shadow: 0 2px 4px rgba(142, 73, 231, 0.2);
 }
 
 .code-tab:hover:not(.active) {
-  background: rgba(142, 73, 231, 0.2);
+  background: rgba(142, 73, 231, 0.1);
 }
 
-/* 代码编辑器 */
+/* 优化代码编辑器容器 */
 .code-editors {
   position: relative;
   margin-bottom: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f8f9fa;
 }
 
 .code-editor {
   width: 92%;
-  height: 90px;
-  padding: 12px;
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  height: 90px; /* 稍微增加高度 */
+  padding: 16px;
+  font-family: 'SF Mono', Monaco, Menlo, Consolas, monospace;
   font-size: 14px;
-  line-height: 1.4;
-  border: 1px solid #d2d2d7;
-  border-radius: 8px;
+  line-height: 1.5;
+  border: none;
+  background: transparent;
   resize: vertical;
   display: none;
-  background: #f8f8f8;
 }
 
 .code-editor.active {
@@ -405,9 +446,7 @@ h1 {
 }
 
 .code-editor:focus {
-  border-color: var(--primary-color);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(142, 73, 231, 0.1);
 }
 
 #customWidgetDescription {
@@ -424,15 +463,16 @@ h1 {
   width: 100%;
   padding: 12px;
   font-size: 16px;
-  border: 1px solid var(--light-text-color);
+  border: 1px solid rgba(0, 0, 0, 0.15);
   border-radius: 12px;
-  background-color: #fff;
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
   appearance: none;
   background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238E49E7' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 16px center;
   background-size: 14px;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   cursor: pointer;
 }
 
