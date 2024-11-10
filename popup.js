@@ -442,24 +442,80 @@ function getPageStructureAndGenerateStyle(tabId, style, customDescription) {
 
 // 应用自定义CSS的函数
 function applyCustomCSS(tabId, css) {
-    const styleId = generateUniqueStyleId();
-    getActiveTab(function(tab) {
-        chrome.tabs.sendMessage(tab.id, {
-            action: "applyStyle",
-            style: css,
-            styleId: styleId
-        }, function(response) {
+    // 先确保内容脚本已注入
+    ensureContentScriptInjected(tabId).then(isInjected => {
+        if (!isInjected) {
+            console.error('无法注入内容脚本');
+            return;
+        }
+
+        const styleId = generateUniqueStyleId();
+        
+        // 使用 chrome.tabs.sendMessage 之前先检查标签页是否存在
+        chrome.tabs.get(tabId, function(tab) {
             if (chrome.runtime.lastError) {
-                console.error('应用自定义CSS时出错:', chrome.runtime.lastError.message);
-            } else {
-                console.log('自定义CSS应用成功');
-                chrome.storage.local.remove('defaultStyle', function() {
-                    console.log('默认样式标志已移除');
-                });
-                saveCustomCSSToDatabase(css, styleId);
+                console.error('标签页不存在:', chrome.runtime.lastError);
+                return;
             }
+
+            // 添加重试机制
+            const tryApplyStyle = (retryCount = 0) => {
+                chrome.tabs.sendMessage(tabId, {
+                    action: "applyStyle",
+                    style: css,
+                    styleId: styleId
+                }, response => {
+                    if (chrome.runtime.lastError) {
+                        if (retryCount < 3) {
+                            // 延迟 500ms 后重试
+                            setTimeout(() => tryApplyStyle(retryCount + 1), 500);
+                        } else {
+                            console.error('应用自定义CSS失败，已重试3次:', chrome.runtime.lastError);
+                        }
+                        return;
+                    }
+
+                    console.log('自定义CSS应用成功');
+                    chrome.storage.local.remove('defaultStyle');
+                    saveCustomCSSToDatabase(css, styleId);
+                });
+            };
+
+            tryApplyStyle();
         });
     });
+}
+
+// 添加 ensureContentScriptInjected 函数
+async function ensureContentScriptInjected(tabId) {
+    try {
+        // 尝试发送测试消息
+        await chrome.tabs.sendMessage(tabId, { action: "ping" });
+        return true;
+    } catch (error) {
+        // 如果消息发送失败，尝试注入内容脚本
+        try {
+            await chrome.scripting.executeScript({
+                target: { tabId: tabId },
+                files: ['content.js']
+            });
+            
+            // 等待内容脚本初始化
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // 再次验证内容脚本是否成功注入
+            try {
+                await chrome.tabs.sendMessage(tabId, { action: "ping" });
+                return true;
+            } catch (verifyError) {
+                console.error('内容脚本注入后验证失败:', verifyError);
+                return false;
+            }
+        } catch (injectionError) {
+            console.error('注入内容脚本失败:', injectionError);
+            return false;
+        }
+    }
 }
 
 // 保存自定义CSS到数据库的函数

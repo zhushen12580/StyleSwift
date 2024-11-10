@@ -281,3 +281,41 @@ function handleAdjustPopupHeight(request) {
         });
     }
 }
+
+// 添加错误恢复处理
+chrome.runtime.onSuspend.addListener(() => {
+    console.log('Extension is being suspended');
+});
+
+chrome.runtime.onInstalled.addListener(() => {
+    console.log('Extension installed/updated');
+});
+
+// 修改消息处理函数
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    // 包装异步操作处理
+    const handleAsyncOperation = async () => {
+        try {
+            if (request.action === "applyStyle") {
+                await handleApplyStyle(request, sendResponse);
+            } else if (request.action === "generateAndApplyStyle") {
+                await handleGenerateAndApplyStyle(request, sendResponse);
+            } else if (request.action === "submitRating") {
+                await handleSubmitRating(request, sendResponse);
+            } else if (request.action === "adjustPopupHeight") {
+                handleAdjustPopupHeight(request);
+            }
+        } catch (error) {
+            console.error('Error handling message:', error);
+            sendResponse({ success: false, error: error.message });
+        }
+    };
+
+    // 启动异步操作
+    handleAsyncOperation().catch(error => {
+        console.error('Async operation failed:', error);
+        sendResponse({ success: false, error: error.message });
+    });
+
+    return true; // 保持消息通道开放
+});

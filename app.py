@@ -15,7 +15,7 @@ import sqlalchemy
 # 创建Flask应用实例
 app = Flask(__name__)
 # 配置数据库连接
-app.config['SQLALCHEMY_DATABASE_URI'] = r'mysql+pymysql://root:Zhushen%4001@120.79.81.153/style_changer_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = r'mysql+pymysql://root:Zhushen%4001@39.103.59.43/style_changer_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # 初始化数据库
 db = SQLAlchemy(app)
