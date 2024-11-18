@@ -13,7 +13,8 @@
         "scripting",
         "storage",
         "tabs",
-        "system.display"
+        "system.display",
+        "webNavigation"
     ],
     "host_permissions": [
         "<all_urls>"
@@ -29,11 +30,17 @@
         {
             "matches": ["<all_urls>"],
             "js": ["content.js"],
-            "run_at": "document_start"
+            "run_at": "document_start",
+            "all_frames": true
         }
     ],
+    "web_accessible_resources": [{
+        "resources": ["content.js"],
+        "matches": ["<all_urls>"]
+    }],
     "options_page": "options.html",
     "background": {
-        "service_worker": "background.js"
+        "service_worker": "background.js",
+        "type": "module"
     }
 }

@@ -11,12 +11,21 @@ import openai
 import uuid
 import json
 import sqlalchemy
+import time
 
 # 创建Flask应用实例
 app = Flask(__name__)
 # 配置数据库连接
 app.config['SQLALCHEMY_DATABASE_URI'] = r'mysql+pymysql://root:Zhushen%4001@39.103.59.43/style_changer_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_size': 10,
+    'pool_timeout': 30,
+    'pool_recycle': 1800,  # 30分钟
+    'connect_args': {
+        'connect_timeout': 60,  # 连接超时时间
+    }
+}
 # 初始化数据库
 db = SQLAlchemy(app)
 
@@ -229,29 +238,42 @@ def generate_ai_style():
             else:
                 return jsonify({"message": "Invalid method specified"}), 400
 
-            new_style = Style(
-                style_id=style_id,  # 使用从请求中获取的 styleId
-                name="AI Generated",
-                description=custom_description,
-                style_url=url,
-                style_code=generated_style,
-                style_type=style
-            )
-            db.session.add(new_style)
-            db.session.commit()
+            # 添加重试逻辑
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    new_style = Style(
+                        style_id=style_id,
+                        name="AI Generated",
+                        description=custom_description,
+                        style_url=url,
+                        style_code=generated_style,
+                        style_type=style
+                    )
+                    db.session.add(new_style)
+                    db.session.commit()
+                    break
+                except sqlalchemy.exc.OperationalError as e:
+                    if attempt == max_retries - 1:
+                        raise
+                    db.session.rollback()
+                    # 重新连接数据库
+                    db.session.remove()
+                    time.sleep(1)  # 等待1秒后重试
 
             return jsonify({
                 "message": "AI style generated and saved successfully",
                 "style_code": generated_style,
                 "style_id": style_id
             }), 200
-        
-        except openai.APIError as e:
-            app.logger.error(f"OpenAI API error: {str(e)}")
-            return jsonify({"message": "Failed to generate AI style", "error": str(e)}), 500
+
         except Exception as e:
+            db.session.rollback()
             app.logger.error(f"Unexpected error: {str(e)}", exc_info=True)
-            return jsonify({"error": "An unexpected error occurred"}), 500
+            return jsonify({
+                "error": "An unexpected error occurred",
+                "details": str(e)
+            }), 500
 
     return generate_ai_style()
 

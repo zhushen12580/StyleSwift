@@ -168,12 +168,61 @@ document.addEventListener('DOMContentLoaded', function() {
     // 选择元素按钮点击事件
     if (selectElementBtn) {
         selectElementBtn.addEventListener('click', function() {
-            chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-                chrome.tabs.sendMessage(tabs[0].id, {
-                    action: "startElementSelection"
+            // 查询所有标签页
+            chrome.tabs.query({}, function(tabs) {
+                // 过滤出不是扩展页面的标签页
+                const normalTabs = tabs.filter(tab => 
+                    !tab.url.startsWith('chrome-extension://') && 
+                    !tab.url.startsWith('chrome://') &&
+                    !tab.url.startsWith('edge://') &&
+                    tab.url !== ''
+                );
+
+                // 找到最后激活的普通标签页
+                const targetTab = normalTabs.find(tab => tab.active) || normalTabs[0];
+
+                if (!targetTab) {
+                    console.error('没有找到可用的标签页');
+                    return;
+                }
+
+                // 确保目标标签页处于激活状态，但不关闭扩展窗口
+                chrome.tabs.update(targetTab.id, { active: true }, () => {
+                    // 使用回调函数方式发送消息
+                    chrome.tabs.sendMessage(
+                        targetTab.id,
+                        { action: "startElementSelection" },
+                        function(response) {
+                            if (chrome.runtime.lastError) {
+                                console.error('Failed to send message:', chrome.runtime.lastError);
+                                // 如果是因为content script未注入导致的错误，尝试注入content script
+                                chrome.scripting.executeScript({
+                                    target: { tabId: targetTab.id },
+                                    files: ['content.js']
+                                }, function() {
+                                    if (chrome.runtime.lastError) {
+                                        console.error('Failed to inject content script:', chrome.runtime.lastError);
+                                        return;
+                                    }
+                                    
+                                    // 等待一小段时间确保content script初始化完成
+                                    setTimeout(() => {
+                                        // 重试发送消息
+                                        chrome.tabs.sendMessage(
+                                            targetTab.id,
+                                            { action: "startElementSelection" },
+                                            function(retryResponse) {
+                                                if (chrome.runtime.lastError) {
+                                                    console.error('Retry failed:', chrome.runtime.lastError);
+                                                }
+                                            }
+                                        );
+                                    }, 200);
+                                });
+                            }
+                        }
+                    );
                 });
-                // 关闭popup
-                window.close();
             });
         });
     }
@@ -399,7 +448,7 @@ function getPageStructureAndGenerateStyle(tabId, style, customDescription) {
             handlePageStructureResponse(response);
         });
     } catch (error) {
-        console.error('获取页面结构时出错:', error);
+        console.error('获页面结构时出错:', error);
         if (loadingIndicator) {
             loadingIndicator.style.display = 'none';
         }

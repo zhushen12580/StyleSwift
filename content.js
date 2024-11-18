@@ -1,6 +1,97 @@
 // 添加一个全局变量来跟踪评分状态
 let ratingSubmitted = false;
 
+// 添加元素选择功能
+let isSelecting = false;
+let highlightElement = null;
+
+// 创建一个高亮显示的元素，用于在鼠标悬停时突出显示页面元素
+function createHighlightElement() {
+    const el = document.createElement('div');
+    // 设置高亮元素的样式
+    el.style.cssText = `
+        position: fixed;          /* 固定定位，不随页面滚动 */
+        pointer-events: none;     /* 禁用鼠标事件，使其不影响下方元素的交互 */
+        z-index: 10000;          /* 确保高亮显示在最上层 */
+        border: 2px solid #007bff;  /* 蓝色边框 */
+        background-color: rgba(0, 123, 255, 0.1);  /* 半透明的蓝色背景 */
+        transition: all 0.2s ease;  /* 添加平滑过渡效果 */
+    `;
+    document.body.appendChild(el);  // 将高亮元素添加到页面
+    return el;
+}
+
+// 开始元素选择模式
+function startElementSelection() {
+    isSelecting = true;  // 设置选择状态为开启
+    highlightElement = createHighlightElement();  // 创建高亮元素
+    
+    // 添加鼠标移动和点击事件监听器
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('click', handleElementClick);
+    
+    // 将鼠标样式改为十字准线，提示用户正在选择模式
+    document.body.style.cursor = 'crosshair';
+}
+
+// 停止元素选择模式
+function stopElementSelection() {
+    isSelecting = false;  // 关闭选择状态
+    // 如果存在高亮元素，则移除它
+    if (highlightElement) {
+        highlightElement.remove();
+        highlightElement = null;
+    }
+    
+    // 移除事件监听器
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('click', handleElementClick);
+    
+    // 恢复默认鼠标样式
+    document.body.style.cursor = 'default';
+}
+
+// 处理鼠标移动事件
+function handleMouseMove(e) {
+    if (!isSelecting) return;  // 如果不在选择模式，直接返回
+    
+    const target = e.target;  // 获取鼠标当前悬停的元素
+    // 获取目标元素的位置和尺寸信息
+    const rect = target.getBoundingClientRect();
+    
+    // 更新高亮元素的位置和大小，使其完全覆盖目标元素
+    highlightElement.style.top = `${rect.top}px`;
+    highlightElement.style.left = `${rect.left}px`;
+    highlightElement.style.width = `${rect.width}px`;
+    highlightElement.style.height = `${rect.height}px`;
+}
+
+// 处理元素点击事件
+function handleElementClick(e) {
+    if (!isSelecting) return;  // 如果不在选择模式，直接返回
+    
+    // 阻止默认点击行为和事件冒泡
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const target = e.target;  // 获取被点击的元素
+    // 收集元素的详细信息
+    const elementInfo = {
+        tagName: target.tagName.toLowerCase(),  // 标签名（小写）
+        id: target.id,                         // 元素ID
+        className: target.className,           // 类名
+        computedStyle: window.getComputedStyle(target),  // 计算后的样式
+        innerHTML: target.innerHTML,           // 内部HTML内容
+        outerHTML: target.outerHTML           // 包含元素本身的HTML
+    };
+    
+    // 在控制台输出收集到的元素信息
+    console.log('Selected Element Info:', elementInfo);
+    
+    // 选择完成，停止选择模式
+    stopElementSelection();
+}
+
 // 在文件开头添加上下文检查函数
 function isExtensionContextValid() {
     try {
@@ -13,72 +104,112 @@ function isExtensionContextValid() {
 
 // 监听来自扩展程序的消息
 function initializeContentScript() {
-    if (!isExtensionContextValid()) {
-        console.warn('Extension context is invalid, reloading content script...');
-        // 可以选择重新加载页面或者其他恢复策略
-        return;
+    // 添加重试机制
+    const maxRetries = 3;
+    let retryCount = 0;
+
+    function tryInitialize() {
+        if (!isExtensionContextValid()) {
+            console.warn('Extension context is invalid during initialization, attempt:', retryCount + 1);
+            
+            if (retryCount < maxRetries) {
+                retryCount++;
+                // 延迟 500ms 后重试
+                setTimeout(tryInitialize, 500);
+                return;
+            } else {
+                console.error('Extension initialization failed after', maxRetries, 'attempts');
+                return;
+            }
+        }
+
+        try {
+            chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+                if (request.action === "startElementSelection") {
+                    try {
+                        console.log('Starting element selection...');
+                        startElementSelection();
+                        sendResponse({ success: true });
+                    } catch (error) {
+                        console.error('Error in startElementSelection:', error);
+                        sendResponse({ success: false, error: error.message });
+                    }
+                    return true; // 保持消息通道开放
+                }
+                // 添加错误处理
+                try {
+                    if (!isExtensionContextValid()) {
+                        throw new Error('Extension context invalidated');
+                    }
+
+                    if (request.action === "ping") {
+                        // 响应ping请求,返回状态ok
+                        sendResponse({status: "ok"});
+                    } else if (request.action === "applyStyle") {
+                        // 应用新的样式
+                        applyStyle(request.style, request.styleId);
+                        sendResponse({success: true});
+                    } else if (request.action === "getPageStructure") {
+                        // 获取页面结构
+                        const pageStructure = getPageStructure();
+                        sendResponse({pageStructure: pageStructure, url: window.location.href});
+                    } else if (request.action === "removeAllStyles") {
+                        // 移除所有应用的样式
+                        const success = removeAllAppliedStyles();
+                        sendResponse({success: success});
+                    }
+                } catch (error) {
+                    console.error('Content script error:', error);
+                    sendResponse({ success: false, error: error.message });
+                }
+                return true; // 保持消息通道开放,以便异步响应
+            });
+
+            // 添加错误处理的监听器
+            chrome.runtime.onMessageExternal?.addListener(() => {
+                if (!isExtensionContextValid()) {
+                    console.warn('Extension context invalidated');
+                    return;
+                }
+            });
+
+            // 监听扩展上下文失效
+            chrome.runtime.onSuspend?.addListener(() => {
+                console.warn('Extension is being suspended');
+            });
+
+            // 在初始化时检查并应用样式
+            checkAndApplyStyle();
+
+            // 确保样式优先级
+            ensureStylePriority();
+
+            // 添加一个 MutationObserver 来监听 DOM 变化
+            const observer = new MutationObserver(() => {
+                checkAndApplyStyle();
+                ensureStylePriority();
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+
+            console.log('Content script initialized');
+
+            // 重置评分状态
+            ratingSubmitted = false;
+
+            // 确保在初始化完成后再检查样式
+            setTimeout(checkAndApplyStyle, 100);
+
+        } catch (error) {
+            console.error('Error in initializeContentScript:', error);
+            
+            if (retryCount < maxRetries) {
+                retryCount++;
+                setTimeout(tryInitialize, 500);
+            }
+        }
     }
 
-    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-        // 添加错误处理
-        try {
-            if (!isExtensionContextValid()) {
-                throw new Error('Extension context invalidated');
-            }
-
-            if (request.action === "ping") {
-                // 响应ping请求,返回状态ok
-                sendResponse({status: "ok"});
-            } else if (request.action === "applyStyle") {
-                // 应用新的样式
-                applyStyle(request.style, request.styleId);
-                sendResponse({success: true});
-            } else if (request.action === "getPageStructure") {
-                // 获取页面结构
-                const pageStructure = getPageStructure();
-                sendResponse({pageStructure: pageStructure, url: window.location.href});
-            } else if (request.action === "removeAllStyles") {
-                // 移除所有应用的样式
-                const success = removeAllAppliedStyles();
-                sendResponse({success: success});
-            }
-        } catch (error) {
-            console.error('Content script error:', error);
-            sendResponse({ success: false, error: error.message });
-        }
-        return true; // 保持消息通道开放,以便异步响应
-    });
-
-    // 添加错误处理的监听器
-    chrome.runtime.onMessageExternal?.addListener(() => {
-        if (!isExtensionContextValid()) {
-            console.warn('Extension context invalidated');
-            return;
-        }
-    });
-
-    // 监听扩展上下文失效
-    chrome.runtime.onSuspend?.addListener(() => {
-        console.warn('Extension is being suspended');
-    });
-
-    // 在初始化时检查并应用样式
-    checkAndApplyStyle();
-
-    // 确保样式优先级
-    ensureStylePriority();
-
-    // 添加一个 MutationObserver 来监听 DOM 变化
-    const observer = new MutationObserver(() => {
-        checkAndApplyStyle();
-        ensureStylePriority();
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    console.log('Content script initialized');
-
-    // 重置评分状态
-    ratingSubmitted = false;
+    tryInitialize();
 }
 
 // 应用样式
@@ -146,29 +277,50 @@ function removeAllAppliedStyles() {
 
 // 检查并应用样式
 function checkAndApplyStyle() {
-    if (!isExtensionContextValid()) {
-        console.warn('Extension context is invalid during style check');
-        return;
-    }
+    // 添加重试机制
+    const maxRetries = 3;
+    let retryCount = 0;
 
-    try {
-        chrome.storage.local.get(['defaultStyle', window.location.hostname], function(data) {
-            if (chrome.runtime.lastError) {
-                console.error('Storage error:', chrome.runtime.lastError);
+    function tryCheck() {
+        if (!isExtensionContextValid()) {
+            console.warn('Extension context is invalid, attempt:', retryCount + 1);
+            
+            if (retryCount < maxRetries) {
+                retryCount++;
+                // 延迟 500ms 后重试
+                setTimeout(tryCheck, 500);
+                return;
+            } else {
+                console.error('Extension context validation failed after', maxRetries, 'attempts');
                 return;
             }
-            if (data.defaultStyle) {
-                // 如果设置了默认样式，则移除所有应用的样式
-                removeAllAppliedStyles();
-            } else if (data[window.location.hostname]) {
-                // 如果有缓存的样式，应用它
-                const { style_code, style_id } = data[window.location.hostname];
-                applyStyle(style_code, style_id);
+        }
+
+        try {
+            chrome.storage.local.get(['defaultStyle', window.location.hostname], function(data) {
+                if (chrome.runtime.lastError) {
+                    console.error('Storage error:', chrome.runtime.lastError);
+                    return;
+                }
+                
+                if (data.defaultStyle) {
+                    removeAllAppliedStyles();
+                } else if (data[window.location.hostname]) {
+                    const { style_code, style_id } = data[window.location.hostname];
+                    applyStyle(style_code, style_id);
+                }
+            });
+        } catch (error) {
+            console.error('Error in checkAndApplyStyle:', error);
+            
+            // 如果是扩展上下文相关的错误，尝试重新初始化
+            if (error.message.includes('Extension context invalid')) {
+                initializeContentScript();
             }
-        });
-    } catch (error) {
-        console.error('Error checking style:', error);
+        }
     }
+
+    tryCheck();
 }
 
 // 获取页面结构和关键CSS
@@ -414,7 +566,7 @@ function removeRatingContainer() {
     }
 }
 
-// 修改提交评分函数
+// 改提交评分函数
 function submitRating(styleId, rating) {
     // 发送评分到后台
     chrome.runtime.sendMessage({
