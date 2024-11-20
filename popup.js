@@ -235,10 +235,56 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-            chrome.tabs.sendMessage(tabs[0].id, {
-                action: "applyElementStyle",
-                description: description
+        // 显示加载提示
+        document.getElementById('loadingIndicator').style.display = 'block';
+
+        // 获取选中的元素信息
+        chrome.storage.local.get(['selectedElement'], function(data) {
+            if (!data.selectedElement) {
+                alert('请先选择要美化的元素');
+                document.getElementById('loadingIndicator').style.display = 'none';
+                return;
+            }
+
+            // 准备发送到后端的数据
+            const requestData = {
+                elementDetails: data.selectedElement.details,
+                description: description,
+                url: window.location.href // 使用当前页面的URL
+            };
+
+            // 通过background script发送请求
+            chrome.runtime.sendMessage({
+                action: "generateElementStyle",
+                data: requestData
+            }, function(response) {
+                if (chrome.runtime.lastError) {
+                    console.error('Error sending message:', chrome.runtime.lastError);
+                    document.getElementById('loadingIndicator').style.display = 'none';
+                    alert('发送请求失败，请重试');
+                    return;
+                }
+
+                if (response && response.success) {
+                    // 应用生成的样式
+                    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+                        if (tabs[0]) {
+                            chrome.tabs.sendMessage(tabs[0].id, {
+                                action: "applyElementStyle",
+                                style: response.style,
+                                elementPath: data.selectedElement.details.elementInfo.path
+                            }, function(applyResponse) {
+                                document.getElementById('loadingIndicator').style.display = 'none';
+                                if (chrome.runtime.lastError || !applyResponse || !applyResponse.success) {
+                                    alert('应用样式失败，请重试');
+                                }
+                            });
+                        }
+                    });
+                } else {
+                    document.getElementById('loadingIndicator').style.display = 'none';
+                    alert('生成样式失败：' + (response ? response.error : '未知错误'));
+                }
             });
         });
     });

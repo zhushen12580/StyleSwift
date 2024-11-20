@@ -340,6 +340,126 @@ def save_custom_css():
 def index():
     return "Hello, World!"
 
+# 添加新的API路由用于处理元素样式生成
+@app.route('/api/generate_element_style', methods=['POST'])
+def generate_element_style():
+    data = request.json
+    element_details = data.get('elementDetails')
+    description = data.get('description')
+    url = data.get('url')
+
+    if not all([element_details, description, url]):
+        return jsonify({"error": "Missing required data"}), 400
+
+    try:
+        # 检查是否存在现有样式
+        existing_style = Style.query.filter_by(style_url=url).first()
+        
+        # 生成提示
+        prompt = generate_element_style_prompt(
+            element_details,
+            description,
+            existing_style.style_code if existing_style else None
+        )
+        
+        # 调用AI生成样式
+        generated_style = generate_ai_style_for_element(prompt)
+        
+        return jsonify({
+            "success": True,
+            "style": generated_style
+        }), 200
+        
+    except Exception as e:
+        app.logger.error(f"Error generating element style: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+def generate_element_style_prompt(element_details, description, existing_style=None):
+    base_prompt = f"""
+    Generate CSS styles for the following HTML element:
+    
+    Element Structure:
+    {element_details['structure']}
+    
+    Current Computed Styles:
+    {json.dumps(element_details['styleInfo']['computed'], indent=2)}
+    
+    User Requirements:
+    {description}
+    """
+    
+    if existing_style:
+        base_prompt += f"""
+        
+        Existing Site Styles:
+        {existing_style}
+        
+        Please consider the existing styles while generating new ones.
+        """
+    
+    return base_prompt
+
+def generate_ai_style_for_element(prompt):
+    """
+    为特定元素生成AI样式
+    
+    Args:
+        prompt (str): 包含元素信息和要求的提示文本
+    
+    Returns:
+        str: 生成的CSS样式代码
+    """
+    try:
+        # 使用与generate_ai_style相同的API渠道
+        api_key = os.environ.get('DEEPSEEK_API_KEY', "sk-284923071d3f473a8c51dd51c0179f8a")
+        
+        # 首先尝试API2
+        try:
+            baseurl = "https://api.link-ai.tech/v1/chat/completions"
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer Link_tYOZdFTnf0RDsOkryM5gk8lrUkwIBLZDFirsZko8XH"
+            }
+            body = {
+                "app_code": "",
+                "model": "claude-3-5-sonnet",
+                "messages": [
+                    {"role": "system", "content": "You are a skilled web designer. Generate CSS code only, no explanations."},
+                    {"role": "user", "content": prompt}
+                ]
+            }
+            res = requests.post(baseurl, json=body, headers=headers)
+            
+            if res.status_code == 200:
+                raw_content = res.json().get("choices")[0]['message']['content']
+                return extract_css_from_response(raw_content)
+            
+        except Exception as e:
+            app.logger.warning(f"API2 failed, trying API1: {str(e)}")
+            
+            # 如果API2失败，尝试API1
+            client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
+            
+            response = client.chat.completions.create(
+                model="deepseek-coder",
+                messages=[
+                    {"role": "system", "content": "You are a skilled web designer. Generate CSS code only, no explanations."},
+                    {"role": "user", "content": prompt}
+                ],
+                stream=False,
+                timeout=3000
+            )
+            
+            raw_content = response.choices[0].message.content
+            return extract_css_from_response(raw_content)
+            
+    except Exception as e:
+        app.logger.error(f"Error generating element style: {str(e)}")
+        raise Exception(f"Failed to generate style: {str(e)}")
+
 # 主程序入口
 if __name__ == '__main__':
     app.run()

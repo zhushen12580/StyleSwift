@@ -105,6 +105,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     } else if (request.action === "adjustPopupHeight") {
         handleAdjustPopupHeight(request);
         return false;
+    } else if (request.action === "generateElementStyle") {
+        handleGenerateElementStyle(request.data, sendResponse);
+        return true;
     }
 });
 
@@ -304,6 +307,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 await handleSubmitRating(request, sendResponse);
             } else if (request.action === "adjustPopupHeight") {
                 handleAdjustPopupHeight(request);
+            } else if (request.action === "generateElementStyle") {
+                await handleGenerateElementStyle(request.data, sendResponse);
             }
         } catch (error) {
             console.error('Error handling message:', error);
@@ -319,3 +324,37 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     return true; // 保持消息通道开放
 });
+
+// 添加处理元素样式生成的函数
+async function handleGenerateElementStyle(data, sendResponse) {
+    try {
+        const response = await fetch('http://127.0.0.1:5000/api/generate_element_style', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        
+        if (result.success) {
+            sendResponse({
+                success: true,
+                style: result.style
+            });
+        } else {
+            throw new Error(result.error || '生成样式失败');
+        }
+    } catch (error) {
+        console.error('Generate element style error:', error);
+        sendResponse({
+            success: false,
+            error: error.message
+        });
+    }
+}

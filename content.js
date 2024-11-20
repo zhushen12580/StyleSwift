@@ -26,7 +26,7 @@ function startElementSelection() {
     isSelecting = true;  // 设置选择状态为开启
     highlightElement = createHighlightElement();  // 创建高亮元素
     
-    // 添加鼠标移动和点击事件监听器
+    // 添鼠标移动和点击事件监听器
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('click', handleElementClick);
     
@@ -66,29 +66,75 @@ function handleMouseMove(e) {
     highlightElement.style.height = `${rect.height}px`;
 }
 
-// 处理元素点击事件
-function handleElementClick(e) {
-    if (!isSelecting) return;  // 如果不在选择模式，直接返回
+// 添加获取选中元素详细信息的函数
+function getSelectedElementDetails(element) {
+    // 获取元素的计算样式
+    const computedStyle = window.getComputedStyle(element);
     
-    // 阻止默认点击行为和事件冒泡
+    // 获取现有的beautifier样式
+    const beautifierStyle = document.getElementById('beautifier-style');
+    const existingStyles = beautifierStyle ? beautifierStyle.textContent : '';
+    
+    return {
+        // 元素基本信息
+        elementInfo: {
+            tagName: element.tagName.toLowerCase(),
+            id: element.id,
+            className: element.className,
+            path: getCssPath(element)
+        },
+        // 当前样式信息
+        styleInfo: {
+            computed: Object.fromEntries(
+                Array.from(computedStyle).map(prop => [prop, computedStyle[prop]])
+            ),
+            existing: existingStyles
+        },
+        // 结构信息
+        structure: element.outerHTML
+    };
+}
+
+// 获取元素的CSS路径
+function getCssPath(element) {
+    const path = [];
+    while (element.parentElement) {
+        let selector = element.tagName.toLowerCase();
+        if (element.id) {
+            selector += `#${element.id}`;
+        } else if (element.className) {
+            selector += `.${element.className.split(' ').join('.')}`;
+        }
+        path.unshift(selector);
+        element = element.parentElement;
+    }
+    return path.join(' > ');
+}
+
+// 修改handleElementClick函数
+function handleElementClick(e) {
+    if (!isSelecting) return;
+    
     e.preventDefault();
     e.stopPropagation();
     
-    const target = e.target;  // 获取被点击的元素
-    // 收集元素的详细信息
-    const elementInfo = {
-        tagName: target.tagName.toLowerCase(),  // 标签名（小写）
-        id: target.id,                         // 元素ID
-        className: target.className,           // 类名
-        computedStyle: window.getComputedStyle(target),  // 计算后的样式
-        innerHTML: target.innerHTML,           // 内部HTML内容
-        outerHTML: target.outerHTML           // 包含元素本身的HTML
-    };
+    const target = e.target;
+    const elementDetails = getSelectedElementDetails(target);
     
-    // 在控制台输出收集到的元素信息
-    console.log('Selected Element Info:', elementInfo);
+    // 存储选中的元素信息
+    chrome.storage.local.set({
+        selectedElement: {
+            details: elementDetails,
+            timestamp: Date.now()
+        }
+    });
     
-    // 选择完成，停止选择模式
+    // 发送消息到popup更新UI
+    chrome.runtime.sendMessage({
+        action: "elementSelected",
+        elementDetails: elementDetails
+    });
+    
     stopElementSelection();
 }
 
@@ -961,4 +1007,119 @@ function getRatingStyles() {
         }
     `;
 }
+
+// 添加应用元素样式的处理函数
+function applyElementStyle(style, elementPath) {
+    try {
+        // 获取目标元素
+        const element = document.querySelector(elementPath);
+        if (!element) {
+            console.error('找不到目标元素:', elementPath);
+            return { success: false, error: '找不到目标元素' };
+        }
+
+        // 获取现有的beautifier样式
+        const existingStyle = document.getElementById('beautifier-style');
+        let existingCSS = '';
+        if (existingStyle) {
+            existingCSS = existingStyle.textContent;
+        }
+
+        // 创建或更新样式元素
+        let styleElement = document.getElementById('beautifier-style');
+        if (!styleElement) {
+            styleElement = document.createElement('style');
+            styleElement.id = 'beautifier-style';
+            document.head.appendChild(styleElement);
+        }
+
+        // 合并现有样式和新样式
+        const combinedStyle = combineStyles(existingCSS, style, elementPath);
+        styleElement.textContent = combinedStyle;
+
+        // 添加标记类，表示样式已应用
+        element.classList.add('beautifier-styled');
+
+        return { success: true };
+    } catch (error) {
+        console.error('应用元素样式时出错:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// 合并样式的辅助函数
+function combineStyles(existingCSS, newStyle, elementPath) {
+    // 如果没有现有样式，直接返回新样式
+    if (!existingCSS) {
+        return `${elementPath} { ${newStyle} }`;
+    }
+
+    // 解析现有样式中的元素特定样式
+    const existingElementStyle = extractElementStyle(existingCSS, elementPath);
+    
+    if (existingElementStyle) {
+        // 合并现有元素样式和新样式
+        const mergedElementStyle = mergeStyles(existingElementStyle, newStyle);
+        // 替换现有样式中的元素样式
+        return existingCSS.replace(
+            new RegExp(`${elementPath}\\s*{[^}]*}`, 'g'),
+            `${elementPath} { ${mergedElementStyle} }`
+        );
+    } else {
+        // 如果没有找到现有的元素样式，将新样式添加到现有样式的末尾
+        return `${existingCSS}\n${elementPath} { ${newStyle} }`;
+    }
+}
+
+// 提取特定元素的样式
+function extractElementStyle(css, elementPath) {
+    const regex = new RegExp(`${elementPath}\\s*{([^}]*)}`, 'g');
+    const match = regex.exec(css);
+    return match ? match[1].trim() : null;
+}
+
+// 合并两个样式声明
+function mergeStyles(style1, style2) {
+    // 将样式字符串转换为对象
+    const styleObj1 = cssToObject(style1);
+    const styleObj2 = cssToObject(style2);
+
+    // 合并样式对象，新样式优先
+    const mergedStyle = { ...styleObj1, ...styleObj2 };
+
+    // 将合并后的对象转换回CSS字符串
+    return objectToCss(mergedStyle);
+}
+
+// 将CSS字符串转换为对象
+function cssToObject(cssString) {
+    const obj = {};
+    const declarations = cssString.split(';');
+    
+    declarations.forEach(declaration => {
+        const [property, value] = declaration.split(':').map(str => str.trim());
+        if (property && value) {
+            obj[property] = value;
+        }
+    });
+    
+    return obj;
+}
+
+// 将样式对象转换为CSS字符串
+function objectToCss(styleObj) {
+    return Object.entries(styleObj)
+        .map(([property, value]) => `${property}: ${value}`)
+        .join('; ');
+}
+
+// 修改消息监听器，添加处理元素样式的逻辑
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "applyElementStyle") {
+        const result = applyElementStyle(request.style, request.elementPath);
+        sendResponse(result);
+        return true;
+    }
+    // ... 其他现有的消息处理 ...
+});
 
