@@ -7,6 +7,7 @@
 </head>
 <body>
   <div class="container">
+
     <header>
       <div class="logo-title">
         <img src="./images/icon5.png" alt="Logo" class="logo">
@@ -22,10 +23,13 @@
     </header>
     
     <main>
+      <!-- 样式预览区域：用于显示当前选中的样式 -->
       <div id="stylePreview" class="style-preview">
         <img id="previewImage" src="./images/default_style.jpg" alt="样式预览">
       </div>
+
       
+      <!-- 范围选择区域：用于选择样式应用的范围 -->
       <div class="scope-selection">
         <div class="radio-group">
           <div class="radio-item">
@@ -43,6 +47,8 @@
         </div>
       </div>
       
+
+      <!-- 细节模式：用于选择元素并进行样式美化 -->
       <div id="detailsMode" class="details-mode" style="display: none;">
           <button id="selectElement" class="select-button">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
@@ -50,17 +56,17 @@
             </svg>
             <span>定位元素</span>
           </button>
-        
         <div class="style-description">
           <textarea id="elementStyleDescription" placeholder="请描述美化的要求..."></textarea>
         </div>
-        
         <div class="action-buttons">
           <button id="applyElementStyle">一键美化</button>
           <button id="shareElementStyle">分享</button>
         </div>
       </div>
+     
       
+      <!-- 站点模式：用于选择站点并进行样式美化 -->
       <div id="siteMode">
         <div class="style-selection">
           <select id="styleSelector">
@@ -88,6 +94,8 @@
         </div>
       </div>
       
+
+      <!-- 所有站点模式：用于选择所有站点并进行样式美化 -->
       <div id="allSitesMode" style="display: none;">
         <div class="style-selection">
           <select id="widgetSelector">
@@ -100,6 +108,7 @@
           </select>
         </div>
         
+        <!-- 自定义挂件输入区域：用于输入自定义挂件的描述 -->
         <div id="customWidgetInput" class="custom-style-input" style="display: none;">
           <textarea id="customWidgetDescription" placeholder="请描述您想要的自定义挂件..."></textarea>
         </div>
@@ -123,6 +132,7 @@
         </div>
       </div>
       
+      <!-- 加载提示 -->
       <div id="loadingIndicator" style="display: none;">
         <p>正在生成样式，请稍候...</p>
         <div class="spinner"></div>

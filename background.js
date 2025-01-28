@@ -1,5 +1,5 @@
 let windowId = null;
-
+// 添加点击扩展图标时的事件监听器
 chrome.action.onClicked.addListener(async () => {
     // 如果窗口已经打开，就关闭它
     if (windowId !== null) {
@@ -276,12 +276,20 @@ async function handleSubmitRating(request, sendResponse) {
     }
 }
 
-// 处理调整弹出窗口高度的请求
+// 修改处理高度调整的函数
 function handleAdjustPopupHeight(request) {
     if (windowId !== null) {
-        chrome.windows.update(windowId, {
-            height: request.height + 60
-        });
+        try {
+            chrome.windows.update(windowId, {
+                height: request.height + 60
+            }, () => {
+                if (chrome.runtime.lastError) {
+                    console.error('调整窗口高度失败:', chrome.runtime.lastError);
+                }
+            });
+        } catch (error) {
+            console.error('处理高度调整时出错:', error);
+        }
     }
 }
 
@@ -290,6 +298,7 @@ chrome.runtime.onSuspend.addListener(() => {
     console.log('Extension is being suspended');
 });
 
+// 添加安装或更新时的监听器
 chrome.runtime.onInstalled.addListener(() => {
     console.log('Extension installed/updated');
 });

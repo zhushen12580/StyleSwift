@@ -188,22 +188,22 @@ def generate_ai_style():
 
     prompt = generate_prompt(style, page_structure, custom_description)
 
-    def generate_ai_style(method='api2'):
+    def generate_ai_style(method='api1'):
         api_key = os.environ.get('DEEPSEEK_API_KEY', "sk-284923071d3f473a8c51dd51c0179f8a")
         
         try:
             if method == 'api1':
-                # 调用大模型渠道1方法
-                client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
-                
+                client = OpenAI(
+                    api_key=api_key,
+                    base_url="https://api.deepseek.com",
+                )
                 response = client.chat.completions.create(
-                    model="deepseek-coder",
+                    model="deepseek-reasoner",
                     messages=[
                         {"role": "system", "content": "You are a skilled web designer. Generate CSS code only, no explanations."},
                         {"role": "user", "content": prompt}
                     ],
                     stream=False,
-                    timeout=3000
                 )
                 
                 raw_content = response.choices[0].message.content

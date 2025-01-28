@@ -684,6 +684,7 @@ function ensureStylePriority() {
     }
 }
 
+// 获取元素信息的函数
 function getElementInfo(element) {
     const rect = element.getBoundingClientRect();
     return {
@@ -706,6 +707,7 @@ if (document.readyState === 'loading') {
     initializeContentScript();
 }
 
+// 获取评分样式的函数
 function getRatingStyles() {
     return `
         :host {

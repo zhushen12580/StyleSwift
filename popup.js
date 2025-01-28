@@ -1,3 +1,4 @@
+// 添加DOMContentLoaded事件监听器
 document.addEventListener('DOMContentLoaded', function() {
     // 获取页面上的各个元素
     const styleSelector = document.getElementById('styleSelector');
@@ -99,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 处理全站点模式的代码编辑器标签切换
     const codeTabs = document.querySelectorAll('.code-tab');
     const codeEditors = document.querySelectorAll('.code-editor');
-
+    
     codeTabs.forEach(tab => {
         tab.addEventListener('click', () => {
             // 移除所有活动状态
@@ -289,45 +290,78 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // 在文档加载完成后计算并设置适当的高度
+    // 修改 adjustPopupHeight 函数，添加重试机制
     function adjustPopupHeight() {
         // 获取内容的实际高度
         const contentHeight = document.querySelector('.container').scrollHeight;
         
-        // 发送消息给background script来调整窗口高度
-        chrome.runtime.sendMessage({
-            action: "adjustPopupHeight",
-            height: contentHeight
+        // 添加重试机制发送消息
+        const tryAdjustHeight = (retryCount = 0) => {
+            chrome.runtime.sendMessage({
+                action: "adjustPopupHeight",
+                height: contentHeight
+            }, response => {
+                if (chrome.runtime.lastError && retryCount < 3) {
+                    // 如果发送失败且未超过重试次数，等待100ms后重试
+                    setTimeout(() => tryAdjustHeight(retryCount + 1), 100);
+                }
+            });
+        };
+
+        tryAdjustHeight();
+    }
+
+    // 添加定期检查和调整高度的功能
+    function setupHeightAdjustment() {
+        // 初始调整
+        adjustPopupHeight();
+
+        // 监听内容变化
+        const observer = new MutationObserver(() => {
+            adjustPopupHeight();
+        });
+
+        observer.observe(document.querySelector('.container'), {
+            childList: true,
+            subtree: true,
+            attributes: true
+        });
+
+        // 添加定期检查机制
+        setInterval(adjustPopupHeight, 1000); // 每秒检查一次
+
+        // 监听用户交互事件
+        document.addEventListener('click', () => {
+            setTimeout(adjustPopupHeight, 100);
+        });
+
+        document.addEventListener('input', () => {
+            setTimeout(adjustPopupHeight, 100);
+        });
+
+        // 监听选择器变化
+        document.getElementById('styleSelector')?.addEventListener('change', () => {
+            setTimeout(adjustPopupHeight, 100);
+        });
+
+        document.getElementById('widgetSelector')?.addEventListener('change', () => {
+            setTimeout(adjustPopupHeight, 100);
+        });
+
+        // 监听单选按钮变化
+        document.querySelectorAll('input[name="scope"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                setTimeout(adjustPopupHeight, 100);
+            });
         });
     }
 
-    // 初始调整
-    adjustPopupHeight();
-
-    // 监听内容变化时重新调整高度
-    // 例如在切换不同模式时
-    const observer = new MutationObserver(adjustPopupHeight);
-    observer.observe(document.querySelector('.container'), {
-        childList: true,
-        subtree: true,
-        attributes: true
-    });
-
-    // 监听选择器变化
-    document.getElementById('styleSelector')?.addEventListener('change', () => {
-        setTimeout(adjustPopupHeight, 100); // 给DOM更新一些时间
-    });
-
-    document.getElementById('widgetSelector')?.addEventListener('change', () => {
-        setTimeout(adjustPopupHeight, 100);
-    });
-
-    // 监听单选按钮变化
-    document.querySelectorAll('input[name="scope"]').forEach(radio => {
-        radio.addEventListener('change', () => {
-            setTimeout(adjustPopupHeight, 100);
-        });
-    });
+    // 确保在 DOM 加载完成后初始化高度调整
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupHeightAdjustment);
+    } else {
+        setupHeightAdjustment();
+    }
 });
 
 // 生成并应用样式的函数
@@ -581,7 +615,7 @@ function applyCustomCSS(tabId, css) {
     });
 }
 
-// 添加 ensureContentScriptInjected 函数
+// 确保内容脚本已注入的函数
 async function ensureContentScriptInjected(tabId) {
     try {
         // 尝试发送测试消息
@@ -643,14 +677,16 @@ function saveCustomCSSToDatabase(css, styleId) {
     });
 }
 
+// 生成唯一样式ID的函数
 function generateUniqueStyleId() {
     const timestamp = Date.now();
     const randomNum = Math.floor(Math.random() * 1000000);
     const userSpecificInfo = getUserSpecificInfo(); // 这个函数需要另外实现
     return `style_${timestamp}_${randomNum}_${userSpecificInfo}`;
   }
-  
-  function getUserSpecificInfo() {
+
+// 获取用户特定信息的函数
+function getUserSpecificInfo() {
     // 这里可以返回一些用户特定的信息，比如用户ID（如果有的话）
     // 如果没有用户特定信息，可以返回一个随机字符串
     return Math.random().toString(36).substring(2, 15);
@@ -680,6 +716,7 @@ function applyWidgetToAllSites(widgetType) {
     });
 }
 
+// 获取当前活动标签页的函数
 function getActiveTab(callback) {
     chrome.tabs.query({}, function(tabs) {
         const normalTabs = tabs.filter(tab => 
