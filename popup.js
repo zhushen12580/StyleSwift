@@ -169,6 +169,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // 选择元素按钮点击事件
     if (selectElementBtn) {
         selectElementBtn.addEventListener('click', function() {
+            const isSelected = this.textContent === '取消选中';
+            
+            if (isSelected) {
+                chrome.storage.local.remove('selectedElement', () => {
+                    this.textContent = '定位元素';
+                    this.classList.remove('bg-gray-500');
+                    this.classList.add('bg-blue-500');
+                });
+                return;
+            }
+            
             // 查询所有标签页
             chrome.tabs.query({}, function(tabs) {
                 // 过滤出不是扩展页面的标签页
@@ -362,6 +373,18 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         setupHeightAdjustment();
     }
+
+    // 在DOMContentLoaded事件监听器中添加：
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.action === "updateElementButton") {
+            const selectBtn = document.getElementById('selectElement');
+            if (selectBtn) {
+                selectBtn.textContent = message.selected ? '取消选中' : '定位元素';
+                selectBtn.classList.toggle('bg-blue-500', !message.selected);
+                selectBtn.classList.toggle('bg-gray-500', message.selected);
+            }
+        }
+    });
 });
 
 // 生成并应用样式的函数

@@ -198,7 +198,7 @@ def generate_ai_style():
                     base_url="https://api.deepseek.com",
                 )
                 response = client.chat.completions.create(
-                    model="deepseek-reasoner",
+                    model="deepseek-chat",
                     messages=[
                         {"role": "system", "content": "You are a skilled web designer. Generate CSS code only, no explanations."},
                         {"role": "user", "content": prompt}

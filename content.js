@@ -121,12 +121,24 @@ function handleElementClick(e) {
     const target = e.target;
     const elementDetails = getSelectedElementDetails(target);
     
+    // 添加控制台输出
+    console.log('定位元素信息:', {
+        elementInfo: elementDetails.elementInfo,
+        structure: target.outerHTML.substring(0, 100) + '...' // 截取前100字符防止过长
+    });
+
     // 存储选中的元素信息
     chrome.storage.local.set({
         selectedElement: {
             details: elementDetails,
             timestamp: Date.now()
         }
+    }, () => {
+        // 更新按钮状态
+        chrome.runtime.sendMessage({
+            action: "updateElementButton",
+            selected: true
+        });
     });
     
     // 发送消息到popup更新UI
