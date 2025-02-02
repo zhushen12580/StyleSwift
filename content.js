@@ -192,8 +192,9 @@ function initializeContentScript() {
                         console.error('Error in startElementSelection:', error);
                         sendResponse({ success: false, error: error.message });
                     }
-                    return true; // 保持消息通道开放
+                    return true;
                 }
+
                 // 添加错误处理
                 try {
                     if (!isExtensionContextValid()) {
@@ -201,18 +202,17 @@ function initializeContentScript() {
                     }
 
                     if (request.action === "ping") {
-                        // 响应ping请求,返回状态ok
                         sendResponse({status: "ok"});
+                    } else if (request.action === "applyElementStyle") {
+                        const result = applyElementStyle(request.style, request.elementPath);
+                        sendResponse(result);
                     } else if (request.action === "applyStyle") {
-                        // 应用新的样式
                         applyStyle(request.style, request.styleId);
                         sendResponse({success: true});
                     } else if (request.action === "getPageStructure") {
-                        // 获取页面结构
                         const pageStructure = getPageStructure();
                         sendResponse({pageStructure: pageStructure, url: window.location.href});
                     } else if (request.action === "removeAllStyles") {
-                        // 移除所有应用的样式
                         const success = removeAllAppliedStyles();
                         sendResponse({success: success});
                     }
@@ -220,7 +220,7 @@ function initializeContentScript() {
                     console.error('Content script error:', error);
                     sendResponse({ success: false, error: error.message });
                 }
-                return true; // 保持消息通道开放,以便异步响应
+                return true;
             });
 
             // 添加错误处理的监听器
@@ -1022,37 +1022,44 @@ function getRatingStyles() {
     `;
 }
 
-// 添加应用元素样式的处理函数
+// 优化应用元素样式的函数
 function applyElementStyle(style, elementPath) {
     try {
         // 获取目标元素
         const element = document.querySelector(elementPath);
         if (!element) {
-            console.error('找不到目标元素:', elementPath);
-            return { success: false, error: '找不到目标元素' };
-        }
-
-        // 获取现有的beautifier样式
-        const existingStyle = document.getElementById('beautifier-style');
-        let existingCSS = '';
-        if (existingStyle) {
-            existingCSS = existingStyle.textContent;
+            throw new Error('找不到目标元素');
         }
 
         // 创建或更新样式元素
-        let styleElement = document.getElementById('beautifier-style');
+        let styleElement = document.getElementById(`beautifier-style-${elementPath.replace(/[^a-zA-Z0-9]/g, '_')}`);
         if (!styleElement) {
             styleElement = document.createElement('style');
-            styleElement.id = 'beautifier-style';
+            styleElement.id = `beautifier-style-${elementPath.replace(/[^a-zA-Z0-9]/g, '_')}`;
             document.head.appendChild(styleElement);
         }
 
-        // 合并现有样式和新样式
-        const combinedStyle = combineStyles(existingCSS, style, elementPath);
-        styleElement.textContent = combinedStyle;
+        // 清理样式代码 - 移除重复的选择器
+        const cleanedStyle = style.replace(new RegExp(`${elementPath}\\s*{\\s*${elementPath}\\s*{`), `${elementPath} {`);
 
-        // 添加标记类，表示样式已应用
+        // 应用样式 - 确保样式规则格式正确
+        styleElement.textContent = cleanedStyle;
+
+        // 添加标记类
         element.classList.add('beautifier-styled');
+
+        // 确保样式生效
+        styleElement.setAttribute('data-applied', 'true');
+        
+        // 强制触发重排以应用样式
+        element.style.display = element.style.display;
+
+        console.log('Applied element style:', {
+            elementPath,
+            cleanedStyle,
+            element: element,
+            styleElement: styleElement
+        });
 
         return { success: true };
     } catch (error) {
@@ -1060,80 +1067,4 @@ function applyElementStyle(style, elementPath) {
         return { success: false, error: error.message };
     }
 }
-
-// 合并样式的辅助函数
-function combineStyles(existingCSS, newStyle, elementPath) {
-    // 如果没有现有样式，直接返回新样式
-    if (!existingCSS) {
-        return `${elementPath} { ${newStyle} }`;
-    }
-
-    // 解析现有样式中的元素特定样式
-    const existingElementStyle = extractElementStyle(existingCSS, elementPath);
-    
-    if (existingElementStyle) {
-        // 合并现有元素样式和新样式
-        const mergedElementStyle = mergeStyles(existingElementStyle, newStyle);
-        // 替换现有样式中的元素样式
-        return existingCSS.replace(
-            new RegExp(`${elementPath}\\s*{[^}]*}`, 'g'),
-            `${elementPath} { ${mergedElementStyle} }`
-        );
-    } else {
-        // 如果没有找到现有的元素样式，将新样式添加到现有样式的末尾
-        return `${existingCSS}\n${elementPath} { ${newStyle} }`;
-    }
-}
-
-// 提取特定元素的样式
-function extractElementStyle(css, elementPath) {
-    const regex = new RegExp(`${elementPath}\\s*{([^}]*)}`, 'g');
-    const match = regex.exec(css);
-    return match ? match[1].trim() : null;
-}
-
-// 合并两个样式声明
-function mergeStyles(style1, style2) {
-    // 将样式字符串转换为对象
-    const styleObj1 = cssToObject(style1);
-    const styleObj2 = cssToObject(style2);
-
-    // 合并样式对象，新样式优先
-    const mergedStyle = { ...styleObj1, ...styleObj2 };
-
-    // 将合并后的对象转换回CSS字符串
-    return objectToCss(mergedStyle);
-}
-
-// 将CSS字符串转换为对象
-function cssToObject(cssString) {
-    const obj = {};
-    const declarations = cssString.split(';');
-    
-    declarations.forEach(declaration => {
-        const [property, value] = declaration.split(':').map(str => str.trim());
-        if (property && value) {
-            obj[property] = value;
-        }
-    });
-    
-    return obj;
-}
-
-// 将样式对象转换为CSS字符串
-function objectToCss(styleObj) {
-    return Object.entries(styleObj)
-        .map(([property, value]) => `${property}: ${value}`)
-        .join('; ');
-}
-
-// 修改消息监听器，添加处理元素样式的逻辑
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === "applyElementStyle") {
-        const result = applyElementStyle(request.style, request.elementPath);
-        sendResponse(result);
-        return true;
-    }
-    // ... 其他现有的消息处理 ...
-});
 

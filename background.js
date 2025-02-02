@@ -54,6 +54,44 @@ chrome.windows.onRemoved.addListener((closedWindowId) => {
     }
 });
 
+// 监听来自其他部分的消息
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    const handleAsyncOperation = async () => {
+        try {
+            switch (request.action) {
+                case "generateAndApplyElementStyle":
+                    // 细节模式: 生成并应用元素样式
+                    await handleGenerateAndApplyElementStyle(request, sendResponse);
+                    break;
+                case "generateAndApplyStyle":
+                    // 站点模式: 生成并应用整站样式
+                    await handleGenerateAndApplyStyle(request, sendResponse);
+                    break;
+                case "submitRating":
+                    // 评分处理(两种模式通用)
+                    await handleSubmitRating(request, sendResponse);
+                    break;
+                case "adjustPopupHeight":
+                    // 弹窗高度调整(两种模式通用)
+                    handleAdjustPopupHeight(request);
+                    break;
+                default:
+                    sendResponse({ success: false, error: "Unknown action" });
+            }
+        } catch (error) {
+            console.error('Error handling message:', error);
+            sendResponse({ success: false, error: error.message });
+        }
+    };
+
+    handleAsyncOperation().catch(error => {
+        console.error('Async operation failed:', error);
+        sendResponse({ success: false, error: error.message });
+    });
+
+    return true;
+});
+
 // 确保内容脚本已注入并准备就绪
 async function ensureContentScriptInjected(tabId) {
     try {
@@ -90,26 +128,6 @@ async function ensureContentScriptInjected(tabId) {
         }
     }
 }
-
-// 监听来自其他部分的消息
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === "applyStyle") {
-        handleApplyStyle(request, sendResponse);
-        return true;
-    } else if (request.action === "generateAndApplyStyle") {
-        handleGenerateAndApplyStyle(request, sendResponse);
-        return true;
-    } else if (request.action === "submitRating") {
-        handleSubmitRating(request, sendResponse);
-        return true;
-    } else if (request.action === "adjustPopupHeight") {
-        handleAdjustPopupHeight(request);
-        return false;
-    } else if (request.action === "generateElementStyle") {
-        handleGenerateElementStyle(request.data, sendResponse);
-        return true;
-    }
-});
 
 // 处理应用样式的请求
 async function handleApplyStyle(request, sendResponse) {
@@ -252,6 +270,78 @@ async function handleGenerateAndApplyStyle(request, sendResponse) {
     }
 }
 
+// 处理元素样式生成和应用
+async function handleGenerateAndApplyElementStyle(request, sendResponse) {
+    try {
+        const tabs = await chrome.tabs.query({});
+        const normalTabs = tabs.filter(tab => 
+            !tab.url.startsWith('chrome-extension://') && 
+            !tab.url.startsWith('chrome://')
+        );
+        const targetTab = normalTabs.find(tab => tab.active) || normalTabs[0];
+
+        if (!targetTab) {
+            throw new Error('没有找到可应用样式的标签页');
+        }
+
+        // 确保内容脚本已注入
+        const isInjected = await ensureContentScriptInjected(targetTab.id);
+        if (!isInjected) {
+            throw new Error('无法注入内容脚本');
+        }
+
+        // 调用API生成样式
+        const response = await fetch('http://127.0.0.1:5000/api/generate_element_style', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                elementDetails: request.elementDetails,
+                description: request.description,
+                url: targetTab.url
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        
+        if (result.success) {
+            // 应用生成的样式
+            const applyResult = await chrome.tabs.sendMessage(targetTab.id, {
+                action: "applyElementStyle",
+                style: result.style,
+                elementPath: request.elementDetails.elementInfo.path
+            });
+
+            // 验证样式是否成功应用
+            if (!applyResult || !applyResult.success) {
+                throw new Error('样式应用失败: ' + (applyResult?.error || '未知错误'));
+            }
+
+            // 添加延迟检查
+            setTimeout(async () => {
+                const verifyResult = await chrome.tabs.sendMessage(targetTab.id, {
+                    action: "verifyElementStyle",
+                    elementPath: request.elementDetails.elementInfo.path
+                });
+                
+                if (!verifyResult?.success) {
+                    console.warn('样式可能未正确应用:', verifyResult?.error);
+                }
+            }, 500);
+
+            sendResponse({ success: true });
+        } else {
+            throw new Error(result.error || '生成样式失败');
+        }
+    } catch (error) {
+        console.error('Generate and apply element style error:', error);
+        sendResponse({ success: false, error: error.message });
+    }
+}
+
 // 处理提交评分的请求
 async function handleSubmitRating(request, sendResponse) {
     try {
@@ -302,68 +392,3 @@ chrome.runtime.onSuspend.addListener(() => {
 chrome.runtime.onInstalled.addListener(() => {
     console.log('Extension installed/updated');
 });
-
-// 修改消息处理函数
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    // 包装异步操作处理
-    const handleAsyncOperation = async () => {
-        try {
-            if (request.action === "applyStyle") {
-                await handleApplyStyle(request, sendResponse);
-            } else if (request.action === "generateAndApplyStyle") {
-                await handleGenerateAndApplyStyle(request, sendResponse);
-            } else if (request.action === "submitRating") {
-                await handleSubmitRating(request, sendResponse);
-            } else if (request.action === "adjustPopupHeight") {
-                handleAdjustPopupHeight(request);
-            } else if (request.action === "generateElementStyle") {
-                await handleGenerateElementStyle(request.data, sendResponse);
-            }
-        } catch (error) {
-            console.error('Error handling message:', error);
-            sendResponse({ success: false, error: error.message });
-        }
-    };
-
-    // 启动异步操作
-    handleAsyncOperation().catch(error => {
-        console.error('Async operation failed:', error);
-        sendResponse({ success: false, error: error.message });
-    });
-
-    return true; // 保持消息通道开放
-});
-
-// 添加处理元素样式生成的函数
-async function handleGenerateElementStyle(data, sendResponse) {
-    try {
-        const response = await fetch('http://127.0.0.1:5000/api/generate_element_style', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        
-        if (result.success) {
-            sendResponse({
-                success: true,
-                style: result.style
-            });
-        } else {
-            throw new Error(result.error || '生成样式失败');
-        }
-    } catch (error) {
-        console.error('Generate element style error:', error);
-        sendResponse({
-            success: false,
-            error: error.message
-        });
-    }
-}

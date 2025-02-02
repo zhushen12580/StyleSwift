@@ -12,6 +12,7 @@ import uuid
 import json
 import sqlalchemy
 import time
+import re
 
 # 创建Flask应用实例
 app = Flask(__name__)
@@ -88,19 +89,36 @@ class StyleWebsiteType(db.Model):
     website_type_id = db.Column(db.Integer, db.ForeignKey('website_types.id', ondelete='CASCADE'))  # 网站类型ID
 
 def extract_css_from_response(response_content):
+    """从AI响应中提取并格式化CSS代码"""
     # 移除可能存在的 <style> 和 </style> 标签
     response_content = response_content.replace('<style>', '').replace('</style>', '')
     
-    # 查找 CSS 代码块的开始和结束
+    # 查找 CSS 代码块
     start = response_content.find("```css")
-    end = response_content.find("```", start + 1)
+    if start == -1:
+        start = response_content.find("```")
     
-    if start != -1 and end != -1:
-        # 提取 CSS 代码，去除 ```css 和 ``` 标记
-        css = response_content[start+6:end].strip()
+    if start != -1:
+        start = response_content.find("\n", start) + 1
+        end = response_content.find("```", start)
+        if end != -1:
+            css = response_content[start:end].strip()
+        else:
+            css = response_content[start:].strip()
     else:
-        # 如果没有找到标记，假设整个响应都是 CSS
         css = response_content.strip()
+    
+    # 清理和格式化 CSS
+    css = css.replace('\n\n', '\n').strip()
+    
+    # 移除重复的选择器
+    css = re.sub(r'([^{]+)\s*{\s*\1\s*{', r'\1 {', css)
+    
+    # 确保大括号配对
+    open_braces = css.count('{')
+    close_braces = css.count('}')
+    if open_braces > close_braces:
+        css += '}' * (open_braces - close_braces)
     
     return css
 
@@ -261,6 +279,9 @@ def generate_ai_style():
                     db.session.remove()
                     time.sleep(1)  # 等待1秒后重试
 
+            # 添加日志记录
+            app.logger.info(f"Generated site style for URL: {url}")
+            
             return jsonify({
                 "message": "AI style generated and saved successfully",
                 "style_code": generated_style,
@@ -269,11 +290,8 @@ def generate_ai_style():
 
         except Exception as e:
             db.session.rollback()
-            app.logger.error(f"Unexpected error: {str(e)}", exc_info=True)
-            return jsonify({
-                "error": "An unexpected error occurred",
-                "details": str(e)
-            }), 500
+            app.logger.error(f"Error in generate_ai_style: {str(e)}", exc_info=True)
+            return jsonify({"success": False, "error": str(e)}), 500
 
     return generate_ai_style()
 
@@ -349,10 +367,10 @@ def generate_element_style():
     url = data.get('url')
 
     if not all([element_details, description, url]):
-        return jsonify({"error": "Missing required data"}), 400
+        return jsonify({"success": False, "error": "Missing required data"}), 400
 
     try:
-        # 检查是否存在现有样式
+        # 检查是否存在该站点的样式
         existing_style = Style.query.filter_by(style_url=url).first()
         
         # 生成提示
@@ -362,24 +380,81 @@ def generate_element_style():
             existing_style.style_code if existing_style else None
         )
         
-        # 调用AI生成样式
+        # 生成样式
         generated_style = generate_ai_style_for_element(prompt)
+        
+        # 处理样式存储
+        if existing_style:
+            # 如果存在站点样式,将新的元素样式合并到现有样式中
+            element_selector = element_details['elementInfo']['path']
+            existing_css = existing_style.style_code
+            
+            # 移除该元素可能存在的旧样式
+            existing_css = remove_element_style(existing_css, element_selector)
+            
+            # 合并新样式
+            combined_style = f"{existing_css}\n\n{element_selector} {{\n{generated_style}\n}}"
+            
+            # 更新数据库
+            existing_style.style_code = combined_style
+            existing_style.updated_at = datetime.utcnow()
+            style_id = existing_style.style_id
+            
+        else:
+            # 如果不存在站点样式,创建新的样式记录
+            style_id = str(uuid.uuid4())
+            element_selector = element_details['elementInfo']['path']
+            full_style = f"{element_selector} {{\n{generated_style}\n}}"
+            
+            new_style = Style(
+                style_id=style_id,
+                name=f"Site Style - {url}",
+                description=f"Combined style for {url}",
+                style_url=url,
+                style_code=full_style,
+                style_type='custom'
+            )
+            db.session.add(new_style)
+        
+        # 添加重试机制
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                db.session.commit()
+                break
+            except sqlalchemy.exc.OperationalError as e:
+                if attempt == max_retries - 1:
+                    raise
+                db.session.rollback()
+                db.session.remove()
+                time.sleep(1)
+        
+        # 添加日志记录
+        app.logger.info(f"Generated element style for URL: {url}, Element: {element_details['elementInfo']['path']}")
         
         return jsonify({
             "success": True,
-            "style": generated_style
+            "style": generated_style,
+            "styleId": style_id
         }), 200
         
     except Exception as e:
-        app.logger.error(f"Error generating element style: {str(e)}")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+        db.session.rollback()
+        app.logger.error(f"Error in generate_element_style: {str(e)}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
 
 def generate_element_style_prompt(element_details, description, existing_style=None):
+    """
+    生成用于元素样式的AI提示
+    """
     base_prompt = f"""
     Generate CSS styles for the following HTML element:
+    
+    Element Details:
+    - Tag: {element_details['elementInfo']['tagName']}
+    - ID: {element_details['elementInfo']['id']}
+    - Class: {element_details['elementInfo']['className']}
+    - CSS Path: {element_details['elementInfo']['path']}
     
     Element Structure:
     {element_details['structure']}
@@ -389,76 +464,125 @@ def generate_element_style_prompt(element_details, description, existing_style=N
     
     User Requirements:
     {description}
+    
+    Please generate CSS that:
+    1. Maintains the element's core functionality
+    2. Implements the requested visual changes
+    3. Ensures compatibility with existing styles
+    4. Uses modern CSS features appropriately
+    5. Maintains responsive design principles
+    
+    Return only the CSS code without any explanations or comments.
     """
     
     if existing_style:
         base_prompt += f"""
         
-        Existing Site Styles:
+        Consider these existing site styles while generating new ones:
         {existing_style}
         
-        Please consider the existing styles while generating new ones.
+        Ensure the new styles integrate well with the existing ones.
         """
     
     return base_prompt
 
 def generate_ai_style_for_element(prompt):
     """
-    为特定元素生成AI样式
-    
-    Args:
-        prompt (str): 包含元素信息和要求的提示文本
-    
-    Returns:
-        str: 生成的CSS样式代码
+    使用AI生成元素样式
     """
     try:
-        # 使用与generate_ai_style相同的API渠道
-        api_key = os.environ.get('DEEPSEEK_API_KEY', "sk-284923071d3f473a8c51dd51c0179f8a")
-        
-        # 首先尝试API2
+        # 首先尝试API2 (Claude)
         try:
             baseurl = "https://api.link-ai.tech/v1/chat/completions"
             headers = {
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer Link_tYOZdFTnf0RDsOkryM5gk8lrUkwIBLZDFirsZko8XH"
+                "Authorization": "Bearer Link_tYOZdFTnf0RDsOkryM5gk8lrUkwIBLZDFirsZko8XH"
             }
             body = {
                 "app_code": "",
                 "model": "claude-3-5-sonnet",
                 "messages": [
-                    {"role": "system", "content": "You are a skilled web designer. Generate CSS code only, no explanations."},
-                    {"role": "user", "content": prompt}
-                ]
+                    {
+                        "role": "system", 
+                        "content": "You are a skilled web designer. Generate CSS code only, no explanations."
+                    },
+                    {
+                        "role": "user", 
+                        "content": prompt
+                    }
+                ],
+                "temperature": 0.7,
+                "max_tokens": 2000
             }
-            res = requests.post(baseurl, json=body, headers=headers)
             
-            if res.status_code == 200:
-                raw_content = res.json().get("choices")[0]['message']['content']
+            response = requests.post(baseurl, json=body, headers=headers, timeout=30)
+            
+            if response.status_code == 200:
+                result = response.json()
+                raw_content = result['choices'][0]['message']['content']
                 return extract_css_from_response(raw_content)
+            else:
+                raise Exception(f"API2 failed with status {response.status_code}")
             
         except Exception as e:
             app.logger.warning(f"API2 failed, trying API1: {str(e)}")
             
-            # 如果API2失败，尝试API1
-            client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
+            # 如果API2失败,尝试API1 (Deepseek)
+            api_key = os.environ.get('DEEPSEEK_API_KEY', "sk-284923071d3f473a8c51dd51c0179f8a")
+            client = OpenAI(
+                api_key=api_key,
+                base_url="https://api.deepseek.com"
+            )
             
             response = client.chat.completions.create(
                 model="deepseek-coder",
                 messages=[
-                    {"role": "system", "content": "You are a skilled web designer. Generate CSS code only, no explanations."},
-                    {"role": "user", "content": prompt}
+                    {
+                        "role": "system",
+                        "content": "You are a skilled web designer. Generate CSS code only, no explanations."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
                 ],
+                temperature=0.7,
+                max_tokens=2000,
                 stream=False,
-                timeout=3000
+                timeout=30
             )
             
             raw_content = response.choices[0].message.content
             return extract_css_from_response(raw_content)
             
     except Exception as e:
-        app.logger.error(f"Error generating element style: {str(e)}")
+        app.logger.error(f"Error generating element style: {str(e)}", exc_info=True)
         raise Exception(f"Failed to generate style: {str(e)}")
+
+def remove_element_style(css_code, element_selector):
+    """
+    从CSS代码中移除指定元素的样式
+    
+    Args:
+        css_code (str): 原CSS代码
+        element_selector (str): 要移除样式的元素选择器
+    
+    Returns:
+        str: 移除指定元素样式后的CSS代码
+    """
+    # 转义选择器中的特殊字符
+    escaped_selector = re.escape(element_selector)
+    
+    # 匹配选择器及其样式块的正则表达式
+    pattern = rf"{escaped_selector}\s*{{[^}}]*}}"
+    
+    # 移除匹配的样式
+    cleaned_css = re.sub(pattern, '', css_code)
+    
+    # 移除多余的空行
+    cleaned_css = re.sub(r'\n\s*\n', '\n\n', cleaned_css)
+    
+    return cleaned_css.strip()
 
 # 主程序入口
 if __name__ == '__main__':
