@@ -351,6 +351,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+// 添加生成 style_id 的函数
+function generateStyleId() {
+    return `style_${Date.now()}`;
+}
+
 // 生成并应用样式的函数
 function generateAndApplyStyle(style, customDescription = '') {
     // 获取扩展窗口的 ID
@@ -470,7 +475,7 @@ function handleStyleApplication(tabId, style, customDescription) {
 
 // 获取页面结构并生成样式的函数
 function getPageStructureAndGenerateStyle(tabId, style, customDescription) {
-    const styleId = generateUniqueStyleId();
+    const styleId = generateStyleId();
     
     // 获取或创建加载指示器
     let loadingIndicator = document.getElementById('loadingIndicator');
@@ -565,7 +570,7 @@ function applyCustomCSS(tabId, css) {
             return;
         }
 
-        const styleId = generateUniqueStyleId();
+        const styleId = generateStyleId();
         
         // 使用 chrome.tabs.sendMessage 之前先检查标签页是否存在
         chrome.tabs.get(tabId, function(tab) {
@@ -722,37 +727,43 @@ function getActiveTab(callback) {
 // 处理元素样式生成和应用的统一函数
 async function generateAndApplyElementStyle(elementDetails, description) {
     try {
-        // 显示加载提示
-        document.getElementById('loadingIndicator').style.display = 'block';
-        
         // 获取当前标签页
         const tabs = await chrome.tabs.query({});
-        
-        // 过滤出不是扩展页面的标签页
         const normalTabs = tabs.filter(tab => 
             !tab.url.startsWith('chrome-extension://') && 
             !tab.url.startsWith('chrome://')
         );
-
-        // 找到最后激活的普通标签页
         const targetTab = normalTabs.find(tab => tab.active) || normalTabs[0];
-
+        
         if (!targetTab) {
             throw new Error('没有找到可应用样式的标签页');
         }
 
-        // 确保内容脚本已注入
-        const isInjected = await ensureContentScriptInjected(targetTab.id);
-        if (!isInjected) {
-            throw new Error('无法注入内容脚本');
-        }
+        // 获取本地存储中的样式信息
+        const hostname = new URL(targetTab.url).hostname;
+        const storageData = await chrome.storage.local.get(hostname);
+        const existingStyle = storageData[hostname];
+        
+        // 使用现有的 style_id 或生成新的
+        const styleId = existingStyle?.style_id || generateStyleId();
 
         // 准备发送到后端的数据
         const requestData = {
             elementDetails: elementDetails,
             description: description,
-            url: targetTab.url
+            url: targetTab.url,
+            styleId: styleId,
+            existingStyle: existingStyle
         };
+
+        // 显示加载提示
+        document.getElementById('loadingIndicator').style.display = 'block';
+        
+        // 确保内容脚本已注入
+        const isInjected = await ensureContentScriptInjected(targetTab.id);
+        if (!isInjected) {
+            throw new Error('无法注入内容脚本');
+        }
 
         // 发送生成样式的请求
         const response = await fetch('http://127.0.0.1:5000/api/generate_element_style', {
@@ -775,7 +786,8 @@ async function generateAndApplyElementStyle(elementDetails, description) {
         await chrome.tabs.sendMessage(targetTab.id, {
             action: "applyElementStyle",
             style: data.style,
-            elementPath: elementDetails.elementInfo.path
+            elementPath: elementDetails.elementInfo.path,
+            styleId: styleId
         });
 
         // 保存样式到存储
@@ -790,10 +802,7 @@ async function generateAndApplyElementStyle(elementDetails, description) {
 
     } catch (error) {
         console.error('生成并应用元素样式时出错:', error);
-        return { 
-            success: false, 
-            error: error.message 
-        };
+        return { success: false, error: error.message };
     } finally {
         // 隐藏加载提示
         document.getElementById('loadingIndicator').style.display = 'none';

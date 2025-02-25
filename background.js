@@ -289,10 +289,9 @@ async function handleGenerateAndApplyElementStyle(request, sendResponse) {
         const storageData = await chrome.storage.local.get(hostname);
         const existingStyle = storageData[hostname];
 
-        // 确保内容脚本已注入
-        const isInjected = await ensureContentScriptInjected(targetTab.id);
-        if (!isInjected) {
-            throw new Error('无法注入内容脚本');
+        // 使用传入的 styleId
+        if (!request.styleId) {
+            throw new Error('No style_id provided');
         }
 
         // 调用API生成样式
@@ -303,7 +302,8 @@ async function handleGenerateAndApplyElementStyle(request, sendResponse) {
                 elementDetails: request.elementDetails,
                 description: request.description,
                 url: targetTab.url,
-                existingStyle: existingStyle // 传递本地存储的样式信息
+                existingStyle: existingStyle,
+                styleId: request.styleId
             })
         });
 
@@ -318,10 +318,10 @@ async function handleGenerateAndApplyElementStyle(request, sendResponse) {
             const applyResult = await chrome.tabs.sendMessage(targetTab.id, {
                 action: "applyElementStyle",
                 style: result.style,
-                elementPath: request.elementDetails.elementInfo.path
+                elementPath: request.elementDetails.elementInfo.path,
+                styleId: result.styleId
             });
 
-            // 验证样式是否成功应用
             if (!applyResult || !applyResult.success) {
                 throw new Error('样式应用失败: ' + (applyResult?.error || '未知错误'));
             }
