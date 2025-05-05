@@ -147,21 +147,59 @@
     /* Scroll Animation for Flow Sections */
     .animate-on-scroll {
       opacity: 0;
-      transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+      transform: translateY(30px);
+      transition: opacity 1s cubic-bezier(0.25, 0.1, 0.25, 1), transform 1s cubic-bezier(0.25, 0.1, 0.25, 1);
     }
-    .animate-on-scroll.slide-in-left {
-        transform: translateX(-40px);
-    }
-    .animate-on-scroll.slide-in-right {
-        transform: translateX(40px);
-    }
-    .animate-on-scroll.slide-in-bottom {
-        transform: translateY(40px);
-    }
-    
     .animate-on-scroll.is-visible {
       opacity: 1;
       transform: translate(0, 0);
+    }
+
+    /* Logo Marquee Styles */
+    .marquee-container {
+      width: 100%;
+      overflow: hidden;
+      position: relative;
+      padding: 2rem 0;
+      background-color: #ffffff; /* White background for this section */
+    }
+
+    .marquee-content {
+      display: flex;
+      width: fit-content; /* Adjust width based on content */
+      animation: marquee 40s linear infinite; /* Adjust duration as needed */
+      will-change: transform;
+    }
+
+    .marquee-content img {
+      height: 40px; /* Adjust logo height */
+      margin: 0 2rem; /* Spacing between logos */
+      flex-shrink: 0;
+      object-fit: contain;
+      filter: grayscale(100%);
+      opacity: 0.7;
+      transition: filter 0.3s ease, opacity 0.3s ease;
+    }
+
+    .marquee-content:hover img {
+        filter: grayscale(50%);
+        opacity: 0.5;
+    }
+
+    .marquee-content img:hover {
+         filter: grayscale(0%);
+         opacity: 1;
+         transform: scale(1.1);
+    }
+
+    /* Pause animation on hover */
+    .marquee-container:hover .marquee-content {
+      animation-play-state: paused;
+    }
+
+    @keyframes marquee {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); } /* Translate by half the width for seamless loop */
     }
 
     /* Animated Gradient Text */
@@ -173,6 +211,11 @@
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         animation: gradient-x 4s linear infinite;
+    }
+
+    /* Subtle shadow for Marquee section top */
+    .logo-marquee-section {
+       box-shadow: inset 0 8px 10px -10px rgba(0, 0, 0, 0.06);
     }
 
   </style>
@@ -241,11 +284,11 @@
 
     <!-- Section 2: Flow - Step 1 -->
     <section class="flow-section bg-white">
-      <div class="container mx-auto px-6 lg:px-8 flex flex-col md:flex-row items-center gap-12">
-        <div class="md:w-3/5 animate-on-scroll slide-in-left">
+      <div class="container mx-auto px-6 lg:px-8 flex flex-col md:flex-row items-center gap-12 animate-on-scroll">
+        <div class="md:w-3/5">
           <img src="{{ url_for('static', filename='pic/flow1.png') }}" data-translate-key="step1Alt" alt="Step 1: Activate StyleSwift with a click" class="rounded-lg w-full h-auto object-cover" loading="lazy" width="600" height="400">
         </div>
-        <div class="md:w-2/5 text-left animate-on-scroll slide-in-right" style="transition-delay: 0.2s;">
+        <div class="md:w-2/5 text-left">
           <span class="text-purple-600 font-bold text-sm uppercase tracking-wider" data-translate-key="step1Label">Step 1</span>
           <h3 class="font-display text-3xl font-bold mt-2 mb-4 text-gray-800" data-translate-key="step1Title">Activate with One Click</h3>
           <p class="text-gray-600 text-lg leading-relaxed" data-translate-key="step1Desc">
@@ -257,11 +300,11 @@
 
     <!-- Section 3: Flow - Step 2 -->
     <section class="flow-section bg-purple-50">
-      <div class="container mx-auto px-6 lg:px-8 flex flex-col md:flex-row-reverse items-center gap-12">
-        <div class="md:w-3/5 animate-on-scroll slide-in-right">
+      <div class="container mx-auto px-6 lg:px-8 flex flex-col md:flex-row-reverse items-center gap-12 animate-on-scroll">
+        <div class="md:w-3/5">
           <img src="{{ url_for('static', filename='pic/flow2.png') }}" data-translate-key="step2Alt" alt="Step 2: StyleSwift AI analyzes the page" class="rounded-lg w-full h-auto object-cover" loading="lazy" width="600" height="400">
         </div>
-        <div class="md:w-2/5 text-left animate-on-scroll slide-in-left" style="transition-delay: 0.2s;">
+        <div class="md:w-2/5 text-left">
           <span class="text-purple-600 font-bold text-sm uppercase tracking-wider" data-translate-key="step2Label">Step 2</span>
           <h3 class="font-display text-3xl font-bold mt-2 mb-4 text-gray-800" data-translate-key="step2Title">AI Understands & Adapts</h3>
           <p class="text-gray-600 text-lg leading-relaxed" data-translate-key="step2Desc">
@@ -273,11 +316,11 @@
 
     <!-- Section 4: Flow - Step 3 -->
      <section class="flow-section bg-white">
-       <div class="container mx-auto px-6 lg:px-8 flex flex-col md:flex-row items-center gap-12">
-         <div class="md:w-3/5 animate-on-scroll slide-in-left">
+       <div class="container mx-auto px-6 lg:px-8 flex flex-col md:flex-row items-center gap-12 animate-on-scroll">
+         <div class="md:w-3/5">
           <img src="{{ url_for('static', filename='pic/flow3.png') }}" data-translate-key="step3Alt" alt="Step 3: Instantly beautified webpage result" class="rounded-lg w-full h-auto object-cover" loading="lazy" width="600" height="400">
         </div>
-        <div class="md:w-2/5 text-left animate-on-scroll slide-in-right" style="transition-delay: 0.2s;">
+        <div class="md:w-2/5 text-left">
           <span class="text-purple-600 font-bold text-sm uppercase tracking-wider" data-translate-key="step3Label">Step 3</span>
           <h3 class="font-display text-3xl font-bold mt-2 mb-4 text-gray-800" data-translate-key="step3Title">Enjoy Instant Beauty</h3>
           <p class="text-gray-600 text-lg leading-relaxed" data-translate-key="step3Desc">
@@ -285,6 +328,72 @@
           </p>
         </div>
       </div>
+     </section>
+
+    <!-- Section: Logo Marquee - Added logo-marquee-section class -->
+    <section class="py-16 bg-white logo-marquee-section">
+      <div class="container mx-auto px-4 md:px-6 text-center">
+        <h2 class="text-3xl font-bold mb-4 text-gray-800 font-display" data-translate-key="compatibilityTitle">Works Everywhere You Browse</h2>
+        <p class="text-lg text-gray-600 mb-12 max-w-2xl mx-auto" data-translate-key="compatibilitySubtitle">StyleSwift is designed to enhance your experience on millions of websites.</p>
+
+        <div class="marquee-container">
+          <div class="marquee-content">
+             <!-- Duplicate the logo list for seamless looping -->
+             <!-- Wrap each set in a non-shrinking flex container -->
+             <div class="flex flex-shrink-0 items-center"> <!-- Added wrapper div -->
+               <!-- Set 1 -->
+               <img src="https://logo.clearbit.com/google.com" alt="Google Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/wikipedia.org" alt="Wikipedia Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/github.com" alt="GitHub Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/amazon.com" alt="Amazon Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/reddit.com" alt="Reddit Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/youtube.com" alt="YouTube Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/linkedin.com" alt="LinkedIn Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/nytimes.com" alt="New York Times Logo" loading="lazy" height="40">
+             </div>
+
+             <!-- Wrap each set in a non-shrinking flex container -->
+             <div class="flex flex-shrink-0 items-center"> <!-- Added wrapper div -->
+               <!-- Set 2 (Duplicate of Set 1) -->
+               <img src="https://logo.clearbit.com/google.com" alt="Google Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/wikipedia.org" alt="Wikipedia Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/github.com" alt="GitHub Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/amazon.com" alt="Amazon Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/reddit.com" alt="Reddit Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/youtube.com" alt="YouTube Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/linkedin.com" alt="LinkedIn Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/nytimes.com" alt="New York Times Logo" loading="lazy" height="40">
+             </div>
+
+             <!-- Wrap each set in a non-shrinking flex container -->
+             <div class="flex flex-shrink-0 items-center"> <!-- Added wrapper div - Set 3 (Duplicate of Set 1) -->
+               <!-- Set 3 -->
+               <img src="https://logo.clearbit.com/google.com" alt="Google Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/wikipedia.org" alt="Wikipedia Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/github.com" alt="GitHub Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/amazon.com" alt="Amazon Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/reddit.com" alt="Reddit Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/youtube.com" alt="YouTube Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/linkedin.com" alt="LinkedIn Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/nytimes.com" alt="New York Times Logo" loading="lazy" height="40">
+             </div>
+
+             <!-- Wrap each set in a non-shrinking flex container -->
+             <div class="flex flex-shrink-0 items-center"> <!-- Added wrapper div - Set 4 (Duplicate of Set 2) -->
+               <!-- Set 4 -->
+               <img src="https://logo.clearbit.com/google.com" alt="Google Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/wikipedia.org" alt="Wikipedia Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/github.com" alt="GitHub Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/amazon.com" alt="Amazon Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/reddit.com" alt="Reddit Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/youtube.com" alt="YouTube Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/linkedin.com" alt="LinkedIn Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/nytimes.com" alt="New York Times Logo" loading="lazy" height="40">
+             </div>
+
+           </div>
+         </div>
+       </div>
      </section>
 
     <!-- Section 5: Waitlist - Final CTA -->
@@ -428,6 +537,9 @@
         step3Title: 'Enjoy Instant Beauty',
         step3Desc: 'Watch the page transform instantly. Apply curated themes, fine-tune elements, or add helpful widgets.',
         step3Alt: 'Step 3: Instantly beautified webpage result',
+        // Compatibility Section
+        compatibilityTitle: 'Works Everywhere You Browse',
+        compatibilitySubtitle: 'StyleSwift is designed to enhance your experience on millions of websites.',
         // Final Waitlist
         finalTitle: 'Ready for a Smarter Web?',
         finalSubtitle: 'Be the first to experience AI-powered web customization. Join the {brandName} waitlist today.',
@@ -478,6 +590,9 @@
         step3Title: '即刻享受美化',
         step3Desc: '看着页面瞬间转变。应用精选主题、微调元素或添加实用小部件。',
         step3Alt: '第三步：即时美化的网页结果',
+        // Compatibility Section
+        compatibilityTitle: '通用适配，随处可用',
+        compatibilitySubtitle: '数字女娲旨在优化您在数百万网站上的浏览体验。',
         // Final Waitlist
         finalTitle: '准备好迎接更智能的网络了吗？',
         finalSubtitle: '率先体验 AI 驱动的网页定制。立即加入 {brandName} 候补名单。',
