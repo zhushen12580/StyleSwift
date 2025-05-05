@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="{{ language }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>{{ subject }}</title>
+    <style>
+        /* Basic Reset & Web Safe Fonts */
+        body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+        table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+        img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+        body { height: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+
+        /* Brand Colors (use sparingly for compatibility) */
+        .brand-color { color: #8b5cf6; /* Purple */ }
+        .accent-color { color: #f97316; /* Orange */ }
+        .button-bg {
+            background: linear-gradient(to right, #8b5cf6, #f97316);
+            /* Fallback for clients that don't support gradients */
+            background-color: #8b5cf6;
+         }
+
+        /* Layout */
+        .wrapper {
+            background-color: #f5f3ff; /* Light purple bg like landing page */
+            width: 100%;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .content {
+            color: #333333;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        /* Logo */
+        .logo-container {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            max-width: 60px; /* Adjust size as needed */
+            height: auto;
+        }
+        .brand-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin-left: 10px;
+            vertical-align: middle;
+            color: #4c1d95; /* Darker purple */
+        }
+
+        /* Button */
+        .button {
+            display: inline-block;
+            padding: 14px 28px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #ffffff !important; /* Important for link color override */
+            text-decoration: none !important;
+            border-radius: 25px;
+            text-align: center;
+            margin: 25px 0;
+            /* Gradient defined above in .button-bg */
+        }
+        .button-link {
+             color: #ffffff !important;
+             text-decoration: none !important;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 12px;
+            color: #888888;
+            margin-top: 30px;
+        }
+
+        /* Responsive */
+        @media screen and (max-width: 600px) {
+            .container {
+                width: 100% !important;
+                padding: 20px 10px;
+            }
+        }
+    </style>
+</head>
+<body style="margin: 0 !important; padding: 0 !important; background-color: #f5f3ff;">
+    <!-- Preview Text (Hidden) -->
+    <div style="display: none; font-size: 1px; color: #fefefe; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;">
+        {% if language == 'zh' %}验证您的邮箱以加入候补名单！{% else %}Verify your email to join the waitlist!{% endif %}
+    </div>
+
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" class="wrapper">
+        <tr>
+            <td align="center">
+                <!--[if (gte mso 9)|(IE)]>
+                <table align="center" border="0" cellspacing="0" cellpadding="0" width="600">
+                <tr>
+                <td align="center" valign="top" width="600">
+                <![endif]-->
+                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px;" class="container">
+                    <!-- Logo Section -->
+                    <tr>
+                        <td align="center" class="logo-container">
+                            <img src="{{ logo_url }}" alt="{{ brand_name }} Logo" width="60" class="logo">
+                            <!-- Optional: Add text logo if image fails or preferred -->
+                            <!-- <span class="brand-name">{{ brand_name }}</span> -->
+                        </td>
+                    </tr>
+                    <!-- Content Section -->
+                    <tr>
+                        <td class="content">
+                            {% if language == 'zh' %}
+                                <p><strong>您好！</strong></p>
+                                <p>感谢您加入 <strong>{{ brand_name }}</strong> 候补名单！离体验AI驱动的网页重塑仅一步之遥。</p>
+                                <p>请点击下面的按钮验证您的电子邮件地址：</p>
+                            {% else %}
+                                <p><strong>Hello!</strong></p>
+                                <p>Thank you for joining the <strong>{{ brand_name }}</strong> waitlist! You're one step closer to experiencing AI-powered web transformation.</p>
+                                <p>Please click the button below to verify your email address:</p>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <!-- Button Section -->
+                    <tr>
+                        <td align="center">
+                            <table border="0" cellspacing="0" cellpadding="0">
+                                <tr>
+                                    <td align="center" class="button-bg" style="border-radius: 25px;">
+                                        <a href="{{ verify_url }}" target="_blank" class="button button-link">
+                                            {% if language == 'zh' %}
+                                                立即验证邮箱
+                                            {% else %}
+                                                Verify Email Now
+                                            {% endif %}
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <!-- Info Section -->
+                    <tr>
+                        <td class="content" style="padding-top: 20px;">
+                            {% if language == 'zh' %}
+                                <p>此验证链接将在24小时内失效。</p>
+                                <p>如果您没有请求加入候补名单，请忽略此邮件。</p>
+                                <p>期待尽快为您带来 {{ brand_name }}！</p>
+                                <p>此致,<br><strong>{{ brand_name }} 团队</strong></p>
+                            {% else %}
+                                <p>This verification link will expire in 24 hours.</p>
+                                <p>If you did not request to join the waitlist, please disregard this email.</p>
+                                <p>We look forward to bringing {{ brand_name }} to you soon!</p>
+                                <p>Best regards,<br><strong>The {{ brand_name }} Team</strong></p>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <!-- Footer Section -->
+                    <tr>
+                        <td class="footer">
+                            © {{ current_year }} {{ brand_name }}. {% if language == 'zh' %}版权所有。{% else %}All rights reserved.{% endif %}
+                            <!-- Optional: Add address or unsubscribe link if needed -->
+                        </td>
+                    </tr>
+                </table>
+                <!--[if (gte mso 9)|(IE)]>
+                </td>
+                </tr>
+                </table>
+                <![endif]-->
+            </td>
+        </tr>
+    </table>
+</body>
+</html> 

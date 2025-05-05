@@ -24,6 +24,53 @@ load_dotenv()
 # 创建Flask应用实例
 app = Flask(__name__)
 
+# --- Backend Translations --- #
+translations = {
+    'en': {
+        # API Messages
+        'email_required': 'Email is required.',
+        'invalid_email': 'Invalid email format.',
+        'already_verified': 'This email is already on the verified waitlist.',
+        'verification_resent': 'Verification email resent. Please check your inbox (and spam folder).',
+        'fail_resend': 'Failed to resend verification email. Please try again later.',
+        'check_email_verify': 'You\'ve already signed up. Please check your email (and spam folder) for the verification link.',
+        'verification_sent': 'Verification email sent! Please check your inbox (and spam folder) to complete signup.',
+        'fail_send': 'Signup recorded, but failed to send verification email. Please contact support or try again later.',
+        'email_exists_error': 'An error occurred. This email might already exist.',
+        'internal_error': 'An internal error occurred. Please try again later.',
+        # Email Subject (Body is now in template)
+        'email_subject': 'Verify your email for StyleSwift Waitlist',
+        # Verification Page
+        'verify_fail_invalid': '<h1>Verification Failed</h1><p>This verification link is invalid.</p>',
+        'verify_already': '<h1>Already Verified</h1><p>Your email address has already been verified.</p>',
+        'verify_fail_expired': '<h1>Link Expired</h1><p>This verification link has expired. Please sign up again to receive a new link.</p>',
+        'verify_success': '<h1>Verification Successful!</h1><p>Thank you for verifying your email. We\'ll keep you updated!</p>',
+        'verify_fail_error': '<h1>Verification Failed</h1><p>An error occurred during verification. Please try again later or contact support.</p>',
+    },
+    'zh': {
+        # API Messages
+        'email_required': '需要提供电子邮件地址。',
+        'invalid_email': '无效的电子邮件格式。',
+        'already_verified': '该电子邮件已在验证的候补名单上。',
+        'verification_resent': '验证邮件已重新发送。请检查您的收件箱（和垃圾邮件文件夹）。',
+        'fail_resend': '重新发送验证邮件失败。请稍后再试。',
+        'check_email_verify': '您已注册。请检查您的电子邮件（和垃圾邮件文件夹）以获取验证链接。',
+        'verification_sent': '验证邮件已发送！请检查您的收件箱（和垃圾邮件文件夹）以完成注册。',
+        'fail_send': '注册已记录，但发送验证邮件失败。请联系支持或稍后再试。',
+        'email_exists_error': '发生错误。该电子邮件可能已存在。',
+        'internal_error': '发生内部错误。请稍后再试。',
+        # Email Subject (Body is now in template)
+        'email_subject': '验证您的 数字女娲 候补名单邮箱',
+        # Verification Page
+        'verify_fail_invalid': '<h1>验证失败</h1><p>此验证链接无效。</p>',
+        'verify_already': '<h1>已验证</h1><p>您的电子邮件地址已被验证。</p>',
+        'verify_fail_expired': '<h1>链接已过期</h1><p>此验证链接已过期。请重新注册以获取新链接。</p>',
+        'verify_success': '<h1>验证成功！</h1><p>感谢您验证电子邮件。我们会及时通知您最新消息！</p>',
+        'verify_fail_error': '<h1>验证失败</h1><p>验证过程中发生错误。请稍后重试或联系支持。</p>',
+    }
+}
+# --- End Backend Translations --- #
+
 # --- Configuration from Environment Variables --- #
 
 # 配置数据库连接
@@ -149,61 +196,82 @@ class StyleWebsiteType(db.Model):
     style_id = db.Column(db.Integer, db.ForeignKey('styles.id', ondelete='CASCADE'))  # 样式ID
     website_type_id = db.Column(db.Integer, db.ForeignKey('website_types.id', ondelete='CASCADE'))  # 网站类型ID
 
-# 发送验证邮件
-def send_verification_email(recipient_email, token):
-    """Sends the verification email."""
-    app.logger.info(f"Attempting to send verification email to {recipient_email}")
-    # Use url_for to generate the verification link
-    # Ensure _external=True to get an absolute URL including SERVER_NAME
+# 发送验证邮件 (Modified for HTML Template)
+def send_verification_email(recipient_email, token, language='en'): # Add language parameter
+    """Sends the verification email using an HTML template."""
+    app.logger.info(f"Attempting to send verification email to {recipient_email} in language: {language}")
     try:
-        # Verify url_for context
-        with app.app_context():
+        with app.app_context(): # Ensure context for url_for
             verify_url = url_for('verify_email', token=token, _external=True, _scheme=app.config['PREFERRED_URL_SCHEME'])
+            # Generate absolute URL for the logo
+            logo_url = url_for('static', filename='pic/icon48.svg', _external=True, _scheme=app.config['PREFERRED_URL_SCHEME'])
             app.logger.info(f"Generated verification URL: {verify_url}")
+            app.logger.info(f"Generated logo URL: {logo_url}")
 
-        subject = "Verify your email for StyleSwift Waitlist"
+        # Get translations for the specified language, fallback to 'en'
+        lang_translations = translations.get(language, translations['en'])
+        # Get brand name based on language
+        brand_name = "数字女娲" if language == 'zh' else "StyleSwift"
+
+        subject = lang_translations['email_subject'] # Get subject from translations dict
         sender = app.config['MAIL_DEFAULT_SENDER']
-        html_body = f"""
-        <p>Thank you for joining the StyleSwift waitlist!</p>
-        <p>Please click the link below to verify your email address:</p>
-        <p><a href="{verify_url}">{verify_url}</a></p>
-        <p>This link will expire in 24 hours.</p>
-        <p>If you did not sign up for the waitlist, please ignore this email.</p>
-        <p>Best regards,<br>The StyleSwift Team</p>
-        """
+
+        # Render the HTML template
+        html_body = render_template(
+            'emails/verification_email.html', # Path to the new template
+            subject=subject,
+            language=language,
+            brand_name=brand_name,
+            verify_url=verify_url,
+            logo_url=logo_url,
+            current_year=datetime.utcnow().year
+        )
+
         msg = Message(subject, sender=sender, recipients=[recipient_email], html=html_body)
 
         try:
             app.logger.info(f"Sending email via Flask-Mail to {recipient_email}...")
             mail.send(msg)
-            app.logger.info(f"Verification email successfully sent to {recipient_email}")
+            app.logger.info(f"Verification email successfully sent to {recipient_email} in {language}")
             return True
         except Exception as e:
             app.logger.error(f"Flask-Mail failed to send email to {recipient_email}: {str(e)}", exc_info=True)
             return False
 
     except RuntimeError as e:
-         app.logger.error(f"Could not generate verification URL. Is the request context available? Error: {e}", exc_info=True)
+         app.logger.error(f"Could not generate URLs or render template. Is the request/app context available? Error: {e}", exc_info=True)
          return False
+    except KeyError as e:
+        app.logger.error(f"Translation key missing for language '{language}': {e}", exc_info=True)
+        return False
     except Exception as e:
-        app.logger.error(f"An unexpected error occurred generating the verification URL: {e}", exc_info=True)
+        app.logger.error(f"An unexpected error occurred generating the verification URL or email content: {e}", exc_info=True)
         return False
 
-# 加入等待列表路由
+# 加入等待列表路由 (Modified)
 @app.route('/api/join_waitlist', methods=['POST'])
 def join_waitlist():
     data = request.json
     email = data.get('email')
-    app.logger.info(f"Received waitlist signup request for email: {email}")
+    # Get language from request, default to 'en'
+    language = data.get('language', 'en')
+    # Ensure language is supported, fallback to 'en' if not
+    if language not in translations:
+        language = 'en'
+
+    # Get translations for the determined language
+    t = translations[language]
+
+    app.logger.info(f"Received waitlist signup request for email: {email} with language: {language}")
 
     if not email:
         app.logger.warning("Waitlist signup failed: Email is required.")
-        return jsonify({"success": False, "message": "Email is required."}), 400
+        return jsonify({"success": False, "message": t['email_required']}), 400
 
     # Basic email format check (you might want a more robust check)
     if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
          app.logger.warning(f"Waitlist signup failed: Invalid email format for {email}")
-         return jsonify({"success": False, "message": "Invalid email format."}), 400
+         return jsonify({"success": False, "message": t['invalid_email']}), 400
 
     app.logger.info(f"Checking existing waitlist entries for {email}")
     existing_entry = WaitlistEntry.query.filter_by(email=email).first()
@@ -213,26 +281,26 @@ def join_waitlist():
         if existing_entry.is_verified:
             # Already verified
             app.logger.info(f"Email {email} already verified.")
-            return jsonify({"success": True, "message": "This email is already on the verified waitlist."}), 200
+            return jsonify({"success": True, "message": t['already_verified']}), 200
         else:
             # Exists but not verified, resend email if token expired or just notify
             if existing_entry.token_expiry < datetime.utcnow():
-                app.logger.info(f"Verification token for {email} expired. Generating new token and resending email.")
+                app.logger.info(f"Verification token for {email} expired. Generating new token and resending email in {language}.")
                 # Token expired, generate new one and resend
                 existing_entry.set_token()
                 db.session.commit()
-                app.logger.info(f"Attempting to resend verification email to {email}")
-                email_sent = send_verification_email(email, existing_entry.verification_token)
+                app.logger.info(f"Attempting to resend verification email to {email} in {language}")
+                email_sent = send_verification_email(email, existing_entry.verification_token, language)
                 if email_sent:
-                    app.logger.info(f"Resent verification email successfully to {email}")
-                    return jsonify({"success": True, "message": "Verification email resent. Please check your inbox (and spam folder)."}), 200
+                    app.logger.info(f"Resent verification email successfully to {email} in {language}")
+                    return jsonify({"success": True, "message": t['verification_resent']}), 200
                 else:
-                    app.logger.error(f"Failed to resend verification email to {email}")
-                    return jsonify({"success": False, "message": "Failed to resend verification email. Please try again later."}), 500
+                    app.logger.error(f"Failed to resend verification email to {email} in {language}")
+                    return jsonify({"success": False, "message": t['fail_resend']}), 500
             else:
                 app.logger.info(f"Verification token for {email} still valid. Reminding user to check email.")
                 # Token still valid, just remind them
-                return jsonify({"success": True, "message": "You\'ve already signed up. Please check your email (and spam folder) for the verification link."}), 200
+                return jsonify({"success": True, "message": t['check_email_verify']}), 200
     else:
         app.logger.info(f"No existing entry found for {email}. Creating new waitlist entry.")
         # New entry
@@ -242,63 +310,68 @@ def join_waitlist():
         try:
             app.logger.info(f"Attempting to commit new waitlist entry for {email} to DB.")
             db.session.commit()
-            app.logger.info(f"New waitlist entry for {email} committed successfully. Attempting to send verification email.")
-            email_sent = send_verification_email(email, new_entry.verification_token)
+            app.logger.info(f"New waitlist entry for {email} committed successfully. Attempting to send verification email in {language}.")
+            email_sent = send_verification_email(email, new_entry.verification_token, language)
             if email_sent:
-                 app.logger.info(f"Initial verification email sent successfully to {email}")
-                 return jsonify({"success": True, "message": "Verification email sent! Please check your inbox (and spam folder) to complete signup."}), 201
+                 app.logger.info(f"Initial verification email sent successfully to {email} in {language}")
+                 return jsonify({"success": True, "message": t['verification_sent']}), 201
             else:
-                 app.logger.error(f"Failed to send initial verification email to {email} after DB commit.")
-                 # Optional: Rollback db commit if email fails? Or let entry stay?
-                 # db.session.rollback()
-                 return jsonify({"success": False, "message": "Signup recorded, but failed to send verification email. Please contact support or try again later."}), 500
+                 app.logger.error(f"Failed to send initial verification email to {email} after DB commit in {language}.")
+                 return jsonify({"success": False, "message": t['fail_send']}), 500
         except sqlalchemy.exc.IntegrityError as e:
              db.session.rollback()
              app.logger.error(f"Database integrity error adding waitlist entry for {email}: {e}", exc_info=True)
-             return jsonify({"success": False, "message": "An error occurred. This email might already exist."}), 409
+             return jsonify({"success": False, "message": t['email_exists_error']}), 409
         except Exception as e:
             db.session.rollback()
             app.logger.error(f"Error adding waitlist entry for {email}: {e}", exc_info=True)
-            return jsonify({"success": False, "message": "An internal error occurred. Please try again later."}), 500
+            return jsonify({"success": False, "message": t['internal_error']}), 500
 
-# 验证邮箱路由
+# 验证邮箱路由 (Modified)
 @app.route('/verify_email/<token>', methods=['GET'])
 def verify_email(token):
-    app.logger.info(f"Received verification request with token: {token[:10]}...") # Log partial token
+    # Determine language from request header (Accept-Language) or default to 'en'
+    # This is a simple implementation, a more robust one might parse quality values
+    accept_language = request.headers.get('Accept-Language')
+    language = 'en' # Default
+    if accept_language:
+        preferred_langs = [lang.split(';')[0].strip().lower() for lang in accept_language.split(',')]
+        if 'zh' in preferred_langs or 'zh-cn' in preferred_langs:
+            language = 'zh'
+        # Add more language checks if needed
+    
+    # Get translations for the determined language
+    t = translations.get(language, translations['en'])
+
+    app.logger.info(f"Received verification request with token: {token[:10]}... using language: {language}")
     entry = WaitlistEntry.query.filter_by(verification_token=token).first()
 
     if not entry:
         app.logger.warning(f"Verification failed: Token not found - {token[:10]}...")
-        # Simple HTML response - consider creating dedicated templates
-        return render_template_string("<h1>Verification Failed</h1><p>This verification link is invalid.</p>"), 404
+        return render_template_string(t['verify_fail_invalid']), 404
 
     app.logger.info(f"Found waitlist entry for email {entry.email} associated with token {token[:10]}...")
 
     if entry.is_verified:
         app.logger.info(f"Email {entry.email} is already verified.")
-        return render_template_string("<h1>Already Verified</h1><p>Your email address has already been verified.</p>"), 200
+        return render_template_string(t['verify_already']), 200
 
     if entry.token_expiry < datetime.utcnow():
         app.logger.warning(f"Verification failed for {entry.email}: Token expired at {entry.token_expiry}.")
-        # Optional: Allow resend from here? For now, just say expired.
-        return render_template_string("<h1>Link Expired</h1><p>This verification link has expired. Please sign up again to receive a new link.</p>"), 410 # 410 Gone
+        return render_template_string(t['verify_fail_expired']), 410 # 410 Gone
 
     # Verification successful
     app.logger.info(f"Verification successful for {entry.email}. Updating status in DB.")
     entry.is_verified = True
     entry.verified_at = datetime.utcnow()
-    # Optionally clear token for security after verification
-    # entry.verification_token = None
-    # entry.token_expiry = None
     try:
         db.session.commit()
         app.logger.info(f"Successfully updated verification status for {entry.email} in DB.")
-        return render_template_string("<h1>Verification Successful!</h1><p>Thank you for verifying your email. We'll keep you updated!</p>"), 200
+        return render_template_string(t['verify_success']), 200
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"Error committing verification status for {entry.email}: {e}", exc_info=True)
-        return render_template_string("<h1>Verification Failed</h1><p>An error occurred during verification. Please try again later or contact support.</p>"), 500
-
+        return render_template_string(t['verify_fail_error']), 500
 
 # 从AI响应中提取并格式化CSS代码
 def extract_css_from_response(response_content):

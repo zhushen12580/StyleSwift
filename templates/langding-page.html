@@ -423,7 +423,7 @@
            Be the first to experience AI-powered web customization. Join the {brandName} waitlist today.
          </p>
          <form id="finalWaitlistForm" class="max-w-lg mx-auto" onsubmit="handleWaitlistSubmit(event)" novalidate>
-           <div class="flex flex-col sm:flex-row gap-3 bg-white/20 p-2 rounded-full shadow-inner">
+           <div class="flex flex-col sm:flex-row gap-3 sm:bg-white/20 sm:p-2 sm:rounded-full sm:shadow-inner">
               <input
                 type="email"
                 data-translate-key="finalPlaceholder"
@@ -441,6 +441,7 @@
             </div>
          </form>
          <div id="finalWaitlistSuccessMessage" class="mt-6 text-center text-green-300 font-medium hidden" data-translate-key="finalSuccess">Thank You! You are on the list.</div>
+         <div id="finalWaitlistErrorMessage" class="mt-4 text-center text-red-300 font-medium hidden"></div>
          <p class="text-sm text-purple-200 mt-6" data-translate-key="finalNote">Free access during beta. No spam, promise.</p>
       </div>
     </section>
@@ -573,7 +574,13 @@
         footerRights: 'All rights reserved.',
         brandNameFooter: 'StyleSwift',
         footerTagline: 'AI Web Beautifier',
-        brandNameCopyright: 'StyleSwift'
+        brandNameCopyright: 'StyleSwift',
+        // Form Status Messages (New)
+        formProcessing: 'Processing...',
+        formSubmitted: 'Submitted',
+        formSuccessFallback: 'Success! Please check your email.',
+        formNetworkError: 'Network error. Please check your connection and try again.',
+        formGenericError: 'An error occurred. Please try again.'
       },
       // Chinese Translations (简体中文)
       zh: {
@@ -627,7 +634,13 @@
         footerRights: '版权所有。',
         brandNameFooter: '数字女娲',
         footerTagline: 'AI Web Beautifier',
-        brandNameCopyright: '数字女娲'
+        brandNameCopyright: '数字女娲',
+        // Form Status Messages (New)
+        formProcessing: '处理中...',
+        formSubmitted: '已提交',
+        formSuccessFallback: '提交成功！请检查您的邮箱。',
+        formNetworkError: '网络错误，请检查您的连接并重试。',
+        formGenericError: '发生错误，请重试。'
       }
     };
 
@@ -676,7 +689,7 @@
       document.documentElement.lang = lang;
     }
 
-    // Waitlist Form Submission (Updated for Backend Integration)
+    // Waitlist Form Submission (Updated for Backend Integration & i18n)
     async function handleWaitlistSubmit(event) {
       console.log('handleWaitlistSubmit called for form:', event.target.id);
       event.preventDefault();
@@ -684,99 +697,99 @@
       const emailInput = form.querySelector('input[type="email"]');
       const submitButton = form.querySelector('button[type="submit"]');
       const successMessageDivId = form.id.replace('Form', 'SuccessMessage');
-      const errorMessageDivId = form.id.replace('Form', 'ErrorMessage'); // Need to ensure this div exists in HTML
+      const errorMessageDivId = form.id.replace('Form', 'ErrorMessage');
       const successMessageDiv = document.getElementById(successMessageDivId);
-      const errorMessageDiv = document.getElementById(errorMessageDivId); // This might be null if div doesn't exist
+      const errorMessageDiv = document.getElementById(errorMessageDivId);
 
       const email = emailInput.value;
-      
+      // Get the original button text key to restore it later
+      const originalButtonKey = submitButton.getAttribute('data-translate-key');
+      const originalButtonText = translations[currentLanguage][originalButtonKey] || 'Join Now'; // Fallback
+
       // Clear previous messages
-      console.log('Clearing previous messages...'); // Add log
+      console.log('Clearing previous messages...');
       if (successMessageDiv) successMessageDiv.classList.add('hidden');
-      if (errorMessageDiv) { // Check if errorMessageDiv exists before using it
+      if (errorMessageDiv) {
          errorMessageDiv.classList.add('hidden');
          errorMessageDiv.textContent = '';
       } else {
           console.warn('Error message div not found with ID:', errorMessageDivId);
       }
 
-
       // Key Checkpoint 1: Validation
       console.log('Checking email validity:', email);
       if (!email || !emailInput.checkValidity()) {
         console.log('Validation failed. Email:', email, 'Validity:', emailInput.checkValidity());
-        emailInput.reportValidity(); // This might show a browser default bubble
-        return; // Exit if validation fails
+        emailInput.reportValidity();
+        return;
       }
       console.log('Validation passed.');
-      
-      // Key Checkpoint 2: Disable elements
+
+      // Key Checkpoint 2: Disable elements and show processing text
       console.log('Disabling form elements...');
       emailInput.disabled = true;
       submitButton.disabled = true;
-      submitButton.textContent = 'Processing...'; // Give user feedback
+      // Use translated processing text
+      submitButton.textContent = translations[currentLanguage].formProcessing || 'Processing...'; 
 
       // Key Checkpoint 3: Fetch call
       try {
-          console.log('Attempting fetch to /api/join_waitlist with email:', email);
-          const response = await fetch('/api/join_waitlist', { // Call the backend API
+          console.log('Attempting fetch to /api/join_waitlist with email:', email, 'and language:', currentLanguage);
+          const response = await fetch('/api/join_waitlist', {
               method: 'POST',
               headers: {
                   'Content-Type': 'application/json',
               },
-              body: JSON.stringify({ email: email }),
+              body: JSON.stringify({ email: email, language: currentLanguage }),
           });
-          console.log('Fetch request possibly sent. Response status (if received):', response.status); // Log after fetch attempt
+          console.log('Fetch request possibly sent. Response status (if received)::', response.status);
 
-          // Check if response is ok before trying to parse JSON
-          const result = await response.json(); 
-          console.log('Parsed JSON result:', result); 
+          const result = await response.json();
+          console.log('Parsed JSON result:', result);
 
           if (response.ok) {
               console.log('Response OK');
-              // Success (2xx status code)
-      if (successMessageDiv) {
-                  // Use message from backend
-                  successMessageDiv.textContent = result.message || 'Success! Check your email.';
-          successMessageDiv.classList.remove('hidden');
+              // Success
+              if (successMessageDiv) {
+                  // Use message from backend OR fallback translation
+                  successMessageDiv.textContent = result.message || translations[currentLanguage].formSuccessFallback || 'Success!';
+                  successMessageDiv.classList.remove('hidden');
               }
-               // Keep form disabled on success to prevent resubmission
-               submitButton.textContent = 'Submitted'; // Update button text
+              // Keep form disabled and show submitted text
+              submitButton.textContent = translations[currentLanguage].formSubmitted || 'Submitted'; // Use translated submitted text
 
           } else {
               console.log('Response NOT OK:', response.status);
-              // Error (4xx, 5xx status code)
-              const errorMessage = result.message || `Error: ${response.statusText}`;
+              // Error
+              // Use message from backend OR generic error translation
+              const errorMessage = result.message || translations[currentLanguage].formGenericError || `Error: ${response.statusText}`;
               if (errorMessageDiv) {
                   errorMessageDiv.textContent = errorMessage;
                   errorMessageDiv.classList.remove('hidden');
               } else {
                    alert(errorMessage); // Fallback alert
               }
-               // Re-enable form on error
+               // Re-enable form on error and restore original button text
                emailInput.disabled = false;
                submitButton.disabled = false;
-               // Restore original button text (you might need to store it or use translations)
-               const buttonKey = submitButton.getAttribute('data-translate-key');
-               submitButton.textContent = buttonKey ? (translations[currentLanguage][buttonKey] || 'Join Now') : 'Join Now';
+               submitButton.textContent = originalButtonText;
 
           }
 
       } catch (error) {
           console.error('Fetch catch block error:', error);
-          const networkErrorMsg = 'Network error. Please check your connection and try again.';
+          // Use translated network error text
+          const networkErrorMsg = translations[currentLanguage].formNetworkError || 'Network error.';
           if (errorMessageDiv) {
               errorMessageDiv.textContent = networkErrorMsg;
               errorMessageDiv.classList.remove('hidden');
           } else {
                alert(networkErrorMsg); // Fallback alert
           }
-           // Re-enable form on network error
+           // Re-enable form on network error and restore original button text
            emailInput.disabled = false;
            submitButton.disabled = false;
-           const buttonKey = submitButton.getAttribute('data-translate-key');
-           submitButton.textContent = buttonKey ? (translations[currentLanguage][buttonKey] || 'Join Now') : 'Join Now';
-
+           submitButton.textContent = originalButtonText;
       }
     }
     
