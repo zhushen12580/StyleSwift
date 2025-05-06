@@ -58,6 +58,10 @@
     body {
       background-color: #f5f3ff; /* Light purple bg */
       color: #1a1a1a;
+      user-select: none; /* Prevent text selection on the entire page */
+      -webkit-user-select: none; /* Safari */
+      -moz-user-select: none;    /* Firefox */
+      -ms-user-select: none;     /* Internet Explorer/Edge */
     }
 
     /* Interactive Hero Styles */
@@ -115,13 +119,24 @@
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        width: 30px;
-        height: 30px;
-        background-color: rgba(255, 255, 255, 0.9);
+        width: 40px; /* Increased size */
+        height: 40px; /* Increased size */
+        background-color: rgba(255, 255, 255, 0.95); /* Slightly more opaque */
         border-radius: 50%;
-        border: 2px solid #8b5cf6;
-        /* Add arrow icons inside later */
-        /* Apply pulse animation after delay */
+        border: 2px solid #8b5cf6; /* purple-500 */
+        /* Add arrow icons using background images */
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%237c3aed' width='18px' height='18px'%3E%3Cpath d='M14 7l-5 5 5 5V7z'/%3E%3C/svg%3E"), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%237c3aed' width='18px' height='18px'%3E%3Cpath d='M10 17l5-5-5-5v10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: center left 5px, center right 5px; /* Adjusted arrow positions */
+        background-size: 16px 16px, 16px 16px; /* Arrow size */
+        box-shadow: 0 0 8px rgba(0,0,0,0.2); /* Enhanced shadow for better affordance */
+        transition: transform 0.2s ease-out, box-shadow 0.2s ease-out; /* Added transition for dragging effect */
+    }
+
+    /* Style for slider when dragging */
+    .hero-slider.is-dragging::before {
+        transform: translate(-50%, -50%) scale(1.15); /* Scale up more when dragging */
+        box-shadow: 0 0 12px rgba(139, 92, 246, 0.4); /* Purple glow */
     }
 
     /* Basic section styling for visual flow */
@@ -231,6 +246,58 @@
        box-shadow: inset 0 8px 10px -10px rgba(0, 0, 0, 0.06);
     }
 
+    /* Smooth focus transition for email inputs */
+    input[type="email"]:focus {
+      transition: box-shadow 0.2s ease-in-out;
+    }
+
+    /* Microinteraction: Header logo/brand name hover */
+    .header-logo-container {
+      transition: transform 0.2s ease-in-out;
+    }
+    .header-logo-container:hover {
+      transform: scale(1.05);
+    }
+
+    /* Microinteraction: Flow section image hover */
+    .flow-image-container {
+      transition: transform 0.25s ease-out;
+      overflow: hidden; /* Ensure scale doesn't break layout if image is flush */
+      border-radius: 0.5rem; /* Match existing rounded-lg for consistency */
+    }
+    .flow-image-container img {
+        transition: transform 0.25s ease-out;
+    }
+    .flow-image-container:hover img {
+      transform: scale(1.03);
+    }
+
+    /* Microinteraction: Header Nav Button */
+    .header-nav-button {
+      transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
+    }
+    .header-nav-button:hover {
+      transform: translateY(-2px);
+      /* Tailwind hover:bg-purple-700 hover:shadow-md is already applied via classes */
+    }
+    .header-nav-button:active {
+      transform: translateY(1px);
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.05); /* Combined inner and subtle outer shadow */
+    }
+
+    /* Microinteraction: Hero CTA Button */
+    .hero-cta-button {
+        /* Tailwind classes already handle transitions, but we can ensure transform is included if not covered by 'transition-all' */
+        transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter, -webkit-backdrop-filter; 
+        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        transition-duration: 300ms; /* Matches existing duration-300 */
+    }
+    /* Tailwind hover:scale-105 hover:shadow-xl is already good */
+    .hero-cta-button:active {
+        transform: scale(0.98);
+        /* Optional: Slightly adjust shadow or gradient for pressed state if needed */
+    }
+
   </style>
 </head>
 <body class="font-sans antialiased text-dark bg-purple-50 overflow-x-hidden">
@@ -238,7 +305,7 @@
   <!-- Minimal Header -->
   <header class="absolute top-0 left-0 right-0 z-50 py-6 px-4 md:px-8">
     <div class="container mx-auto flex justify-between items-center">
-      <div class="flex items-center">
+      <div class="flex items-center header-logo-container">
          <img src="{{ url_for('static', filename='pic/icon48.svg') }}" width="30" height="30" class="text-purple-600" data-translate-key="logoAlt" alt="StyleSwift Logo">
           <span class="ml-2 text-xl font-bold animated-gradient-text -mb-[0.2rem]" data-translate-key="brandName">
             StyleSwift
@@ -247,7 +314,7 @@
       <div class="flex items-center space-x-4">
         <a 
           href="#waitlist"
-          class="bg-purple-600 text-white px-6 py-2 rounded-full font-medium transition-all duration-300 hover:bg-purple-700 hover:shadow-md text-sm"
+          class="header-nav-button bg-purple-600 text-white px-6 py-2 rounded-full font-medium transition-all duration-300 hover:bg-purple-700 hover:shadow-md text-sm"
           data-translate-key="joinWaitlistBtnHeader"
         >
           Join Waitlist
@@ -293,7 +360,7 @@
 
       <a 
         href="#waitlist"
-        class="mt-10 relative z-10 bg-gradient-to-r from-purple-600 to-orange-400 text-white px-10 py-4 rounded-full font-semibold text-lg transition-all duration-300 ease-out hover:shadow-xl transform hover:scale-105 hover:bg-gradient-to-l hover:from-purple-600 hover:to-orange-400"
+        class="hero-cta-button mt-10 relative z-10 bg-gradient-to-r from-purple-600 to-orange-400 text-white px-10 py-4 rounded-full font-semibold text-lg transition-all duration-300 ease-out hover:shadow-xl transform hover:scale-105 hover:bg-gradient-to-l hover:from-purple-600 hover:to-orange-400"
         data-translate-key="heroCta"
       >
         Join the Waitlist & Get Early Access
@@ -303,7 +370,7 @@
     <!-- Section 2: Flow - Step 1 -->
     <section class="flow-section bg-white">
       <div class="container mx-auto px-6 lg:px-8 flex flex-col md:flex-row items-center gap-12 animate-on-scroll">
-        <div class="md:w-3/5">
+        <div class="md:w-3/5 flow-image-container">
           <img src="{{ url_for('static', filename='pic/flow1.png') }}" data-translate-key="step1Alt" alt="Step 1: Activate StyleSwift with a click" class="rounded-lg w-full h-auto object-cover" loading="lazy" width="600" height="400">
         </div>
         <div class="md:w-2/5 text-left">
@@ -319,7 +386,7 @@
     <!-- Section 3: Flow - Step 2 -->
     <section class="flow-section bg-purple-50">
       <div class="container mx-auto px-6 lg:px-8 flex flex-col md:flex-row-reverse items-center gap-12 animate-on-scroll">
-        <div class="md:w-3/5">
+        <div class="md:w-3/5 flow-image-container">
           <img src="{{ url_for('static', filename='pic/flow2.png') }}" data-translate-key="step2Alt" alt="Step 2: StyleSwift AI analyzes the page" class="rounded-lg w-full h-auto object-cover" loading="lazy" width="600" height="400">
         </div>
         <div class="md:w-2/5 text-left">
@@ -335,7 +402,7 @@
     <!-- Section 4: Flow - Step 3 -->
      <section class="flow-section bg-white">
        <div class="container mx-auto px-6 lg:px-8 flex flex-col md:flex-row items-center gap-12 animate-on-scroll">
-         <div class="md:w-3/5">
+         <div class="md:w-3/5 flow-image-container">
           <img src="{{ url_for('static', filename='pic/flow3.png') }}" data-translate-key="step3Alt" alt="Step 3: Instantly beautified webpage result" class="rounded-lg w-full h-auto object-cover" loading="lazy" width="600" height="400">
         </div>
         <div class="md:w-2/5 text-left">
@@ -482,6 +549,7 @@
     if (slider && afterImage && container) {
         slider.addEventListener('mousedown', (e) => {
             isDragging = true;
+            slider.classList.add('is-dragging'); // Add class when dragging starts
             slider.style.cursor = 'ew-resize'; // Indicate dragging
             container.style.cursor = 'ew-resize';
         });
@@ -489,6 +557,7 @@
         document.addEventListener('mouseup', () => {
             if (isDragging) {
                 isDragging = false;
+                slider.classList.remove('is-dragging'); // Remove class when dragging stops
                 slider.style.cursor = 'ew-resize';
                 container.style.cursor = 'default';
             }
@@ -502,6 +571,7 @@
         // Touch events for mobile
         slider.addEventListener('touchstart', (e) => {
             isDragging = true;
+            slider.classList.add('is-dragging'); // Add class for touch
             // Prevent page scroll while dragging slider
             e.preventDefault(); 
         }, { passive: false });
@@ -509,6 +579,7 @@
         document.addEventListener('touchend', () => {
             if (isDragging) {
                 isDragging = false;
+                slider.classList.remove('is-dragging'); // Remove class for touch
             }
         });
 

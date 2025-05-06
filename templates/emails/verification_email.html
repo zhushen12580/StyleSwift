@@ -39,6 +39,12 @@
             font-size: 16px;
             line-height: 1.6;
         }
+        .content p {
+            margin-bottom: 18px; /* Increased paragraph spacing */
+        }
+        .content p:last-child {
+            margin-bottom: 0;
+        }
 
         /* Logo */
         .logo-container {
@@ -111,9 +117,9 @@
                     <!-- Logo Section -->
                     <tr>
                         <td align="center" class="logo-container">
-                            <img src="{{ logo_url }}" alt="{{ brand_name }} Logo" width="60" class="logo">
+                            <img src="{{ logo_url }}" alt="{{ brand_name }} Logo" width="70" class="logo" style="max-width: 70px; height: auto; display: block;">
                             <!-- Optional: Add text logo if image fails or preferred -->
-                            <!-- <span class="brand-name">{{ brand_name }}</span> -->
+                            <!-- <div style="margin-top: 5px; font-size: 20px; font-weight: bold; color: #4c1d95;">{{ brand_name }}</div> -->
                         </td>
                     </tr>
                     <!-- Content Section -->
@@ -122,11 +128,11 @@
                             {% if language == 'zh' %}
                                 <p><strong>您好！</strong></p>
                                 <p>感谢您加入 <strong>{{ brand_name }}</strong> 候补名单！离体验AI驱动的网页重塑仅一步之遥。</p>
-                                <p>请点击下面的按钮验证您的电子邮件地址：</p>
+                                <p><strong>请点击下面的按钮验证您的电子邮件地址：</strong></p>
                             {% else %}
                                 <p><strong>Hello!</strong></p>
                                 <p>Thank you for joining the <strong>{{ brand_name }}</strong> waitlist! You're one step closer to experiencing AI-powered web transformation.</p>
-                                <p>Please click the button below to verify your email address:</p>
+                                <p><strong>Please click the button below to verify your email address:</strong></p>
                             {% endif %}
                         </td>
                     </tr>
@@ -136,7 +142,7 @@
                             <table border="0" cellspacing="0" cellpadding="0">
                                 <tr>
                                     <td align="center" class="button-bg" style="border-radius: 25px;">
-                                        <a href="{{ verify_url }}" target="_blank" class="button button-link">
+                                        <a href="{{ verify_url }}" target="_blank" class="button button-link" title="{% if language == 'zh' %}立即验证邮箱{% else %}Verify Email Now{% endif %}">
                                             {% if language == 'zh' %}
                                                 立即验证邮箱
                                             {% else %}
