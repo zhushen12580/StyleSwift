@@ -1,3 +1,21 @@
+// 北京时间工具函数
+function getBeijingTime() {
+    const now = new Date();
+    // 获取北京时间（UTC+8）
+    const beijingTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+    return beijingTime;
+}
+
+function formatBeijingTime(date = null) {
+    if (!date) date = getBeijingTime();
+    return date.toISOString().replace('T', ' ').substring(0, 23) + ' CST';
+}
+
+function calculateDuration(startTime, endTime = null) {
+    if (!endTime) endTime = new Date();
+    return (endTime - startTime) / 1000; // 返回秒
+}
+
 // 添加DOMContentLoaded事件监听器
 document.addEventListener('DOMContentLoaded', function() {
     // 获取页面上的各个元素
@@ -44,32 +62,37 @@ document.addEventListener('DOMContentLoaded', function() {
         const selectedStyle = styleSelector.value;
         const customDescription = customStyleDescription.value;
         
-        // 如果选择的是默认样式或自定义CSS，直接调用函数而不显示加载提示
-        if (selectedStyle === 'default' || selectedStyle === 'custom-css') {
-            generateAndApplyStyle(selectedStyle, customDescription);
-        } else {
-            // 显示加载提示
-            document.getElementById('loadingIndicator').style.display = 'block';
-            
-            // 禁用按钮，防止重复点击
-            applyButton.disabled = true;
-            
-            // 调用生成并应用样式的函数
-            generateAndApplyStyle(selectedStyle, customDescription)
-                .then(() => {
-                    // 样式应用完成后，隐藏加载提示
-                    document.getElementById('loadingIndicator').style.display = 'none';
-                })
-                .catch((error) => {
-                    console.error('生成样式时出错:', error);
-                    // 出错时也要隐藏加载提示
-                    document.getElementById('loadingIndicator').style.display = 'none';
-                })
-                .finally(() => {
-                    // 无论成功还是失败，都要重新启用按钮
-                    applyButton.disabled = false;
-                });
-        }
+        console.log('=== 用户发起站点模式样式请求 ===');
+        console.log('操作时间:', formatBeijingTime());
+        console.log('选择的样式:', selectedStyle);
+        console.log('自定义描述:', customDescription);
+        
+        // 为所有情况都显示加载提示并使用Promise链
+        console.log('显示加载指示器...');
+        document.getElementById('loadingIndicator').style.display = 'block';
+        
+        // 禁用按钮，防止重复点击
+        applyButton.disabled = true;
+        console.log('已禁用应用按钮，防止重复请求');
+        
+        // 调用生成并应用样式的函数
+        generateAndApplyStyle(selectedStyle, customDescription)
+            .then(() => {
+                console.log('样式生成和应用流程完成');
+                // 样式应用完成后，隐藏加载提示
+                document.getElementById('loadingIndicator').style.display = 'none';
+            })
+            .catch((error) => {
+                console.error('生成样式时出错:', error);
+                console.log('隐藏加载指示器（出错）');
+                // 出错时也要隐藏加载提示
+                document.getElementById('loadingIndicator').style.display = 'none';
+            })
+            .finally(() => {
+                console.log('重新启用应用按钮');
+                // 无论成功还是失败，都要重新启用按钮
+                applyButton.disabled = false;
+            });
     });
 
     // 获取scope相关元素
@@ -358,71 +381,63 @@ function generateStyleId() {
 
 // 生成并应用样式的函数
 function generateAndApplyStyle(style, customDescription = '') {
-    // 获取扩展窗口的 ID
-    chrome.windows.getCurrent(currentWindow => {
-        // 查询所有标签页，找到不是扩展页面的活动标签页
-        chrome.tabs.query({}, function(tabs) {
-            // 过滤出不是扩展页面的标签页
-            const normalTabs = tabs.filter(tab => 
-                !tab.url.startsWith('chrome-extension://') && 
-                !tab.url.startsWith('chrome://')
-            );
+    console.log('=== generateAndApplyStyle 函数开始 ===');
+    console.log('参数 - 样式:', style);
+    console.log('参数 - 描述:', customDescription);
+    
+    return new Promise((resolve, reject) => {
+        // 获取扩展窗口的 ID
+        chrome.windows.getCurrent(currentWindow => {
+            console.log('获取当前窗口完成');
+            // 查询所有标签页，找到不是扩展页面的活动标签页
+            chrome.tabs.query({}, function(tabs) {
+                console.log('查询到标签页数量:', tabs.length);
+                // 过滤出不是扩展页面的标签页
+                const normalTabs = tabs.filter(tab => 
+                    !tab.url.startsWith('chrome-extension://') && 
+                    !tab.url.startsWith('chrome://')
+                );
+                console.log('过滤后的普通标签页数量:', normalTabs.length);
 
-            // 找到最后激活的普通标签页
-            const targetTab = normalTabs.find(tab => tab.active) || normalTabs[0];
+                // 找到最后激活的普通标签页
+                const targetTab = normalTabs.find(tab => tab.active) || normalTabs[0];
 
-            if (!targetTab) {
-                console.error('没有找到可应用样式的标签页');
-                return;
-            }
-
-            // 创建或获取加载指示器
-            let loadingIndicator = document.getElementById('loadingIndicator');
-            if (!loadingIndicator) {
-                loadingIndicator = document.createElement('div');
-                loadingIndicator.id = 'loadingIndicator';
-                loadingIndicator.innerHTML = `
-                    <p>正在生成样式，请稍候...</p>
-                    <div class="spinner"></div>
-                `;
-                document.querySelector('main').appendChild(loadingIndicator);
-            }
-            loadingIndicator.style.display = 'block';
-
-            // 禁用应用按钮
-            const applyButton = document.getElementById('applyStyle');
-            if (applyButton) {
-                applyButton.disabled = true;
-            }
-
-            try {
-                // 激活目标标签页
-                chrome.tabs.update(targetTab.id, { active: true }, () => {
-                    handleStyleApplication(targetTab.id, style, customDescription);
+                if (!targetTab) {
+                    const error = new Error('没有找到可应用样式的标签页');
+                    console.error(error.message);
+                    reject(error);
+                    return;
+                }
+                
+                console.log('目标标签页:', {
+                    id: targetTab.id,
+                    url: targetTab.url,
+                    title: targetTab.title
                 });
-            } catch (error) {
-                console.error('应用样式时出错:', error);
-            } finally {
-                // 隐藏加载提示
-                if (loadingIndicator) {
-                    loadingIndicator.style.display = 'none';
+
+                try {
+                    // 激活目标标签页
+                    chrome.tabs.update(targetTab.id, { active: true }, () => {
+                        handleStyleApplication(targetTab.id, style, customDescription, resolve, reject);
+                    });
+                } catch (error) {
+                    console.error('应用样式时出错:', error);
+                    reject(error);
                 }
-                // 重新启用应用按钮
-                if (applyButton) {
-                    applyButton.disabled = false;
-                }
-            }
+            });
         });
     });
 }
 
 // 处理样式应用函数
-function handleStyleApplication(tabId, style, customDescription) {
+function handleStyleApplication(tabId, style, customDescription, resolve, reject) {
     // 如果选择了自定义CSS
     if (style === 'custom-css') {
         const customCSS = document.getElementById('customCSS');
         if (customCSS) {
-            applyCustomCSS(tabId, customCSS.value);
+            applyCustomCSS(tabId, customCSS.value, resolve, reject);
+        } else {
+            reject(new Error('自定义CSS输入框未找到'));
         }
     } 
     // 如果选择了默认样式
@@ -432,12 +447,14 @@ function handleStyleApplication(tabId, style, customDescription) {
             if (chrome.runtime.lastError) {
                 console.error('移除样式时出错:', chrome.runtime.lastError);
                 alert('移除样式失败，请刷新页面后重试');
+                reject(new Error('移除样式失败'));
                 return;
             }
 
             if (!response || !response.success) {
                 console.error('移除样式失败');
                 alert('移除样式失败，请刷新页面后重试');
+                reject(new Error('移除样式失败'));
                 return;
             }
 
@@ -445,6 +462,7 @@ function handleStyleApplication(tabId, style, customDescription) {
             chrome.storage.local.set({defaultStyle: true}, function() {
                 if (chrome.runtime.lastError) {
                     console.error('设置默认样式标志时出错:', chrome.runtime.lastError);
+                    reject(new Error('设置默认样式标志时出错'));
                     return;
                 }
                 console.log('默认样式标志已设置');
@@ -454,14 +472,17 @@ function handleStyleApplication(tabId, style, customDescription) {
             chrome.tabs.get(tabId, function(tab) {
                 if (chrome.runtime.lastError) {
                     console.error('获取标签页信息失败:', chrome.runtime.lastError);
+                    reject(new Error('获取标签页信息失败'));
                     return;
                 }
                 chrome.storage.local.remove(tab.url, function() {
                     if (chrome.runtime.lastError) {
                         console.error('移除存储的样式时出错:', chrome.runtime.lastError);
+                        reject(new Error('移除存储的样式时出错'));
                         return;
                     }
                     console.log('保存的样式已移除');
+                    resolve();
                 });
             });
         });
@@ -469,32 +490,28 @@ function handleStyleApplication(tabId, style, customDescription) {
     // 如果选择了其他预设样式
     else {
         // 获取页面结构并生成相应的样式
-        getPageStructureAndGenerateStyle(tabId, style, customDescription);
+        getPageStructureAndGenerateStyle(tabId, style, customDescription, resolve, reject);
     }
 }
 
 // 获取页面结构并生成样式的函数
-function getPageStructureAndGenerateStyle(tabId, style, customDescription) {
-    const styleId = generateStyleId();
+function getPageStructureAndGenerateStyle(tabId, style, customDescription, resolve, reject) {
+    console.log('=== 获取页面结构并生成样式 ===');
+    console.log('目标标签页ID:', tabId);
+    console.log('样式类型:', style);
+    console.log('自定义描述:', customDescription);
     
-    // 获取或创建加载指示器
-    let loadingIndicator = document.getElementById('loadingIndicator');
-    if (!loadingIndicator) {
-        loadingIndicator = document.createElement('div');
-        loadingIndicator.id = 'loadingIndicator';
-        loadingIndicator.innerHTML = `
-            <p>正在生成样式，请稍候...</p>
-            <div class="spinner"></div>
-        `;
-        document.querySelector('main').appendChild(loadingIndicator);
-    }
-    loadingIndicator.style.display = 'block';
+    const styleId = generateStyleId();
+    console.log('生成的样式ID:', styleId);
     
     try {
+        console.log('发送获取页面结构消息到内容脚本...');
         chrome.tabs.sendMessage(tabId, {
             action: "getPageStructure"
         }, function(response) {
+            console.log('收到页面结构响应:', response ? '成功' : '失败');
             if (chrome.runtime.lastError) {
+                console.log('内容脚本未注入，开始注入...');
                 // 如果内容脚本未注入，先注入内容脚本
                 chrome.scripting.executeScript({
                     target: { tabId: tabId },
@@ -503,39 +520,42 @@ function getPageStructureAndGenerateStyle(tabId, style, customDescription) {
                     if (chrome.runtime.lastError) {
                         console.error('注入内容脚本失败:', chrome.runtime.lastError);
                         alert('无法在此页面应用样式');
-                        if (loadingIndicator) {
-                            loadingIndicator.style.display = 'none';
-                        }
+                        reject(new Error('注入内容脚本失败'));
                         return;
                     }
+                    console.log('内容脚本注入成功，重试获取页面结构...');
                     // 重试获取页面结构
                     setTimeout(() => {
                         chrome.tabs.sendMessage(tabId, {
                             action: "getPageStructure"
-                        }, handlePageStructureResponse);
+                        }, (response) => handlePageStructureResponse(response, resolve, reject));
                     }, 100);
                 });
                 return;
             }
-            handlePageStructureResponse(response);
+            handlePageStructureResponse(response, resolve, reject);
         });
     } catch (error) {
         console.error('获页面结构时出错:', error);
-        if (loadingIndicator) {
-            loadingIndicator.style.display = 'none';
-        }
+        reject(error);
     }
 
-    function handlePageStructureResponse(response) {
+    function handlePageStructureResponse(response, resolve, reject) {
         if (!response || !response.pageStructure) {
             console.error('获取页面结构失败');
-            if (loadingIndicator) {
-                loadingIndicator.style.display = 'none';
-            }
+            reject(new Error('获取页面结构失败'));
             return;
         }
 
+        console.log('页面结构获取成功:', {
+            url: response.url,
+            structureLength: JSON.stringify(response.pageStructure).length
+        });
+
         try {
+            console.log('发送生成样式请求到 Background...');
+            const backgroundRequestStart = new Date();
+            
             chrome.runtime.sendMessage({
                 action: "generateAndApplyStyle",
                 pageStructure: JSON.stringify(response.pageStructure, null, 2),
@@ -544,32 +564,35 @@ function getPageStructureAndGenerateStyle(tabId, style, customDescription) {
                 url: response.url,
                 styleId: styleId
             }, function(response) {
+                const backgroundRequestEnd = new Date();
+                const backgroundDuration = calculateDuration(backgroundRequestStart, backgroundRequestEnd);
+                
                 if (chrome.runtime.lastError) {
                     console.error('生成样式失败:', chrome.runtime.lastError);
+                    reject(new Error('生成样式失败'));
+                } else {
+                    console.log(`Background 处理完成 - 耗时: ${backgroundDuration.toFixed(3)}秒`);
+                    console.log('Background 响应:', response);
+                    resolve();
                 }
+                
                 chrome.storage.local.remove('defaultStyle');
-                if (loadingIndicator) {
-                    loadingIndicator.style.display = 'none';
-                }
+                console.log('=== 整个样式生成流程完成 ===');
             });
         } catch (error) {
             console.error('生成并应用样式时出错:', error);
-            if (loadingIndicator) {
-                loadingIndicator.style.display = 'none';
-            }
+            reject(error);
         }
     }
 }
 
 // 应用自定义CSS的函数
-function applyCustomCSS(tabId, css) {
-    // 确保所有样式规则都有 !important
-    const enhancedCSS = addImportantToCSS(css);
-    
+function applyCustomCSS(tabId, css, resolve, reject) {
     // 先确保内容脚本已注入
     ensureContentScriptInjected(tabId).then(isInjected => {
         if (!isInjected) {
             console.error('无法注入内容脚本');
+            reject(new Error('无法注入内容脚本'));
             return;
         }
 
@@ -579,6 +602,7 @@ function applyCustomCSS(tabId, css) {
         chrome.tabs.get(tabId, function(tab) {
             if (chrome.runtime.lastError) {
                 console.error('标签页不存在:', chrome.runtime.lastError);
+                reject(new Error('标签页不存在'));
                 return;
             }
 
@@ -586,7 +610,7 @@ function applyCustomCSS(tabId, css) {
             const tryApplyStyle = (retryCount = 0) => {
                 chrome.tabs.sendMessage(tabId, {
                     action: "applyStyle",
-                    style: enhancedCSS,
+                    style: css,
                     styleId: styleId
                 }, response => {
                     if (chrome.runtime.lastError) {
@@ -595,46 +619,23 @@ function applyCustomCSS(tabId, css) {
                             setTimeout(() => tryApplyStyle(retryCount + 1), 500);
                         } else {
                             console.error('应用自定义CSS失败，已重试3次:', chrome.runtime.lastError);
+                            reject(new Error('应用自定义CSS失败'));
                         }
                         return;
                     }
 
                     console.log('自定义CSS应用成功');
                     chrome.storage.local.remove('defaultStyle');
-                    saveCustomCSSToDatabase(enhancedCSS, styleId);
+                    saveCustomCSSToDatabase(css, styleId);
+                    resolve();
                 });
             };
 
             tryApplyStyle();
         });
-    });
-}
-
-// 添加新的辅助函数来处理 CSS
-function addImportantToCSS(css) {
-    // 使用正则表达式匹配 CSS 规则
-    return css.replace(/([^{]+\{[^}]+\})/g, function(rule) {
-        // 分离选择器和样式声明
-        const parts = rule.split('{');
-        if (parts.length !== 2) return rule;
-        
-        const selector = parts[0];
-        const styles = parts[1].replace('}', '');
-        
-        // 处理每个样式声明
-        const enhancedStyles = styles.split(';')
-            .map(style => {
-                style = style.trim();
-                if (!style) return '';
-                if (style.includes('!important')) return style;
-                return style.endsWith(';') ? 
-                    style.slice(0, -1) + ' !important;' : 
-                    style + ' !important;';
-            })
-            .filter(Boolean)
-            .join(' ');
-            
-        return `${selector} { ${enhancedStyles} }`;
+    }).catch(error => {
+        console.error('确保内容脚本注入失败:', error);
+        reject(error);
     });
 }
 
@@ -758,6 +759,9 @@ function getActiveTab(callback) {
 // 处理元素样式生成和应用的统一函数
 async function generateAndApplyElementStyle(elementDetails, description) {
     try {
+        console.log('=== generateAndApplyElementStyle 函数开始 ===');
+        console.log('细节模式样式生成时间:', formatBeijingTime());
+        
         // 获取当前标签页
         const tabs = await chrome.tabs.query({});
         const normalTabs = tabs.filter(tab => 
@@ -775,8 +779,12 @@ async function generateAndApplyElementStyle(elementDetails, description) {
         const storageData = await chrome.storage.local.get(hostname);
         const existingStyle = storageData[hostname];
         
-        // 使用现有的 style_id 或生成新的
+        console.log('细节模式 - 现有样式信息:', existingStyle);
+        
+        // 重要：使用现有的 style_id，这样可以保持评分状态的一致性
         const styleId = existingStyle?.style_id || generateStyleId();
+        console.log('细节模式 - 使用的样式ID:', styleId);
+        console.log('细节模式 - 是否复用现有ID:', !!existingStyle?.style_id);
 
         // 准备发送到后端的数据
         const requestData = {
@@ -813,22 +821,22 @@ async function generateAndApplyElementStyle(elementDetails, description) {
             throw new Error(data.error || '生成样式失败');
         }
 
+        console.log('细节模式 - 后端返回的样式ID:', data.styleId);
+
         // 应用生成的样式到页面
         await chrome.tabs.sendMessage(targetTab.id, {
             action: "applyElementStyle",
             style: data.style,
             elementPath: elementDetails.elementInfo.path,
-            styleId: styleId
+            styleId: styleId  // 确保使用一致的样式ID
         });
 
-        // 保存样式到存储
-        await chrome.storage.local.set({
-            [`${targetTab.url}_element_${elementDetails.elementInfo.path}`]: {
-                style: data.style,
-                timestamp: Date.now()
-            }
-        });
+        console.log('细节模式 - 样式应用完成，使用样式ID:', styleId);
 
+        // 不再单独保存元素样式，避免破坏主样式的状态
+        // 主样式的更新由 applyElementStyle 函数在 content.js 中处理
+
+        console.log('=== generateAndApplyElementStyle 函数完成 ===');
         return { success: true };
 
     } catch (error) {

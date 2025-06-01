@@ -4,7 +4,7 @@ from flask import Flask, request, jsonify, url_for, render_template_string,rende
 from flask_sqlalchemy import SQLAlchemy  # 数据库ORM
 from werkzeug.security import generate_password_hash, check_password_hash  # 密码加密和验证
 import os  # 操作系统相关功能
-from datetime import datetime, timedelta # 日期时间处理
+from datetime import datetime, timedelta, timezone # 日期时间处理
 import requests  # HTTP请求
 from openai import OpenAI  # OpenAI API客户端
 import openai
@@ -20,6 +20,34 @@ from dotenv import load_dotenv # Import python-dotenv
 
 # Load environment variables from .env file
 load_dotenv()
+
+# 北京时间工具函数
+def get_beijing_time():
+    """获取北京时间"""
+    beijing_tz = timezone(timedelta(hours=8))
+    return datetime.now(beijing_tz)
+
+def format_beijing_time(dt=None):
+    """格式化北京时间"""
+    if dt is None:
+        dt = get_beijing_time()
+    elif dt.tzinfo is None:
+        # 如果是UTC时间，转换为北京时间
+        beijing_tz = timezone(timedelta(hours=8))
+        dt = dt.replace(tzinfo=timezone.utc).astimezone(beijing_tz)
+    return dt.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] + ' CST'
+
+def calculate_duration(start_time, end_time=None):
+    """计算耗时（秒）"""
+    if end_time is None:
+        end_time = get_beijing_time()
+    if start_time.tzinfo is None:
+        beijing_tz = timezone(timedelta(hours=8))
+        start_time = start_time.replace(tzinfo=beijing_tz)
+    if end_time.tzinfo is None:
+        beijing_tz = timezone(timedelta(hours=8))
+        end_time = end_time.replace(tzinfo=beijing_tz)
+    return (end_time - start_time).total_seconds()
 
 # 创建Flask应用实例
 app = Flask(__name__)
@@ -155,46 +183,7 @@ class WaitlistEntry(db.Model):
         return secrets.compare_digest(self.verification_token, token) and \
                self.token_expiry > datetime.utcnow()
 
-# 定义样式模型
-class Style(db.Model):
-    __tablename__ = 'styles'
-    id = db.Column(db.Integer, primary_key=True)  # 主键
-    style_id = db.Column(db.String(100), unique=True, nullable=False)
-    name = db.Column(db.String(100), nullable=False)  # 样式名称
-    description = db.Column(db.Text)  # 样式描述
-    style_url = db.Column(db.String(255))  # 样式URL
-    style_code = db.Column(db.Text)  # 样式代码
-    style_type = db.Column(db.Enum('default', 'custom-css', 'cute', 'custom', 'modern', 'retro', 'eyecare'), nullable=False)  # 样式类型
-    preview_image_url = db.Column(db.String(255))  # 预览图URL
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'))  # 创建者ID
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
-    total_ratings = db.Column(db.Integer, default=0)  # 总评分次数
-    total_score = db.Column(db.Float, default=0.0)  # 总评分
-    average_rating = db.Column(db.Float, default=0.0)  # 平均评分
 
-# 定义用户样式关联模型
-class UserStyle(db.Model):
-    __tablename__ = 'user_styles'
-    id = db.Column(db.Integer, primary_key=True)  # 主键
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'))  # 用户ID
-    style_id = db.Column(db.Integer, db.ForeignKey('styles.id', ondelete='CASCADE'))  # 样式ID
-    relationship_type = db.Column(db.Enum('created', 'applied', 'shared', 'favorite'), nullable=False)  # 关系类型
-    applied_date = db.Column(db.DateTime, default=datetime.utcnow)  # 应用日期
-
-# 定义网站类型模型
-class WebsiteType(db.Model):
-    __tablename__ = 'website_types'
-    id = db.Column(db.Integer, primary_key=True)  # 主键
-    name = db.Column(db.String(50), unique=True, nullable=False)  # 类型名称
-    description = db.Column(db.Text)  # 类型描述
-
-# 定义样式-网站类型关联模型
-class StyleWebsiteType(db.Model):
-    __tablename__ = 'style_website_types'
-    id = db.Column(db.Integer, primary_key=True)  # 主键
-    style_id = db.Column(db.Integer, db.ForeignKey('styles.id', ondelete='CASCADE'))  # 样式ID
-    website_type_id = db.Column(db.Integer, db.ForeignKey('website_types.id', ondelete='CASCADE'))  # 网站类型ID
 
 # 发送验证邮件 (Modified for HTML Template)
 def send_verification_email(recipient_email, token, language='en'): # Add language parameter
@@ -373,7 +362,58 @@ def verify_email(token):
         app.logger.error(f"Error committing verification status for {entry.email}: {e}", exc_info=True)
         return render_template_string(t['verify_fail_error']), 500
 
-# 从AI响应中提取并格式化CSS代码
+
+# 主页路由
+@app.route('/')
+def index():
+    return render_template('langding-page.html')
+
+# 创建数据库表（如果它们还不存在）
+# 注意：在生产环境中，通常使用数据库迁移工具（如Flask-Migrate）来管理模式更改
+with app.app_context():
+    db.create_all()
+
+# 定义样式模型
+class Style(db.Model):
+    __tablename__ = 'styles'
+    id = db.Column(db.Integer, primary_key=True)  # 主键
+    style_id = db.Column(db.String(100), unique=True, nullable=False)
+    name = db.Column(db.String(100), nullable=False)  # 样式名称
+    description = db.Column(db.Text)  # 样式描述
+    style_url = db.Column(db.String(255))  # 样式URL
+    style_code = db.Column(db.Text)  # 样式代码
+    style_type = db.Column(db.Enum('default', 'custom-css', 'cute', 'custom', 'modern', 'retro', 'eyecare'), nullable=False)  # 样式类型
+    preview_image_url = db.Column(db.String(255))  # 预览图URL
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'))  # 创建者ID
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
+    total_ratings = db.Column(db.Integer, default=0)  # 总评分次数
+    total_score = db.Column(db.Float, default=0.0)  # 总评分
+    average_rating = db.Column(db.Float, default=0.0)  # 平均评分
+
+# 定义用户样式关联模型
+class UserStyle(db.Model):
+    __tablename__ = 'user_styles'
+    id = db.Column(db.Integer, primary_key=True)  # 主键
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'))  # 用户ID
+    style_id = db.Column(db.Integer, db.ForeignKey('styles.id', ondelete='CASCADE'))  # 样式ID
+    relationship_type = db.Column(db.Enum('created', 'applied', 'shared', 'favorite'), nullable=False)  # 关系类型
+    applied_date = db.Column(db.DateTime, default=datetime.utcnow)  # 应用日期
+
+# 定义网站类型模型
+class WebsiteType(db.Model):
+    __tablename__ = 'website_types'
+    id = db.Column(db.Integer, primary_key=True)  # 主键
+    name = db.Column(db.String(50), unique=True, nullable=False)  # 类型名称
+    description = db.Column(db.Text)  # 类型描述
+
+# 定义样式-网站类型关联模型
+class StyleWebsiteType(db.Model):
+    __tablename__ = 'style_website_types'
+    id = db.Column(db.Integer, primary_key=True)  # 主键
+    style_id = db.Column(db.Integer, db.ForeignKey('styles.id', ondelete='CASCADE'))  # 样式ID
+    website_type_id = db.Column(db.Integer, db.ForeignKey('website_types.id', ondelete='CASCADE'))  # 网站类型ID
+
 def extract_css_from_response(response_content):
     """从AI响应中提取并格式化CSS代码"""
     # 移除可能存在的 <style> 和 </style> 标签
@@ -397,40 +437,8 @@ def extract_css_from_response(response_content):
     # 清理和格式化 CSS
     css = css.replace('\n\n', '\n').strip()
     
-    # 添加 !important 到每个CSS属性
-    css_lines = []
-    in_block = False
-    current_block = []
-    
-    for line in css.split('\n'):
-        line = line.strip()
-        if not line:
-            continue
-            
-        if '{' in line:
-            in_block = True
-            current_block = [line]
-        elif '}' in line:
-            in_block = False
-            if current_block:
-                css_lines.extend(current_block)
-            css_lines.append(line)
-            current_block = []
-        elif in_block and ':' in line:
-            # 处理属性行
-            if not line.rstrip().endswith('!important;'):
-                if line.endswith(';'):
-                    line = line[:-1] + ' !important;'
-                else:
-                    line += ' !important;'
-            current_block.append(line)
-        else:
-            if in_block:
-                current_block.append(line)
-            else:
-                css_lines.append(line)
-    
-    css = '\n'.join(css_lines)
+    # 移除重复的选择器
+    css = re.sub(r'([^{]+)\s*{\s*\1\s*{', r'\1 {', css)
     
     # 确保大括号配对
     open_braces = css.count('{')
@@ -477,6 +485,11 @@ def apply_style():
 # API路由：生成AI样式
 @app.route('/api/generate_ai_style', methods=['POST'])
 def generate_ai_style():
+    request_start_time = get_beijing_time()
+    app.logger.info(f"=== 站点模式样式生成请求开始 ===")
+    app.logger.info(f"请求时间: {format_beijing_time(request_start_time)}")
+    app.logger.info(f"请求来源: {request.remote_addr}")
+    
     data = request.json
     page_structure = data.get('pageStructure')
     style = data.get('style')
@@ -484,6 +497,12 @@ def generate_ai_style():
     url = data.get('url')
     style_id = data.get('styleId')  # 从请求中获取 style_id
     existing_style = data.get('existingStyle')
+    
+    app.logger.info(f"请求参数 - URL: {url}")
+    app.logger.info(f"请求参数 - 样式类型: {style}")
+    app.logger.info(f"请求参数 - 样式ID: {style_id}")
+    app.logger.info(f"请求参数 - 自定义描述: {custom_description}")
+    app.logger.info(f"页面结构长度: {len(page_structure) if page_structure else 0} 字符")
 
     if not style_id:
         return jsonify({"error": "styleId is required"}), 400
@@ -526,56 +545,79 @@ def generate_ai_style():
 
     try:
         # 生成提示
+        app.logger.info("开始生成AI提示词...")
         prompt = generate_prompt(style, page_structure, custom_description)
+        app.logger.info(f"提示词生成完成，长度: {len(prompt)} 字符")
         
         # 生成样式
+        ai_request_start = get_beijing_time()
+        app.logger.info(f"开始调用AI服务生成样式 - {format_beijing_time(ai_request_start)}")
         generated_style = generate_ai_style_with_retry(prompt)
+        ai_request_end = get_beijing_time()
+        ai_duration = calculate_duration(ai_request_start, ai_request_end)
+        app.logger.info(f"AI服务调用完成 - 耗时: {ai_duration:.3f}秒")
+        app.logger.info(f"生成的样式长度: {len(generated_style)} 字符")
         
         # 根据style_id更新或创建数据库记录
+        db_operation_start = get_beijing_time()
+        app.logger.info("开始数据库操作...")
+        
         style_record = Style.query.filter_by(style_id=style_id).first()
-        
-        # 处理 URL，只保留主要部分
-        parsed_url = urlparse(url)
-        base_url = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}"
-        
         if style_record:
+            app.logger.info(f"找到现有样式记录，ID: {style_id}")
             if existing_style:
+                app.logger.info("合并新样式和现有样式...")
                 # 合并新样式和现有样式
                 final_style = merge_styles(existing_style['style_code'], generated_style)
+                app.logger.info(f"样式合并完成，最终样式长度: {len(final_style)} 字符")
             else:
                 final_style = generated_style
+                app.logger.info("使用新生成的样式")
                 
             style_record.style_code = final_style
-            style_record.style_url = base_url  # 使用处理后的 URL
-            style_record.updated_at = datetime.utcnow()
-            app.logger.info(f"Updated existing style record with ID {style_id}")
+            style_record.updated_at = get_beijing_time()
+            app.logger.info(f"更新现有样式记录完成，ID: {style_id}")
         else:
+            app.logger.info(f"创建新样式记录，ID: {style_id}")
             # 创建新记录使用传入的style_id
             style_record = Style(
                 style_id=style_id,
-                name=f"Style for {base_url}",  # 使用处理后的 URL
-                description=custom_description or f"Generated style for {base_url}",  # 使用处理后的 URL
-                style_url=base_url,  # 使用处理后的 URL
+                name=f"Style for {url}",
+                description=custom_description or f"Generated style for {url}",
+                style_url=url,
                 style_code=generated_style,
                 style_type=style,
-                created_at=datetime.utcnow()
+                created_at=get_beijing_time()
             )
             db.session.add(style_record)
-            app.logger.info(f"Created new style record with ID {style_id}")
+            app.logger.info(f"新样式记录已添加到会话，ID: {style_id}")
             final_style = generated_style
 
         # 添加重试机制
         max_retries = 3
+        app.logger.info("开始提交数据库事务...")
         for attempt in range(max_retries):
             try:
                 db.session.commit()
+                db_operation_end = get_beijing_time()
+                db_duration = calculate_duration(db_operation_start, db_operation_end)
+                app.logger.info(f"数据库事务提交成功 - 耗时: {db_duration:.3f}秒")
                 break
             except sqlalchemy.exc.OperationalError as e:
+                app.logger.warning(f"数据库操作重试 {attempt + 1}/{max_retries}: {str(e)}")
                 if attempt == max_retries - 1:
+                    app.logger.error(f"数据库操作最终失败: {str(e)}")
                     raise
                 db.session.rollback()
                 db.session.remove()
                 time.sleep(1)
+
+        request_end_time = get_beijing_time()
+        total_duration = calculate_duration(request_start_time, request_end_time)
+        app.logger.info(f"=== 站点模式样式生成请求完成 ===")
+        app.logger.info(f"总耗时: {total_duration:.3f}秒")
+        app.logger.info(f"返回样式ID: {style_id}")
+        app.logger.info(f"返回样式长度: {len(final_style)} 字符")
 
         return jsonify({
             "message": "AI style generated and saved successfully",
@@ -585,21 +627,71 @@ def generate_ai_style():
 
     except Exception as e:
         db.session.rollback()
-        app.logger.error(f"Error in generate_ai_style: {str(e)}", exc_info=True)
+        request_end_time = get_beijing_time()
+        total_duration = calculate_duration(request_start_time, request_end_time)
+        app.logger.error(f"=== 站点模式样式生成请求失败 ===")
+        app.logger.error(f"失败时间: {format_beijing_time(request_end_time)}")
+        app.logger.error(f"总耗时: {total_duration:.3f}秒")
+        app.logger.error(f"错误详情: {str(e)}", exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500
 
 def generate_ai_style_with_retry(prompt, max_retries=3):
     """使用重试机制生成AI样式"""
+    app.logger.info(f"开始AI样式生成 - 最大重试次数: {max_retries}")
+    
     for attempt in range(max_retries):
+        app.logger.info(f"AI调用尝试 {attempt + 1}/{max_retries}")
         try:
-            # 首先尝试API2 (Claude)
+            # 首先尝试API1 (Deepseek)
             try:
+                app.logger.info("尝试使用 DeepSeek API...")
+                # 如果API1失败,尝试API2 (Claude)
+                api_key = os.environ.get('DEEPSEEK_API_KEY', "sk-a76edfa9a4fa4bab8a25eb030738e14d")
+                client = OpenAI(
+                    api_key=api_key,
+                    base_url="https://api.deepseek.com"
+                )
+                app.logger.info("DeepSeek 客户端初始化完成")
+                
+                deepseek_start = get_beijing_time()
+                app.logger.info(f"开始调用 DeepSeek API - {format_beijing_time(deepseek_start)}")
+                
+                response = client.chat.completions.create(
+                    model="deepseek-chat",
+                    messages=[
+                        {"role": "system", "content": "You are a skilled web designer. Generate CSS code only, no explanations."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.7,
+                    max_tokens=2000,
+                    stream=False,
+                    timeout=50 # Increased timeout
+                )
+                
+                deepseek_end = get_beijing_time()
+                deepseek_duration = calculate_duration(deepseek_start, deepseek_end)
+                app.logger.info(f"DeepSeek API 调用成功 - 耗时: {deepseek_duration:.3f}秒")
+                
+                raw_content = response.choices[0].message.content
+                app.logger.info(f"DeepSeek 返回内容长度: {len(raw_content)} 字符")
+                app.logger.debug(f"DeepSeek 原始返回内容: {raw_content[:200]}...")
+                
+                extracted_css = extract_css_from_response(raw_content)
+                app.logger.info(f"CSS 提取完成，长度: {len(extracted_css)} 字符")
+                return extracted_css
+            except Exception as e:
+                app.logger.warning(f"DeepSeek API (API1) failed on attempt {attempt + 1}/{max_retries}, trying Claude API (API2). Error: {str(e)}")
+                app.logger.debug(f"DeepSeek API error details: {repr(e)}", exc_info=True)
+                
+                app.logger.info("切换到 Claude API...")
                 baseurl = "https://api.link-ai.tech/v1/chat/completions"
                 headers = {
                     "Content-Type": "application/json",
+                    "Accept": "application/json", # Added Accept header
                     "Authorization": "Bearer Link_tYOZdFTnf0RDsOkryM5gk8lrUkwIBLZDFirsZko8XH"
                 }
                 body = {
+                    "app_code": "", # Added app_code
                     "model": "claude-3-5-sonnet",
                     "messages": [
                         {"role": "system", "content": "You are a skilled web designer. Generate CSS code only, no explanations."},
@@ -609,40 +701,37 @@ def generate_ai_style_with_retry(prompt, max_retries=3):
                     "max_tokens": 2000
                 }
                 
-                response = requests.post(baseurl, json=body, headers=headers, timeout=30)
+                claude_start = get_beijing_time()
+                app.logger.info(f"开始调用 Claude API - {format_beijing_time(claude_start)}")
+                
+                response = requests.post(baseurl, json=body, headers=headers, timeout=45) # Increased timeout for Claude as well
+                
+                claude_end = get_beijing_time()
+                claude_duration = calculate_duration(claude_start, claude_end)
+                
                 if response.status_code == 200:
+                    app.logger.info(f"Claude API 调用成功 - 耗时: {claude_duration:.3f}秒")
                     result = response.json()
                     raw_content = result['choices'][0]['message']['content']
-                    return extract_css_from_response(raw_content)
-                raise Exception(f"API2 failed with status {response.status_code}")
-                
-            except Exception as e:
-                # 如果API2失败,尝试API1 (Deepseek)
-                # IMPORTANT: Ensure DEEPSEEK_API_KEY is set in your .env file or environment
-                api_key = os.environ.get('DEEPSEEK_API_KEY')
-                if not api_key:
-                    raise ValueError("DEEPSEEK_API_KEY is not set in the environment.")
+                    app.logger.info(f"Claude 返回内容长度: {len(raw_content)} 字符")
+                    app.logger.debug(f"Claude 原始返回内容: {raw_content[:200]}...")
                     
-                client = OpenAI(
-                    api_key=api_key,
-                    base_url="https://api.deepseek.com"
-                )
-                
-                response = client.chat.completions.create(
-                    model="deepseek-coder",
-                    messages=[
-                        {"role": "system", "content": "You are a skilled web designer. Generate CSS code only, no explanations."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.7,
-                    max_tokens=2000,
-                    timeout=30
-                )
-                
-                raw_content = response.choices[0].message.content
-                return extract_css_from_response(raw_content)
-                
+                    extracted_css = extract_css_from_response(raw_content)
+                    app.logger.info(f"CSS 提取完成，长度: {len(extracted_css)} 字符")
+                    return extracted_css
+                # Log the full response text for non-200 status for better debugging
+                error_message = f"API2 failed with status {response.status_code}"
+                try:
+                    error_details = response.json() # Try to get JSON error details
+                    error_message += f" - Details: {json.dumps(error_details)}"
+                except ValueError: # If response is not JSON
+                    error_message += f" - Content: {response.text}"
+                app.logger.error(error_message)
+                raise Exception(error_message)
+                                
+
         except Exception as e:
+            app.logger.error(f"Error in generate_ai_style_with_retry attempt {attempt + 1}/{max_retries}: {str(e)}", exc_info=True)
             if attempt == max_retries - 1:
                 raise Exception(f"Failed to generate style after {max_retries} attempts: {str(e)}")
             time.sleep(1)
@@ -775,10 +864,7 @@ def save_custom_css():
         app.logger.error(f"Error saving CSS: {str(e)}")
         return jsonify({"message": "Internal server error"}), 500
 
-# 主页路由
-@app.route('/')
-def index():
-    return render_template('langding-page.html')
+
 # 添加新的API路由用于处理元素样式生成
 @app.route('/api/generate_element_style', methods=['POST'])
 def generate_element_style():
@@ -786,15 +872,13 @@ def generate_element_style():
     element_details = data.get('elementDetails')
     description = data.get('description')
     url = data.get('url')
-    existing_style = data.get('existingStyle')
-    style_id = data.get('styleId')
+    existing_style = data.get('existingStyle')  # 从请求中获取本地存储的样式信息
+    style_id = data.get('styleId')  # 从请求中获取 style_id
 
-    if not all([element_details, description, url, style_id]):
+    if not all([element_details, description, url]):
         return jsonify({"success": False, "error": "Missing required data"}), 400
 
     try:
-        app.logger.info(f"Generating element style for selector: {element_details['elementInfo']['path']}")
-        
         # 生成提示
         prompt = generate_element_style_prompt(
             element_details,
@@ -802,58 +886,61 @@ def generate_element_style():
             existing_style['style_code'] if existing_style else None
         )
         
-        # 记录生成的提示（调试用）
-        app.logger.debug(f"AI Prompt: {prompt}")
-        
         # 生成样式
         generated_style = generate_ai_style_for_element(prompt)
-        app.logger.info(f"AI generated style: {generated_style[:100]}...")
-        
         element_selector = element_details['elementInfo']['path']
         
-        # 使用更智能的选择器策略
-        if 'smartSelector' in element_details:
-            element_selector = element_details['smartSelector']
-            app.logger.info(f"Using smart selector: {element_selector}")
-        
-        # 智能合并样式
-        if existing_style and 'style_code' in existing_style:
-            combined_style = merge_styles_intelligently(
-                existing_style['style_code'],
-                generated_style,
-                element_selector
-            )
+        if style_id:  # 使用传入的 style_id
+            existing_css = existing_style['style_code'] if existing_style else ''
+            
+            # 移除该元素可能存在的旧样式
+            if existing_css:
+                existing_css = remove_element_style(existing_css, element_selector)
+            
+            # 合并新样式
+            combined_style = f"{existing_css}\n\n{element_selector} {{\n{generated_style}\n}}" if existing_css else f"{element_selector} {{\n{generated_style}\n}}"
+            
+            # 根据style_id更新或创建数据库记录
+            style = Style.query.filter_by(style_id=style_id).first()
+            if style:
+                style.style_code = combined_style
+                style.updated_at = get_beijing_time()
+                app.logger.info(f"Updated existing style record with ID {style_id}")
+            else:
+                # 如果找不到记录,创建新记录但使用传入的style_id
+                style = Style(
+                    style_id=style_id,
+                    name=f"Style for {url}",
+                    description=f"Combined style for {url}",
+                    style_url=url,
+                    style_code=combined_style,
+                    style_type='custom',
+                    created_at=get_beijing_time()
+                )
+                db.session.add(style)
+                app.logger.info(f"Created new style record with provided ID {style_id}")
         else:
-            # 如果没有现有样式，创建新的
-            combined_style = f"{element_selector} {{\n{format_css_properties(generated_style)}\n}}"
+            # 如果没有传入style_id(不应该发生)
+            app.logger.error("No style_id provided in request")
+            return jsonify({"success": False, "error": "No style_id provided"}), 400
         
-        # 保存或更新数据库记录
-        style = Style.query.filter_by(style_id=style_id).first()
-        if style:
-            style.style_code = combined_style
-            style.updated_at = datetime.utcnow()
-            app.logger.info(f"Updated existing style record with ID {style_id}")
-        else:
-            # 创建新记录
-            style = Style(
-                style_id=style_id,
-                name=f"Element style for {url}",
-                description=description[:100],
-                style_url=url,
-                style_code=combined_style,
-                style_type='custom',
-                created_at=datetime.utcnow()
-            )
-            db.session.add(style)
-            app.logger.info(f"Created new style record with ID {style_id}")
-        
-        db.session.commit()
+        # 添加重试机制
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                db.session.commit()
+                break
+            except sqlalchemy.exc.OperationalError as e:
+                if attempt == max_retries - 1:
+                    raise
+                db.session.rollback()
+                db.session.remove()
+                time.sleep(1)
         
         return jsonify({
             "success": True,
             "style": generated_style,
-            "styleId": style_id,
-            "message": "样式生成成功！"
+            "styleId": style_id
         }), 200
         
     except Exception as e:
@@ -861,138 +948,47 @@ def generate_element_style():
         app.logger.error(f"Error in generate_element_style: {str(e)}", exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500
 
-# 修改generate_element_style_prompt函数，利用增强的上下文信息
+# 生成用于元素样式的AI提示
 def generate_element_style_prompt(element_details, description, existing_style=None):
     """
-    生成用于元素样式的AI提示，利用增强的上下文信息
+    生成用于元素样式的AI提示
     """
-    # 基本元素信息
     base_prompt = f"""
     Generate CSS styles for the following HTML element:
     
     Element Details:
     - Tag: {element_details['elementInfo']['tagName']}
-    - ID: {element_details['elementInfo']['id'] or 'None'}
-    - Class: {element_details['elementInfo']['className'] or 'None'}
+    - ID: {element_details['elementInfo']['id']}
+    - Class: {element_details['elementInfo']['className']}
     - CSS Path: {element_details['elementInfo']['path']}
-    """
     
-    # 添加上下文信息（如果有）
-    if 'contextInfo' in element_details:
-        context = element_details['contextInfo']
-        
-        # 添加元素位置信息
-        if 'position' in context:
-            pos = context['position']
-            base_prompt += f"""
-            Position Information:
-            - Width: {pos['width']}px, Height: {pos['height']}px
-            - Relative position: {int(pos['relativeX'] * 100)}% horizontal, {int(pos['relativeY'] * 100)}% vertical
-            - Located in page section: {context['pageSection']}
-            """
-            
-        # 添加父元素信息
-        if 'parentInfo' in context and context['parentInfo']:
-            base_prompt += f"""
-            Parent Elements:
-            """
-            for i, parent in enumerate(context['parentInfo']):
-                base_prompt += f"""
-                Parent {i+1} (<{parent['tag']}>{parent.get('id', '')}): 
-                - Class: {parent.get('className', 'None')}
-                - Key styles: {', '.join([f'{k}: {v}' for k, v in list(parent.get('styles', {}).items())[:5]])}
-                """
-        
-        # 添加设计模式信息
-        if 'designPatterns' in context:
-            patterns = context['designPatterns']
-            if 'colors' in patterns:
-                colors = patterns['colors']
-                base_prompt += f"""
-                Page Color Scheme:
-                - Text colors: {', '.join(colors.get('text', [])[:3])}
-                - Background colors: {', '.join(colors.get('background', [])[:3])}
-                - Accent colors: {', '.join(colors.get('accent', [])[:3])}
-                """
-                
-            if 'typography' in patterns:
-                typography = patterns['typography']
-                base_prompt += f"""
-                Typography:
-                - Font families: {', '.join(typography.get('families', [])[:2])}
-                - Font sizes: {', '.join(typography.get('sizes', [])[:3])}
-                """
-    
-    # 添加页面结构信息（如果有）
-    if 'pageStructure' in element_details:
-        structure = element_details['pageStructure']
-        base_prompt += f"""
-        Page Structure Context:
-        - Container: <{structure.get('container', {}).get('tag', 'div')}> with {len(structure.get('relevantElements', []))} relevant elements
-        - Target path depth: {len(structure.get('targetPath', []))} levels
-        """
-    
-    # 添加元素结构和计算样式
-    base_prompt += f"""
     Element Structure:
     {element_details['structure']}
     
-    Current Computed Styles (most important ones):
-    """
-    
-    # 只添加关键的计算样式，避免提示过长
-    key_styles = [
-        'display', 'position', 'width', 'height', 'color', 'background-color',
-        'font-family', 'font-size', 'padding', 'margin', 'border', 'box-shadow',
-        'text-align', 'flex', 'grid', 'z-index', 'opacity'
-    ]
-    
-    computed_styles = {}
-    for key in key_styles:
-        if key in element_details['styleInfo']['computed']:
-            computed_styles[key] = element_details['styleInfo']['computed'][key]
-    
-    base_prompt += json.dumps(computed_styles, indent=2)
-    
-    # 添加用户需求和指导原则
-    base_prompt += f"""
+    Current Computed Styles:
+    {json.dumps(element_details['styleInfo']['computed'], indent=2)}
     
     User Requirements:
     {description}
     
-    Design Guidelines:
-    1. Create styles that harmonize with the existing page design while implementing the requested changes
-    2. Ensure the element maintains its functionality and purpose in the page
-    3. Follow these design principles:
-       - Maintain consistent spacing and alignment with surrounding elements
-       - Use colors that complement the existing page color scheme
-       - Ensure sufficient contrast for text readability
-       - Consider mobile responsiveness
-    4. Apply modern CSS techniques appropriately
+    Please generate CSS that:
+    1. Maintains the element's core functionality
+    2. Implements the requested visual changes
+    3. Ensures compatibility with existing styles
+    4. Uses modern CSS features appropriately
+    5. Maintains responsive design principles
+    
+    Return only the CSS code without any explanations or comments.
     """
     
-    # 如果有现有样式，添加到提示中
     if existing_style:
         base_prompt += f"""
         
         Consider these existing site styles while generating new ones:
-        ```css
         {existing_style}
-        ```
         
         Ensure the new styles integrate well with the existing ones.
         """
-    
-    # 输出指南
-    base_prompt += """
-    
-    Return only pure CSS properties without selector or braces, like:
-    color: #333;
-    padding: 10px;
-    border-radius: 4px;
-    
-    Do not include explanations or comments in your response - just the CSS properties.
-    """
     
     return base_prompt
 
@@ -1039,18 +1035,14 @@ def generate_ai_style_for_element(prompt):
             app.logger.warning(f"API2 failed, trying API1: {str(e)}")
             
             # 如果API2失败,尝试API1 (Deepseek)
-            # IMPORTANT: Ensure DEEPSEEK_API_KEY is set in your .env file or environment
-            api_key = os.environ.get('DEEPSEEK_API_KEY')
-            if not api_key:
-                raise ValueError("DEEPSEEK_API_KEY is not set in the environment.")
-                    
+            api_key = os.environ.get('DEEPSEEK_API_KEY', "sk-a76edfa9a4fa4bab8a25eb030738e14d")
             client = OpenAI(
                 api_key=api_key,
                 base_url="https://api.deepseek.com"
             )
             
             response = client.chat.completions.create(
-                model="deepseek-coder",
+                model="deepseek-chat",
                 messages=[
                     {
                         "role": "system",
@@ -1099,116 +1091,6 @@ def remove_element_style(css_code, element_selector):
     cleaned_css = re.sub(r'\n\s*\n', '\n\n', cleaned_css)
     
     return cleaned_css.strip()
-
-# 添加智能样式合并逻辑
-def merge_styles_intelligently(existing_css, new_style, element_selector):
-    """
-    更智能地合并现有CSS和新生成的样式
-    
-    Args:
-        existing_css (str): 现有CSS样式
-        new_style (str): 新生成的CSS样式（属性部分）
-        element_selector (str): 元素选择器
-        
-    Returns:
-        str: 合并后的CSS样式
-    """
-    try:
-        # 首先移除现有样式中的相关选择器样式
-        cleaned_css = remove_element_style(existing_css, element_selector)
-        
-        # 格式化新样式，确保每个属性占一行
-        formatted_style = format_css_properties(new_style)
-        
-        # 添加注释，帮助标识何时添加以及为什么添加
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        style_block = f"""
-/* 以下样式应用于 {element_selector} - 添加于 {timestamp} */
-{element_selector} {{
-{formatted_style}
-}}
-/* 结束 {element_selector} 样式 */
-"""
-        
-        # 合并样式
-        if cleaned_css.strip():
-            return f"{cleaned_css}\n\n{style_block}"
-        else:
-            return style_block
-            
-    except Exception as e:
-        app.logger.error(f"Error in intelligent style merge: {str(e)}")
-        # 如果合并失败，回退到简单拼接
-        return f"{existing_css}\n\n{element_selector} {{\n{new_style}\n}}"
-
-# 格式化CSS属性，每个属性一行，增加缩进
-def format_css_properties(css_text):
-    """格式化CSS属性，每个属性一行，增加缩进"""
-    # 清理输入
-    css_text = css_text.strip()
-    
-    # 移除可能的花括号
-    if css_text.startswith('{'):
-        css_text = css_text[1:]
-    if css_text.endswith('}'):
-        css_text = css_text[:-1]
-    
-    # 分割各属性并添加缩进
-    properties = []
-    for line in css_text.split(';'):
-        line = line.strip()
-        if line and ':' in line:
-            properties.append(f"    {line};")
-    
-    # 按属性类型分组并排序
-    layout_props = []
-    visual_props = []
-    text_props = []
-    other_props = []
-    
-    for prop in properties:
-        prop_name = prop.split(':')[0].strip()
-        if prop_name in ['display', 'position', 'width', 'height', 'margin', 'padding', 
-                        'top', 'right', 'bottom', 'left', 'float', 'clear']:
-            layout_props.append(prop)
-        elif prop_name in ['background', 'background-color', 'border', 'border-radius', 
-                          'box-shadow', 'opacity', 'color']:
-            visual_props.append(prop)
-        elif prop_name in ['font', 'font-size', 'font-family', 'font-weight', 'text-align',
-                          'line-height', 'letter-spacing']:
-            text_props.append(prop)
-        else:
-            other_props.append(prop)
-    
-    # 组合所有属性，添加组间空行
-    formatted = []
-    
-    if layout_props:
-        formatted.extend(layout_props)
-        if visual_props or text_props or other_props:
-            formatted.append("")
-    
-    if visual_props:
-        formatted.extend(visual_props)
-        if text_props or other_props:
-            formatted.append("")
-    
-    if text_props:
-        formatted.extend(text_props)
-        if other_props:
-            formatted.append("")
-    
-    if other_props:
-        formatted.extend(other_props)
-    
-    return "\n".join(formatted)
-
-
-
-# 创建数据库表（如果它们还不存在）
-# 注意：在生产环境中，通常使用数据库迁移工具（如Flask-Migrate）来管理模式更改
-with app.app_context():
-    db.create_all()
 
 # 主程序入口
 if __name__ == '__main__':

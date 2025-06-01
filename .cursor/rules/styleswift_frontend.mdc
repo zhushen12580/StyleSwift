@@ -1,0 +1,55 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# StyleSwift Frontend: Chrome Extension Architecture
+
+The StyleSwift frontend is a Chrome Extension built with Manifest V3. It allows users to interact with web pages to apply AI-generated styles. It follows a standard three-component architecture:
+
+## Core Components:
+
+1.  **`popup.js` ([popup.js](mdc:popup.js)) / `popup.html`**:
+    *   **Role**: Provides the user interface (UI) for the extension, displayed when the user clicks the extension icon.
+    *   **Functionality**: Allows users to select styling modes (site-wide, element-specific), choose style themes, input custom descriptions for AI styling, and trigger actions.
+    *   **Interaction**: Communicates with the `background.js` script to initiate actions (e.g., style generation, element selection mode) and receive updates.
+    *   **Key Technologies**: HTML, CSS, JavaScript.
+
+2.  **`content.js` ([content.js](mdc:content.js))**:
+    *   **Role**: Injected into web pages to interact directly with the Document Object Model (DOM).
+    *   **Functionality**:
+        *   Handles element selection: highlights elements on hover, captures element details (CSS path, existing styles, structure) upon user click.
+        *   Applies CSS styles (both site-wide and element-specific) received from `background.js` by creating or modifying `<style>` tags or directly manipulating element styles.
+        *   Sends page structure information to `background.js` for AI style generation.
+        *   Manages a rating widget for users to provide feedback on applied styles.
+    *   **Interaction**: Communicates with `background.js` via `chrome.runtime.sendMessage` and `chrome.tabs.sendMessage`. Listens for messages from `background.js` to perform actions on the page.
+    *   **Key Technologies**: JavaScript, DOM manipulation.
+
+3.  **`background.js` ([background.js](mdc:background.js))**:
+    *   **Role**: Acts as the central coordinator (Service Worker in Manifest V3) for the extension.
+    *   **Functionality**:
+        *   Manages the extension's lifecycle and state (e.g., popup window ID).
+        *   Handles messages from `popup.js` and `content.js`.
+        *   Communicates with the backend Flask API (`app.py`) using `fetch` to request AI-generated styles or submit ratings.
+        *   Manages `chrome.storage.local` to store applied styles, user preferences, or selected element data.
+        *   Coordinates the injection of `content.js` into tabs using `chrome.scripting.executeScript`.
+        *   Relays data between `popup.js`, `content.js`, and the backend.
+    *   **Interaction**: Uses `chrome.runtime.onMessage`, `chrome.tabs.sendMessage`, `chrome.windows.create`, `chrome.storage.local`, `chrome.scripting.executeScript`, `chrome.action.onClicked`.
+    *   **Key Technologies**: JavaScript, Chrome Extension APIs.
+
+## Communication Patterns:
+
+*   **Popup to Background**: `popup.js` sends messages to `background.js` to initiate tasks (e.g., `generateAndApplyStyle`, `startElementSelection`).
+*   **Background to Content**: `background.js` sends messages to `content.js` to apply styles, start element selection, or request page information.
+*   **Content to Background**: `content.js` sends messages to `background.js` with selected element details, page structure, or to confirm actions.
+*   **Background to Backend**: `background.js` uses `fetch` to communicate with the Flask API endpoints.
+
+## State Management:
+
+*   Primarily uses `chrome.storage.local` for persisting styles applied to specific hostnames, selected element details, and potentially user settings.
+
+## Manifest & Permissions (`manifest.json`):
+
+*   Utilizes Manifest V3.
+*   Requests permissions such as `storage` (for `chrome.storage`), `scripting` (to inject `content.js`), `activeTab` (often used, though specific permissions depend on the manifest file, which is not provided), `system.display` (used in `background.js` for popup positioning), and host permissions for the backend API.
+*   Defines the `action` (browser action/popup), `background` service worker, and `content_scripts` (though injection is primarily programmatic via `chrome.scripting` in this project).

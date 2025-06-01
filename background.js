@@ -1,3 +1,21 @@
+// 北京时间工具函数
+function getBeijingTime() {
+    const now = new Date();
+    // 获取北京时间（UTC+8）
+    const beijingTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+    return beijingTime;
+}
+
+function formatBeijingTime(date = null) {
+    if (!date) date = getBeijingTime();
+    return date.toISOString().replace('T', ' ').substring(0, 23) + ' CST';
+}
+
+function calculateDuration(startTime, endTime = null) {
+    if (!endTime) endTime = new Date();
+    return (endTime - startTime) / 1000; // 返回秒
+}
+
 let windowId = null;
 // 添加点击扩展图标时的事件监听器
 chrome.action.onClicked.addListener(async () => {
@@ -168,27 +186,52 @@ async function handleApplyStyle(request, sendResponse) {
 
 // 处理生成并应用样式的请求
 async function handleGenerateAndApplyStyle(request, sendResponse) {
+    const requestStartTime = getBeijingTime();
+    console.log('=== Background: 收到站点模式样式生成请求 ===');
+    console.log('请求时间:', formatBeijingTime(requestStartTime));
+    console.log('请求数据:', {
+        styleId: request.styleId,
+        style: request.style,
+        url: request.url,
+        hasPageStructure: !!request.pageStructure,
+        pageStructureLength: request.pageStructure ? request.pageStructure.length : 0,
+        customDescription: request.customDescription
+    });
+    
     try {
-        console.log('开始生成样式，请求数据:', request);
-
+        console.log('开始调用后端API...');
+        const apiCallStart = getBeijingTime();
+        
         const response = await fetch('http://127.0.0.1:5000/api/generate_ai_style', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(request)
         });
 
+        const apiCallEnd = getBeijingTime();
+        const apiDuration = calculateDuration(apiCallStart, apiCallEnd);
+        console.log(`后端API调用完成 - 耗时: ${apiDuration.toFixed(3)}秒`);
+        
         const data = await response.json();
-        console.log('API返回的样式数据:', data);
+        console.log('API返回的样式数据:', {
+            hasStyleCode: !!data.style_code,
+            styleCodeLength: data.style_code ? data.style_code.length : 0,
+            styleId: data.style_id,
+            message: data.message
+        });
 
         if (data.style_code) {
+            console.log('开始寻找目标标签页...');
             // 获取当前活动的标签页
             const tabs = await chrome.tabs.query({});
+            console.log('查询到标签页总数:', tabs.length);
             
             // 过滤出不是扩展页面的标签页
             const normalTabs = tabs.filter(tab => 
                 !tab.url.startsWith('chrome-extension://') && 
                 !tab.url.startsWith('chrome://')
             );
+            console.log('过滤后的普通标签页数:', normalTabs.length);
 
             // 找到最后激活的普通标签页
             const targetTab = normalTabs.find(tab => tab.active) || normalTabs[0];
@@ -197,33 +240,52 @@ async function handleGenerateAndApplyStyle(request, sendResponse) {
                 throw new Error('没有找到可应用样式的标签页');
             }
 
-            console.log('目标标签页:', targetTab);
+            console.log('目标标签页:', {
+                id: targetTab.id,
+                url: targetTab.url,
+                title: targetTab.title
+            });
 
             // 确保内容脚本已注入
+            console.log('检查并注入内容脚本...');
             const isInjected = await ensureContentScriptInjected(targetTab.id);
             if (!isInjected) {
                 throw new Error('无法注入内容脚本');
             }
+            console.log('内容脚本注入成功');
 
             // 保存样式到存储
+            console.log('保存样式到本地存储...');
+            const storageKey = new URL(request.url).hostname;
             await chrome.storage.local.set({
-                [request.url]: {
+                [storageKey]: {
                     style_code: data.style_code,
-                    style_id: request.styleId
+                    style_id: request.styleId,
+                    mode: 'site'
                 }
             });
-            console.log('样式已保存到存储');
+            console.log('样式已保存到存储, Key:', storageKey);
 
             // 应用样式到页面
+            console.log('开始将样式发送到内容脚本...');
+            const messageStart = getBeijingTime();
             await chrome.tabs.sendMessage(targetTab.id, {
                 action: "applyStyle",
                 style: data.style_code,
                 styleId: request.styleId
             });
-            console.log('样式已发送到内容脚本');
+            const messageEnd = getBeijingTime();
+            const messageDuration = calculateDuration(messageStart, messageEnd);
+            console.log(`样式已发送到内容脚本 - 耗时: ${messageDuration.toFixed(3)}秒`);
 
             // 移除默认样式标志
             await chrome.storage.local.remove('defaultStyle');
+            console.log('已移除默认样式标志');
+
+            const requestEndTime = getBeijingTime();
+            const totalDuration = calculateDuration(requestStartTime, requestEndTime);
+            console.log('=== Background: 站点模式样式生成和应用完成 ===');
+            console.log(`总耗时: ${totalDuration.toFixed(3)}秒`);
 
             sendResponse({ success: true });
         } else {

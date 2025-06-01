@@ -1,0 +1,55 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# StyleSwift Backend: Flask API Architecture
+
+The StyleSwift backend is a Flask application written in Python. Its primary role is to serve as an API for the Chrome Extension frontend, handle AI-powered CSS generation, and manage data persistence.
+
+## Core Responsibilities:
+
+1.  **API Endpoints**:
+    *   Provides RESTful API endpoints that the Chrome extension's `background.js` script ([background.js](mdc:background.js)) communicates with using `fetch` requests.
+    *   Expected endpoints based on `background.js` interactions:
+        *   `/api/generate_ai_style`: For generating site-wide styles. Receives page structure, style preferences, and custom descriptions.
+        *   `/api/generate_element_style`: For generating styles for specific HTML elements. Receives element details, user description, URL, existing styles, and a style ID.
+        *   `/api/apply_style` (Potentially for predefined styles or re-applying, though less directly used for AI generation in `background.js` flow).
+        *   `/api/submit_rating`: For users to submit ratings for generated styles. Receives style ID and rating.
+        *   `/api/save_custom_css` (Referenced in `popup.js`): For saving user-provided CSS.
+
+2.  **AI Integration & Prompt Engineering**:
+    *   Interfaces with third-party AI services (e.g., **Claude AI API**, **Deepseek AI API**).
+    *   Constructs and sends prompts to these AI services to generate CSS code based on input from the frontend (page structure, element details, user descriptions).
+    *   Processes the responses from AI services, extracting the generated CSS code and any other relevant information.
+    *   Manages API keys and interaction logic for these external AI services.
+
+3.  **Data Persistence (MySQL)**:
+    *   Interacts with a MySQL database to store and retrieve data.
+    *   Potential data stored includes:
+        *   User-generated styles and their metadata.
+        *   Style ratings and feedback.
+        *   User configurations or preferences (if any).
+        *   Predefined style templates (if any).
+    *   Handles database connections, queries, and data sanitization.
+
+4.  **Business Logic**:
+    *   Contains the core logic for processing requests, validating inputs, and coordinating between the AI services and the database.
+    *   Implements error handling and logging for backend operations.
+
+## Key File(s):
+
+*   **`app.py`** (assumed): The main Flask application file containing route definitions, API logic, AI service integration, and database interaction code. (File content not available for direct reference).
+
+## Communication with Frontend:
+
+*   The frontend (`background.js`) sends HTTP POST requests (typically with JSON payloads) to the Flask API endpoints.
+*   The backend responds with JSON data, including generated CSS (`style_code`), success/error status, and other relevant information.
+*   All communication should be over HTTPS for security.
+
+## Security & Best Practices:
+
+*   Input validation and sanitization for all data received from the frontend.
+*   Secure handling of API keys for external AI services.
+*   Robust error handling and appropriate logging.
+*   Adherence to RESTful API design principles.

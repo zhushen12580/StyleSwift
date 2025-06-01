@@ -1,3 +1,16 @@
+// 北京时间工具函数
+function getBeijingTime() {
+    const now = new Date();
+    // 获取北京时间（UTC+8）
+    const beijingTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+    return beijingTime;
+}
+
+function formatBeijingTime(date = null) {
+    if (!date) date = getBeijingTime();
+    return date.toISOString().replace('T', ' ').substring(0, 23) + ' CST';
+}
+
 // 添加一个全局变量来跟踪评分状态
 let ratingSubmitted = false;
 
@@ -122,12 +135,10 @@ function getCssPath(element) {
             // 尝试使用元素的文本内容作为选择器（如果是短文本）
             const text = el.textContent?.trim();
             if (text && text.length < 50 && text.length > 2) {
-                // 这需要jQuery或类似库支持:contains选择器，此处仅作示例
-                // 或者我们可以手动实现检查内容的函数
-                const selector = `${el.tagName.toLowerCase()}:contains("${text.replace(/"/g, '\\"')}")`;
-                if (document.querySelectorAll(selector).length === 1) {
-                    return selector;
-                }
+                // 使用文本内容构建精确匹配
+                const escapedText = text.replace(/"/g, '\\"');
+                const selector = `${el.tagName.toLowerCase()}:contains("${escapedText}")`;
+                if (validateSelector(selector)) return selector;
             }
             
             // 尝试使用位置信息
@@ -177,7 +188,7 @@ function generateFallbackSelector(element) {
     // 使用元素的文本内容作为选择器（如果是短文本）
     const text = element.textContent?.trim();
     if (text && text.length < 50) {
-        const selector = `${element.tagName.toLowerCase()}:contains("${text.replace(/"/g, '\\"')}")`;
+        const selector = `${element.tagName.toLowerCase()}:contains("${text}")`;
         if (validateSelector(selector)) {
             return selector;
         }
@@ -233,23 +244,12 @@ function handleElementClick(e) {
     
     try {
         const target = e.target;
-        // 获取基本元素信息
         const elementDetails = getSelectedElementDetails(target);
         
-        // 获取丰富的上下文信息
-        const contextInfo = getElementContext(target);
-        elementDetails.contextInfo = contextInfo;
-        
-        // 获取页面简化结构，重点关注目标元素所在区域
-        const pageSection = identifyPageSection(target);
-        const simplifiedStructure = extractSimplifiedStructure(target, pageSection);
-        elementDetails.pageStructure = simplifiedStructure;
-        
-        // 记录用于调试
-        console.log('定位元素信息(增强版):', {
+        // 添加控制台输出
+        console.log('定位元素信息:', {
             elementInfo: elementDetails.elementInfo,
-            contextInfo: elementDetails.contextInfo,
-            structureSummary: `收集了${Object.keys(simplifiedStructure).length}个相关节点信息`
+            structure: target.outerHTML.substring(0, 100) + '...' // 截取前100字符防止过长
         });
     
         // 存储选中的元素信息
@@ -295,170 +295,6 @@ function handleElementClick(e) {
         showFeedback('选择元素失败: ' + error.message, 'error');
         stopElementSelection();
     }
-}
-
-// 提取简化的页面结构，重点关注目标元素
-function extractSimplifiedStructure(targetElement, sectionType) {
-    // 找到目标元素所在的主要容器
-    const container = findRelevantContainer(targetElement, sectionType);
-    if (!container) return {};
-    
-    // 最大收集的元素数
-    const MAX_ELEMENTS = 25;
-    // 已处理的元素集合（避免循环引用）
-    const processedElements = new Set();
-    // 结果对象
-    const result = {
-        container: {
-            tag: container.tagName.toLowerCase(),
-            id: container.id,
-            className: container.className,
-            role: container.getAttribute('role')
-        },
-        targetPath: [], // 从容器到目标元素的路径
-        relevantElements: [] // 与目标相关的元素
-    };
-    
-    // 构建从容器到目标的路径
-    let current = targetElement;
-    while (current && current !== container && current !== document.body) {
-        result.targetPath.unshift({
-            tag: current.tagName.toLowerCase(),
-            id: current.id,
-            className: current.className,
-            textContent: current.textContent?.length > 50 
-                ? current.textContent.substring(0, 50) + '...' 
-                : current.textContent
-        });
-        current = current.parentElement;
-    }
-    
-    // 收集相关元素（同级和周围元素）
-    let count = 0;
-    const queue = [container];
-    while (queue.length > 0 && count < MAX_ELEMENTS) {
-        const element = queue.shift();
-        if (processedElements.has(element)) continue;
-        processedElements.add(element);
-        
-        // 检查是否与目标元素相关
-        if (element !== container && element !== targetElement && 
-            (element.contains(targetElement) || targetElement.contains(element) || 
-             areElementsRelated(element, targetElement))) {
-            
-            result.relevantElements.push({
-                tag: element.tagName.toLowerCase(),
-                id: element.id,
-                className: element.className,
-                textContent: element.textContent?.length > 30 
-                    ? element.textContent.substring(0, 30) + '...' 
-                    : element.textContent,
-                styles: extractKeyStyles(element)
-            });
-            count++;
-        }
-        
-        // 添加子元素到队列
-        if (element.children.length > 0) {
-            // 优先考虑包含目标元素的路径
-            Array.from(element.children).sort((a, b) => {
-                const aContainsTarget = a.contains(targetElement) ? -1 : 0;
-                const bContainsTarget = b.contains(targetElement) ? -1 : 0;
-                return aContainsTarget - bContainsTarget;
-            }).forEach(child => queue.push(child));
-        }
-    }
-    
-    return result;
-}
-
-// 判断两个元素是否相关（近亲）
-function areElementsRelated(element1, element2) {
-    // 共享父元素
-    if (element1.parentElement === element2.parentElement) return true;
-    
-    // 一个是另一个的直接子元素
-    if (element1.parentElement === element2 || element2.parentElement === element1) return true;
-    
-    // 视觉上相近（通过位置判断）
-    const rect1 = element1.getBoundingClientRect();
-    const rect2 = element2.getBoundingClientRect();
-    
-    const distance = Math.sqrt(
-        Math.pow((rect1.left + rect1.width/2) - (rect2.left + rect2.width/2), 2) +
-        Math.pow((rect1.top + rect1.height/2) - (rect2.top + rect2.height/2), 2)
-    );
-    
-    // 如果两元素中心点距离小于某个阈值，认为相关
-    return distance < 100;
-}
-
-// 查找与目标元素相关的主要容器
-function findRelevantContainer(element, sectionType) {
-    // 基于区域类型查找合适的容器
-    switch (sectionType) {
-        case 'header':
-            return document.querySelector('header') || 
-                   document.querySelector('nav') ||
-                   findElementByKeywords(['header', 'navigation', 'banner']);
-                   
-        case 'footer':
-            return document.querySelector('footer') ||
-                   findElementByKeywords(['footer', 'bottom']);
-                   
-        case 'sidebar':
-            return document.querySelector('aside') ||
-                   findElementByKeywords(['sidebar', 'side-menu', 'navigation']);
-                   
-        case 'form':
-            return element.closest('form') ||
-                   findElementByKeywords(['form', 'login', 'register', 'contact']);
-                   
-        case 'content':
-        default:
-            return document.querySelector('main') ||
-                   document.querySelector('article') ||
-                   findNearestContainer(element);
-    }
-}
-
-// 通过关键词查找元素
-function findElementByKeywords(keywords) {
-    for (const keyword of keywords) {
-        // 尝试id
-        const byId = document.querySelector(`[id*="${keyword}"]`);
-        if (byId) return byId;
-        
-        // 尝试class
-        const byClass = document.querySelector(`[class*="${keyword}"]`);
-        if (byClass) return byClass;
-        
-        // 尝试其他属性
-        const byAttr = document.querySelector(`[data-*="${keyword}"], [role="${keyword}"]`);
-        if (byAttr) return byAttr;
-    }
-    
-    return null;
-}
-
-// 查找元素最近的有意义的容器
-function findNearestContainer(element) {
-    let current = element.parentElement;
-    
-    while (current && current !== document.body) {
-        // 检查是否为有意义的容器
-        if (['main', 'article', 'section', 'div'].includes(current.tagName.toLowerCase())) {
-            // 检查是否含有足够多的子元素或有意义的ID/类名
-            if (current.children.length > 3 || 
-                (current.id && current.id.length > 0) ||
-                (current.className && current.className.length > 0)) {
-                return current;
-            }
-        }
-        current = current.parentElement;
-    }
-    
-    return document.body; // 默认返回body
 }
 
 // 在文件开头添加上下文检查函数
@@ -600,6 +436,12 @@ function initializeContentScript() {
 
 // 应用样式
 function applyStyle(style, styleId) {
+    console.log('=== Content: 收到样式应用请求 ===');
+    console.log('应用时间:', formatBeijingTime());
+    console.log('样式ID:', styleId);
+    console.log('样式长度:', style ? style.length : 0, '字符');
+    console.log('当前页面URL:', window.location.href);
+    
     const newStyleElement = document.createElement('style');
     newStyleElement.id = 'beautifier-style';
     newStyleElement.textContent = style;
@@ -607,24 +449,36 @@ function applyStyle(style, styleId) {
 
     const oldStyleElement = document.getElementById('beautifier-style');
     if (oldStyleElement && oldStyleElement !== newStyleElement) {
+        console.log('移除旧的样式元素');
         oldStyleElement.remove();
     }
 
     document.head.appendChild(newStyleElement);
+    console.log('新样式元素已添加到页面头部');
 
+    console.log('保存样式到本地存储...');
+    const hostname = window.location.hostname;
     chrome.storage.local.set({
-        [window.location.hostname]: {
+        [hostname]: {
             style_code: style,
-            style_id: styleId
+            style_id: styleId,
+            mode: 'site'
         }
     });
+    console.log('样式已保存到存储, Key:', hostname);
 
     chrome.storage.local.remove('defaultStyle');
+    console.log('已移除默认样式标志');
 
     // 在应用新样式后，添加评分容器
     if (!document.getElementById('beautifier-rating')) {
+        console.log('添加评分容器...');
         addRatingStars();
+    } else {
+        console.log('评分容器已存在，跳过添加');
     }
+    
+    console.log('=== Content: 样式应用完成 ===');
 }
 
 // 移除所有应用的样式
@@ -664,6 +518,12 @@ function removeAllAppliedStyles() {
 // 检查并应用样式
 async function checkAndApplyStyle() {
     try {
+        // 首先检查扩展上下文是否有效
+        if (!isExtensionContextValid()) {
+            console.warn('Extension context invalidated. Skipping checkAndApplyStyle.');
+            return;
+        }
+
         const hostname = window.location.hostname;
         const data = await chrome.storage.local.get(hostname);
         
@@ -689,6 +549,14 @@ async function checkAndApplyStyle() {
                 styleId,
                 mode
             });
+
+            // 检查并添加评分容器（如果需要的话）
+            if (!document.getElementById('beautifier-rating')) {
+                console.log('检查是否需要添加评分容器...');
+                addRatingStars();
+            } else {
+                console.log('评分容器已存在，跳过添加');
+            }
         }
     } catch (error) {
         console.error('Error checking and applying style:', error);
@@ -825,11 +693,47 @@ function getPageStructure() {
 
 // 在页面加载时检查是否有缓存的样式
 chrome.storage.local.get(window.location.hostname, function(data) {
+    console.log('=== 页面加载时检查缓存样式 ===');
+    console.log('检查时间:', formatBeijingTime());
+    console.log('检查域名:', window.location.hostname);
+    console.log('缓存数据:', data);
+    
     if (data[window.location.hostname]) {
-        const { style_code, style_id } = data[window.location.hostname];
+        const { style_code, style_id, mode } = data[window.location.hostname];
+        console.log('找到缓存样式:', {
+            styleId: style_id,
+            mode: mode,
+            styleLength: style_code ? style_code.length : 0
+        });
+        
         if (style_code) {
-            applyStyle(style_code, style_id);
+            // 使用 checkAndApplyStyle 的逻辑来确保评分状态被正确检查
+            const styleElement = document.getElementById('beautifier-style');
+            if (!styleElement) {
+                const newStyleElement = document.createElement('style');
+                newStyleElement.id = 'beautifier-style';
+                newStyleElement.textContent = style_code;
+                newStyleElement.setAttribute('data-style-id', style_id);
+                newStyleElement.setAttribute('data-mode', mode || 'site');
+                document.head.appendChild(newStyleElement);
+                console.log('样式元素已创建并应用');
+            } else {
+                styleElement.textContent = style_code;
+                styleElement.setAttribute('data-style-id', style_id);
+                styleElement.setAttribute('data-mode', mode || 'site');
+                console.log('样式元素已更新');
+            }
+            
+            // 检查并添加评分容器（如果需要的话）
+            if (!document.getElementById('beautifier-rating')) {
+                console.log('检查是否需要添加评分容器...');
+                addRatingStars();
+            } else {
+                console.log('评分容器已存在，跳过添加');
+            }
         }
+    } else {
+        console.log('未找到缓存样式');
     }
 });
 
@@ -837,19 +741,43 @@ chrome.storage.local.get(window.location.hostname, function(data) {
 function addRatingStars() {
     const styleElement = document.getElementById('beautifier-style');
     const styleId = styleElement ? styleElement.getAttribute('data-style-id') : null;
+    const mode = styleElement ? styleElement.getAttribute('data-mode') : null;
+
+    console.log('=== addRatingStars 函数调用 ===');
+    console.log('当前时间:', formatBeijingTime());
+    console.log('样式元素存在:', !!styleElement);
+    console.log('样式ID:', styleId);
+    console.log('样式模式:', mode);
+    console.log('当前页面URL:', window.location.href);
+
+    if (!styleId) {
+        console.log('没有找到有效的样式ID，跳过添加评分容器');
+        return;
+    }
 
     // 检查这个样式是否已经被评分过
     chrome.storage.local.get(['ratedStyles'], function(result) {
         const ratedStyles = result.ratedStyles || {};
+        console.log('已评分样式列表:', ratedStyles);
+        console.log('当前样式是否已评分:', !!ratedStyles[styleId]);
+        
+        // 特殊处理：检查是否是模式切换的情况
+        const isModeSwitching = mode === 'element' && ratedStyles[styleId];
+        console.log('是否为模式切换场景:', isModeSwitching);
+        
         if (styleId && ratedStyles[styleId]) {
             // 如果这个样式已经被评分过，不添加评分容器
+            console.log(`样式 ${styleId} 已被评分（模式：${mode}），不显示评分容器`);
             return;
         }
 
         // 如果评分容器已存在，不再添加
         if (document.getElementById('beautifier-rating')) {
+            console.log('评分容器已存在，不重复添加');
             return;
         }
+
+        console.log(`样式 ${styleId} 未被评分（模式：${mode}），开始创建评分容器`);
 
         // 创建评分容器
         const ratingContainer = document.createElement('div');
@@ -911,17 +839,21 @@ function addRatingStars() {
 
         // 将评分容器添加到页面
         document.body.appendChild(ratingContainer);
+        console.log('评分容器已创建并添加到页面');
 
         // 为每个表情添加点击事件
         const feedbackItems = shadow.querySelectorAll('.feedback li');
         feedbackItems.forEach(item => {
             item.addEventListener('click', function() {
                 const rating = this.dataset.rating;
+                console.log(`用户点击评分: ${rating} 星，样式ID: ${styleId}`);
                 submitRating(styleId, rating);
                 feedbackItems.forEach(i => i.classList.remove('active'));
                 this.classList.add('active');
             });
         });
+
+        console.log('=== 评分容器创建完成 ===');
     });
 }
 
@@ -940,27 +872,50 @@ function removeRatingContainer() {
 
 // 改提交评分函数
 function submitRating(styleId, rating) {
+    console.log('=== submitRating 函数调用 ===');
+    console.log('评分时间:', formatBeijingTime());
+    console.log('样式ID:', styleId);
+    console.log('评分:', rating);
+    console.log('当前页面URL:', window.location.href);
+
     // 发送评分到后台
     chrome.runtime.sendMessage({
         action: "submitRating",
         rating: rating,
         styleId: styleId
     }, function(response) {
-        if (response.success) {
+        console.log('后台评分响应:', response);
+        
+        if (response && response.success) {
             // 评分成功
+            console.log('评分提交成功，更新本地评分状态');
             showFeedback('感谢您的评分！', 'success');
+            
             // 记录这个样式已被评分
             chrome.storage.local.get(['ratedStyles'], function(result) {
                 const ratedStyles = result.ratedStyles || {};
+                console.log('评分前的已评分样式列表:', ratedStyles);
+                
                 ratedStyles[styleId] = true;
+                
                 chrome.storage.local.set({ratedStyles: ratedStyles}, function() {
-                    console.log('样式评分状态已更新');
+                    if (chrome.runtime.lastError) {
+                        console.error('保存评分状态失败:', chrome.runtime.lastError);
+                    } else {
+                        console.log('样式评分状态已更新，新的已评分列表:', ratedStyles);
+                        console.log(`样式 ${styleId} 已标记为已评分`);
+                    }
                 });
             });
+            
             // 在一段时间后移除评分容器
-            setTimeout(removeRatingContainer, 3000);
+            setTimeout(() => {
+                console.log('3秒后移除评分容器');
+                removeRatingContainer();
+            }, 3000);
         } else {
             // 评分失败
+            console.error('评分提交失败:', response);
             showFeedback('评分提交失败，请稍后再试。', 'error');
         }
     });
@@ -1061,7 +1016,7 @@ function getRatingStyles() {
             padding: 10px !important;
             border-radius: 5px !important;
             font-family: 'Roboto', Arial, sans-serif !important;
-            z-index: 999999 !important;
+            z-index: 9999 !important;
         }
         .feedback {
             --normal: #ECEAF3;
@@ -1367,19 +1322,25 @@ function generateStructuralSelector(element) {
     }
 
     // 尝试基于属性构建选择器
-    for (const attr of ['role', 'type', 'name', 'aria-label', 'data-element-id', 'data-automation-id']) {
+    for (const attr of ['role', 'type', 'name', 'placeholder', 'title']) {
         const value = element.getAttribute(attr);
-        if (value) {
-            const selector = `[${attr}="${value}"]`;
-            if (validateSelector(selector)) return selector;
+        if (value && value.length < 50) {
+            const selector = `${tagName}[${attr}="${value}"]`;
+            if (validateSelector(selector)) {
+                return selector;
+            }
         }
     }
 
     // 如果元素有明确的文本内容，使用内容选择器
-    const text = element.textContent?.trim();
-    if (text && text.length < 50 && text.length > 2) {
-        const selector = `${tagName}:contains("${text.replace(/"/g, '\\"')}")`;
-        if (validateSelector(selector)) return selector;
+    const textContent = element.textContent?.trim();
+    if (textContent && textContent.length < 50 && textContent.length > 2) {
+        // 这需要jQuery或类似库支持:contains选择器，此处仅作示例
+        // 或者我们可以手动实现检查内容的函数
+        const selector = `${tagName}:contains("${textContent.replace(/"/g, '\\"')}")`;
+        if (document.querySelectorAll(selector).length === 1) {
+            return selector;
+        }
     }
 
     // 获取父元素的路径
@@ -1442,35 +1403,12 @@ function sanitizeSelector(selector) {
     }
 }
 
-// 修改 formatElementStyle 函数（新增）
-function formatElementStyle(selector, style) {
-    // 处理样式字符串，确保每个属性都有 !important
-    const styleLines = style.split(';').filter(line => line.trim());
-    const formattedStyles = styleLines.map(line => {
-        line = line.trim();
-        if (!line) return '';
-        
-        // 如果行已经包含 !important，直接返回
-        if (line.includes('!important')) {
-            return line.endsWith(';') ? line : line + ';';
-        }
-        
-        // 添加 !important
-        return line.endsWith(';') ? 
-            line.slice(0, -1) + ' !important;' : 
-            line + ' !important;';
-    });
-    
-    // 构建完整的样式规则
-    return `${selector} {\n    ${formattedStyles.join('\n    ')}\n}`;
-}
-
-// 修改 applyElementStyle 函数中的相关部分
+// 全面增强版的 applyElementStyle 函数
 function applyElementStyle(style, elementPath, styleId = null) {
     try {
         console.log('Attempting to apply style to:', {
             elementPath,
-            style: style.substring(0, 100) + '...',
+            style,
             styleId
         });
 
@@ -1480,12 +1418,10 @@ function applyElementStyle(style, elementPath, styleId = null) {
             status: "查找元素中..."
         });
 
-        // 尝试使用多种选择策略
+        // 策略1：尝试所有可能的选择器
         let targetElement = null;
         let finalSelector = elementPath;
-        
-        // 生成多个选择器候选（利用我们的增强选择器生成器）
-        const allSelectors = generateMultipleSelectorCandidates(elementPath);
+        let allSelectors = [elementPath, ...generateAlternativeSelectors(elementPath)];
         
         // 记录尝试的选择器
         console.log('Trying selectors:', allSelectors);
@@ -1500,43 +1436,33 @@ function applyElementStyle(style, elementPath, styleId = null) {
             }
         }
 
-        // 依然找不到元素时的处理
+        // 如果找不到元素，生成更宽松的选择器
         if (!targetElement) {
-            console.warn('Element not found with any selector, using original path');
+            console.log('Element not found with standard selectors, trying broader approaches');
             
-            // 虽然现在找不到，但未来DOM可能会出现匹配的元素，仍然应用样式
-            const hostname = window.location.hostname;
+            // 尝试使用简化的选择器
+            const simplifiedSelector = simplifySelector(elementPath);
+            targetElement = trySelectElement(simplifiedSelector);
             
-            // 创建或更新样式元素
-            let styleElement = document.getElementById('beautifier-style');
-            if (!styleElement) {
-                styleElement = document.createElement('style');
-                styleElement.id = 'beautifier-style';
-                document.head.appendChild(styleElement);
-            }
-            
-            // 增加注释，说明暂时未找到元素
-            const specificStyle = `/* 警告: 未找到元素，但仍然应用样式 ${elementPath} */\n${elementPath} {\n${style}\n}`;
-            
-            getAndUpdateStyle(hostname, specificStyle, styleId, styleElement);
-            
+            if (targetElement) {
+                finalSelector = simplifiedSelector;
+                console.log('Found element with simplified selector:', simplifiedSelector);
+            } else {
+                // 仍找不到，但会应用样式并记录警告
+                console.warn('Element not found, will apply style anyway for future matching');
                 chrome.runtime.sendMessage({
                     action: "updateStatus",
                     status: "未找到元素，但样式已应用（将在元素出现时生效）"
                 });
-            
-            return { success: true, warning: "元素未找到，样式已应用但可能不会立即生效" };
             }
-
-        // 找到元素，创建预览
-        showStylePreview(targetElement, style);
-        
+        } else {
             chrome.runtime.sendMessage({
                 action: "updateStatus",
                 status: "已找到元素，正在应用样式..."
             });
+        }
 
-        // 获取存储的样式并更新
+        // 获取当前网站的域名
         const hostname = window.location.hostname;
 
         // 创建或更新样式元素
@@ -1550,22 +1476,94 @@ function applyElementStyle(style, elementPath, styleId = null) {
         // 格式化和应用样式
         const specificStyle = formatElementStyle(finalSelector, style);
         
-        getAndUpdateStyle(hostname, specificStyle, styleId, styleElement);
-            
-        // 隐藏预览
-        setTimeout(() => {
-            hideStylePreview();
-            
+        // 保存到本地存储
+        chrome.storage.local.get(hostname, async (data) => {
+            try {
+                console.log('=== applyElementStyle 存储逻辑开始 ===');
+                console.log('当前存储数据:', data);
+                console.log('hostname:', hostname);
+                console.log('传入的样式ID:', styleId);
+                
+                let combinedStyle = specificStyle;
+                let finalStyleId = styleId || `style_${Date.now()}`;
+                let currentMode = 'element';
+                
+                if (data[hostname] && data[hostname].style_code) {
+                    const existingStyle = data[hostname].style_code;
+                    const existingStyleId = data[hostname].style_id;
+                    const existingMode = data[hostname].mode;
+                    
+                    console.log('发现现有样式:', {
+                        existingStyleId,
+                        existingMode,
+                        styleLength: existingStyle.length
+                    });
+                    
+                    // 如果有现有样式，保持原有的样式ID以维持评分状态
+                    if (existingStyleId && !styleId) {
+                        finalStyleId = existingStyleId;
+                        console.log('使用现有样式ID以保持评分状态:', finalStyleId);
+                    } else if (styleId) {
+                        finalStyleId = styleId;
+                        console.log('使用传入的样式ID:', finalStyleId);
+                    }
+                    
+                    // 移除该元素可能存在的旧样式
+                    const cleanedExistingStyle = removeElementStyle(existingStyle, finalSelector);
+                    combinedStyle = `${cleanedExistingStyle}\n\n${specificStyle}`;
+                    
+                    console.log('样式合并完成，最终样式长度:', combinedStyle.length);
+                } else {
+                    console.log('未发现现有样式，使用新样式');
+                }
+                
+                console.log('最终使用的样式ID:', finalStyleId);
+                console.log('最终使用的模式:', currentMode);
+                
+                // 更新本地存储 - 关键：保持样式ID的一致性
+                await chrome.storage.local.set({
+                    [hostname]: {
+                        style_code: combinedStyle,
+                        style_id: finalStyleId,  // 保持一致的样式ID
+                        mode: currentMode  // 更新为当前模式，但保持样式ID不变
+                    }
+                });
+
+                console.log('本地存储更新完成');
+
+                // 应用样式
+                styleElement.textContent = combinedStyle;
+                styleElement.setAttribute('data-style-id', finalStyleId);
+                styleElement.setAttribute('data-mode', currentMode);
+                
+                console.log('样式应用成功，样式ID:', finalStyleId);
                 chrome.runtime.sendMessage({
                     action: "updateStatus",
                     status: "样式应用成功！"
                 });
-        }, 500);
+
+                // 检查并添加评分容器（如果需要的话）
+                if (!document.getElementById('beautifier-rating')) {
+                    console.log('检查是否需要添加评分容器（细节模式）...');
+                    addRatingStars();
+                } else {
+                    console.log('评分容器已存在，跳过添加（细节模式）');
+                }
+                
+                console.log('=== applyElementStyle 存储逻辑完成 ===');
+            } catch (storageError) {
+                console.error('Storage operation failed:', storageError);
+                chrome.runtime.sendMessage({
+                    action: "updateStatus",
+                    status: "存储样式失败！" + storageError.message
+                });
+                throw storageError;
+            }
+        });
 
         return { success: true };
     } catch (error) {
         console.error('应用元素样式时出错:', error);
-        hideStylePreview();
         chrome.runtime.sendMessage({
             action: "updateStatus",
             status: "应用样式失败：" + error.message
@@ -1574,219 +1572,182 @@ function applyElementStyle(style, elementPath, styleId = null) {
     }
 }
 
-// 修改 showStylePreview 函数中的样式应用部分
-function showStylePreview(element, style) {
-    // 创建预览覆盖层
-    const preview = document.createElement('div');
-    preview.id = 'beautifier-style-preview';
-    
-    // 获取元素位置和尺寸
-    const rect = element.getBoundingClientRect();
-    
-    // 设置预览样式
-    preview.style.cssText = `
-        position: fixed;
-        z-index: 999999;
-        pointer-events: none;
-        transition: all 0.3s ease;
-        background-color: rgba(0, 123, 255, 0.2);
-        border: 2px solid rgba(0, 123, 255, 0.5);
-        box-shadow: 0 0 10px rgba(0, 123, 255, 0.3);
-    `;
-    
-    // 根据位置设置大小和位置
-    preview.style.top = `${rect.top}px`;
-    preview.style.left = `${rect.left}px`;
-    preview.style.width = `${rect.width}px`;
-    preview.style.height = `${rect.height}px`;
-    
-    // 添加到页面
-    document.body.appendChild(preview);
-    
-    // 创建临时样式应用
-    const tempStyle = document.createElement('style');
-    tempStyle.id = 'beautifier-preview-style';
-    
-    // 解析style字符串为CSS属性对象
-    const styleObj = parseStyleString(style);
-    
-    // 创建带有!important的预览样式
-    let previewCss = '';
-    for (const prop in styleObj) {
-        previewCss += `${prop}: ${styleObj[prop]} !important;\n`;
-    }
-    
-    // 应用临时样式
-    tempStyle.textContent = `
-        #beautifier-style-preview {
-            ${previewCss}
-        }
-    `;
-    document.head.appendChild(tempStyle);
+// 新增：格式化元素样式，增加明显的注释
+function formatElementStyle(selector, style) {
+    return `/* 元素样式: ${selector} - 应用时间: ${new Date().toLocaleString()} */
+${style}
+/* 元素样式结束: ${selector} */`;
 }
 
-// 隐藏样式预览
-function hideStylePreview() {
-    const preview = document.getElementById('beautifier-style-preview');
-    if (preview) {
-        preview.remove();
-    }
-    
-    const tempStyle = document.getElementById('beautifier-preview-style');
-    if (tempStyle) {
-        tempStyle.remove();
-    }
-}
-
-// 解析样式字符串为对象
-function parseStyleString(styleStr) {
-    const result = {};
-    const declarations = styleStr.split(';');
-    
-    for (let declaration of declarations) {
-        declaration = declaration.trim();
-        if (!declaration) continue;
-        
-        const colonPos = declaration.indexOf(':');
-        if (colonPos === -1) continue;
-        
-        const property = declaration.substring(0, colonPos).trim();
-        const value = declaration.substring(colonPos + 1).trim();
-        
-        if (property && value) {
-            result[property] = value;
-        }
-    }
-    
-    return result;
-}
-
-// 从存储中获取现有样式并更新
-function getAndUpdateStyle(hostname, newStyle, styleId, styleElement) {
-    chrome.storage.local.get(hostname, async (data) => {
-        try {
-            let combinedStyle = newStyle;
-            let finalStyleId = styleId || `style_${Date.now()}`;
-            
-            if (data[hostname] && data[hostname].style_code) {
-                const existingStyle = data[hostname].style_code;
-                
-                // 移除可能存在的旧样式（针对同一元素）
-                const cleanedExistingStyle = removeElementStyle(existingStyle, newStyle.split('{')[0].trim());
-                
-                // 合并样式
-                combinedStyle = `${cleanedExistingStyle}\n\n${newStyle}`;
-            }
-            
-            // 更新本地存储
-            await chrome.storage.local.set({
-                [hostname]: {
-                    style_code: combinedStyle,
-                    style_id: finalStyleId,
-                    mode: 'element'
-                }
-            });
-
-            // 应用样式
-            styleElement.textContent = combinedStyle;
-            styleElement.setAttribute('data-style-id', finalStyleId);
-            styleElement.setAttribute('data-mode', 'element');
-            
-            console.log('Style applied successfully');
-        } catch (storageError) {
-            console.error('Storage operation failed:', storageError);
-            throw storageError;
-        }
-    });
-}
-
-// 生成多个选择器候选
-function generateMultipleSelectorCandidates(originalSelector) {
-    // 基本选择器
-    const selectors = [originalSelector];
-    
+// 新增：尝试选择元素函数
+function trySelectElement(selector) {
     try {
-        // 尝试不同结构的选择器
-        if (originalSelector.includes('#')) {
-            // ID选择器，尝试单独使用ID
-            const idMatch = originalSelector.match(/#[a-zA-Z0-9_-]+/);
-            if (idMatch) {
-                selectors.push(idMatch[0]);
+        // 普通DOM查询
+        const element = document.querySelector(selector);
+        if (element) return element;
+
+        // 尝试iframe内查找
+        const iframes = document.querySelectorAll('iframe');
+        for (const iframe of iframes) {
+            try {
+                const frameDoc = iframe.contentDocument || iframe.contentWindow.document;
+                const frameElement = frameDoc.querySelector(selector);
+                if (frameElement) return frameElement;
+            } catch (e) {
+                // 跨域iframe会报错，忽略
             }
         }
-        
-        if (originalSelector.includes('.')) {
-            // 类选择器
-            const classMatches = originalSelector.match(/\.[a-zA-Z0-9_-]+/g);
-            if (classMatches) {
-                // 单独使用每个类
-                classMatches.forEach(cls => selectors.push(cls));
-                
-                // 如果有多个类，尝试组合
-                if (classMatches.length > 1) {
-                    selectors.push(classMatches.join(''));
-                }
-            }
+
+        // 尝试查找Shadow DOM
+        const shadowRoots = findAllShadowRoots(document.documentElement);
+        for (const root of shadowRoots) {
+            const shadowElement = root.querySelector(selector);
+            if (shadowElement) return shadowElement;
         }
-        
-        // 提取标签名
-        const tagMatch = originalSelector.match(/^[a-zA-Z0-9]+/);
-        if (tagMatch) {
-            const tag = tagMatch[0];
-            selectors.push(tag);
-            
-            // 标签加类名
-            if (originalSelector.includes('.')) {
-                const classMatches = originalSelector.match(/\.[a-zA-Z0-9_-]+/g);
-                if (classMatches && classMatches.length > 0) {
-                    selectors.push(tag + classMatches[0]);
-                }
-            }
-        }
-        
-        // 属性选择器
-        if (originalSelector.includes('[')) {
-            const attrMatches = originalSelector.match(/\[[^\]]+\]/g);
-            if (attrMatches) {
-                attrMatches.forEach(attr => selectors.push(attr));
-                
-                // 标签加属性
-                if (tagMatch) {
-                    selectors.push(tag + attrMatches[0]);
-                }
-            }
-        }
-        
-        // 结构选择器变体
-        if (originalSelector.includes('>')) {
-            // 尝试父元素+子元素
-            const parts = originalSelector.split('>').map(p => p.trim());
-            if (parts.length >= 2) {
-                // 最后两部分
-                selectors.push(`${parts[parts.length-2]} > ${parts[parts.length-1]}`);
-                
-                // 子元素
-                selectors.push(parts[parts.length-1]);
-            }
-        }
-        
-        // 深度查询
-        const deepParts = originalSelector.split(/\s+/); // 空白分隔
-        if (deepParts.length > 1) {
-            // 最后部分
-            selectors.push(deepParts[deepParts.length-1]);
-            
-            // 最后两部分
-            if (deepParts.length >= 2) {
-                selectors.push(`${deepParts[deepParts.length-2]} ${deepParts[deepParts.length-1]}`);
-            }
-        }
+
+        return null;
     } catch (e) {
-        console.error('Error generating selector candidates:', e);
+        console.warn('Error trying selector:', selector, e);
+        return null;
+    }
+}
+
+// 新增：查找所有Shadow DOM
+function findAllShadowRoots(node) {
+    const roots = [];
+    
+    // 如果节点自身有shadowRoot
+    if (node.shadowRoot) {
+        roots.push(node.shadowRoot);
     }
     
-    // 去重并返回
+    // 递归查找子节点
+    if (node.children) {
+        for (const child of node.children) {
+            roots.push(...findAllShadowRoots(child));
+        }
+    }
+    
+    return roots;
+}
+
+// 新增：生成备选选择器
+function generateAlternativeSelectors(originalSelector) {
+    const selectors = [];
+    
+    // 1. 尝试不同的选择器格式
+    if (originalSelector.includes('.')) {
+        // 类选择器变体
+        const classes = originalSelector.match(/\.[^.#\s>+~]+/g);
+        if (classes) {
+            // 单独使用每个类
+            classes.forEach(cls => selectors.push(cls));
+            
+            // 组合使用类（不带标签名）
+            if (classes.length > 1) {
+                selectors.push(classes.join(''));
+            }
+            
+            // 如果有标签名，尝试标签名+类
+            const tagMatch = originalSelector.match(/^[a-z0-9]+/i);
+            if (tagMatch) {
+                const tag = tagMatch[0];
+                classes.forEach(cls => selectors.push(`${tag}${cls}`));
+            }
+        }
+    }
+    
+    // 2. 处理ID选择器
+    if (originalSelector.includes('#')) {
+        const ids = originalSelector.match(/#[^.#\s>+~]+/g);
+        if (ids) {
+            ids.forEach(id => selectors.push(id));
+        }
+    }
+    
+    // 3. 如果是复合选择器，尝试每个部分
+    if (originalSelector.includes('>')) {
+        const parts = originalSelector.split('>').map(p => p.trim());
+        parts.forEach(part => selectors.push(part));
+        
+        // 尝试组合不同的部分
+        for (let i = 0; i < parts.length; i++) {
+            for (let j = i + 1; j < parts.length; j++) {
+                selectors.push(`${parts[i]} ${parts[j]}`);
+            }
+        }
+    }
+    
+    // 4. 如果是空格分隔的选择器，尝试每个部分
+    if (originalSelector.includes(' ') && !originalSelector.includes('>')) {
+        const parts = originalSelector.split(' ').filter(p => p.trim());
+        parts.forEach(part => selectors.push(part));
+    }
+    
+    // 5. 尝试使用属性选择器变体
+    if (originalSelector.includes('[')) {
+        // 提取属性名和值
+        const attrMatches = originalSelector.match(/\[([^\]]+)\]/g);
+        if (attrMatches) {
+            attrMatches.forEach(attr => selectors.push(attr));
+        }
+    }
+    
+    // 6. 如果是简单选择器，尝试添加body上下文
+    if (!originalSelector.includes(' ') && !originalSelector.includes('>')) {
+        selectors.push(`body ${originalSelector}`);
+    }
+    
+    // 7. 为类选择器添加通配符
+    if (originalSelector.startsWith('.')) {
+        selectors.push(`*${originalSelector}`);
+    }
+    
+    // 过滤掉空选择器并去重
     return [...new Set(selectors.filter(s => s && s.trim()))];
+}
+
+// 修改：使用最宽松的匹配方式移除已有样式
+function removeElementStyle(css, elementPath) {
+    try {
+        // 简化选择器，只保留核心部分
+        const simplifiedSelector = simplifySelector(elementPath);
+        
+        // 转义选择器中的特殊字符
+        const escapedSelector = simplifiedSelector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        
+        // 匹配选择器及其样式块的正则表达式，更加宽松的匹配
+        const pattern = new RegExp(`${escapedSelector}[^{]*{[^}]*}`, 'g');
+        
+        // 移除匹配的样式
+        let cleanedCss = css.replace(pattern, '');
+        
+        // 移除多余的空行
+        cleanedCss = cleanedCss.replace(/\n\s*\n/g, '\n\n');
+        
+        return cleanedCss.trim();
+    } catch (error) {
+        console.error('移除元素样式时出错:', error);
+        return css; // 如果出错，返回原始CSS
+    }
+}
+
+// 修改：简化选择器，提取核心部分
+function simplifySelector(selector) {
+    // 处理ID选择器 - 最高优先级
+    const idMatch = selector.match(/#[^.#\s>+~]+/);
+    if (idMatch) return idMatch[0];
+    
+    // 处理类选择器 - 第二优先级
+    const classMatch = selector.match(/\.[^.#\s>+~]+/);
+    if (classMatch) return classMatch[0];
+    
+    // 处理属性选择器
+    const attrMatch = selector.match(/\[[^\]]+\]/);
+    if (attrMatch) return attrMatch[0];
+    
+    // 如果没有特殊标识，返回原始选择器
+    return selector;
 }
 
 
