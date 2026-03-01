@@ -1,8 +1,0 @@
-Flask==2.3.2
-Flask-SQLAlchemy==3.0.5
-Werkzeug==2.3.6
-PyMySQL==1.1.0
-requests==2.31.0
-python-dotenv==1.0.0
-openai==1.13.3
-flask_sqlalchemy
