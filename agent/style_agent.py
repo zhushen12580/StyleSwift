@@ -35,8 +35,8 @@ SYSTEM = """你是 StyleSwift，网页样式个性化智能体。
 - 完成后简要总结
 
 可用工具：
-- get_page_structure: 获取页面原始结构
-- pick_element: 选择页面元素
+- get_page_structure: 获取页面整体结构概览
+- grep: 获取指定选择器的详细信息
 - apply_styles: 应用CSS样式
 - save_preference: 保存样式偏好
 - load_skill: 加载领域知识（深色模板、设计原则等）
@@ -50,7 +50,7 @@ SYSTEM = """你是 StyleSwift，网页样式个性化智能体。
 
 GET_PAGE_STRUCTURE_TOOL = {
     "name": "get_page_structure",
-    "description": "获取当前页面的原始结构信息。返回URL、标题、主要元素选择器、当前主题提示。",
+    "description": "获取当前页面的整体结构概览。返回URL、标题、主要区域选择器列表。",
     "input_schema": {
         "type": "object",
         "properties": {},
@@ -58,18 +58,18 @@ GET_PAGE_STRUCTURE_TOOL = {
     }
 }
 
-PICK_ELEMENT_TOOL = {
-    "name": "pick_element",
-    "description": "激活页面元素选择模式。用户点击后返回元素的原始信息。",
+GREP_TOOL = {
+    "name": "grep",
+    "description": "获取指定CSS选择器的详细信息。返回元素的HTML结构、当前样式、文本内容等。",
     "input_schema": {
         "type": "object",
         "properties": {
-            "prompt": {
+            "selector": {
                 "type": "string",
-                "description": "提示用户选择什么元素"
+                "description": "CSS选择器，如 'nav', '.content', '#main', 'article h1'"
             }
         },
-        "required": ["prompt"]
+        "required": ["selector"]
     }
 }
 
@@ -158,7 +158,7 @@ TODO_WRITE_TOOL = {
 AGENT_TYPES = {
     "StyleGenerator": {
         "description": "样式生成专家。根据用户意图和页面结构生成CSS代码。",
-        "tools": ["get_page_structure", "load_skill"],  # 可以获取页面信息、加载知识
+        "tools": ["get_page_structure", "grep", "load_skill"],  # 可以获取页面信息、查询元素、加载知识
         "prompt": """你是样式生成专家。
 
 任务：根据用户意图生成CSS代码
@@ -231,7 +231,7 @@ TASK_TOOL = {
 
 BASE_TOOLS = [
     GET_PAGE_STRUCTURE_TOOL,
-    PICK_ELEMENT_TOOL,
+    GREP_TOOL,
     APPLY_STYLES_TOOL,
     SAVE_PREFERENCE_TOOL,
     LOAD_SKILL_TOOL,
@@ -247,21 +247,22 @@ TOOLS = BASE_TOOLS + [TASK_TOOL]
 
 def run_get_page_structure() -> str:
     """
-    获取页面原始结构。
+    获取页面整体结构概览。
 
-    注意：不返回页面类型判断！让模型自己推理。
+    返回简化的结构信息，不包含完整DOM。
     """
     # TODO: 通过 Chrome extension message 获取页面结构
-    # 这里返回模拟数据
     return json.dumps({
         "url": "https://example.com",
         "title": "页面标题",
-        "headings": ["主标题", "副标题"],
-        "main_selectors": ["article", ".content", "#main"],
-        "nav_selectors": ["nav", ".navbar"],
-        "sidebar_selectors": ["aside", ".sidebar"],
-        "button_selectors": ["button", ".btn", "[role='button']"],
-        "theme_hints": {
+        "areas": {
+            "header": ["header", ".header", "#header"],
+            "nav": ["nav", ".navbar", ".nav"],
+            "main": ["main", "article", ".content", "#main"],
+            "sidebar": ["aside", ".sidebar"],
+            "footer": ["footer", ".footer"]
+        },
+        "theme": {
             "bg_color": "#ffffff",
             "text_color": "#333333",
             "is_dark": False
@@ -269,14 +270,29 @@ def run_get_page_structure() -> str:
     }, ensure_ascii=False)
 
 
-def run_pick_element(prompt: str) -> str:
+def run_grep(selector: str) -> str:
     """
-    激活元素选择模式。
+    获取指定选择器的详细信息。
 
-    纯交互，返回选中元素的原始信息。
+    模型主动查询，而非用户交互选择。
     """
-    # TODO: 通过 Chrome extension 激活元素选择模式
-    return f"已激活元素选择模式: {prompt}"
+    # TODO: 通过 Chrome extension 查询选择器
+    return json.dumps({
+        "selector": selector,
+        "found": True,
+        "count": 1,
+        "elements": [{
+            "tag": "nav",
+            "classes": ["navbar", "navbar-default"],
+            "text_preview": "首页 产品 关于...",
+            "styles": {
+                "background-color": "#ffffff",
+                "height": "60px",
+                "position": "fixed"
+            },
+            "children": ["a", "button", "ul"]
+        }]
+    }, ensure_ascii=False)
 
 
 def run_apply_styles(css: str, mode: str) -> str:
@@ -417,8 +433,8 @@ def execute_tool(name: str, args: dict) -> str:
     if name == "get_page_structure":
         return run_get_page_structure()
 
-    if name == "pick_element":
-        return run_pick_element(args["prompt"])
+    if name == "grep":
+        return run_grep(args["selector"])
 
     if name == "apply_styles":
         return run_apply_styles(args["css"], args["mode"])

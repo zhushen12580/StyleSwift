@@ -1,7 +1,7 @@
 # StyleSwift Agent 设计方案
 
-> 版本：v3.0
-> 日期：2026-03-01
+> 版本：v3.1
+> 日期：2026-03-02
 > 设计理念：基于 agent-builder 哲学 - The model IS the agent, code just provides capabilities
 
 ---
@@ -27,8 +27,8 @@ Trust: 模型自己决定改什么、怎么改、改到什么程度
 StyleSwift Agent
 │
 ├── Tools (原子能力) - 全部是动作，不做推理
-│   ├── get_page_structure()    # 返回原始结构
-│   ├── pick_element()          # 纯交互
+│   ├── get_page_structure()    # 返回页面整体结构概览
+│   ├── grep()                  # 查询指定选择器详细信息
 │   ├── apply_styles()          # 纯注入
 │   ├── save_preference()       # 纯存储
 │   └── load_skill()            # 按需加载知识
@@ -41,6 +41,7 @@ StyleSwift Agent
 
 **关键原则：**
 - Tools 只做原子操作，不包含任何推理逻辑
+- 模型主动查询信息（grep），而非强制用户交互（pick_element）
 - 知识通过 `load_skill` 工具按需加载，模型自己决定
 - Subagent 只给任务描述，不预设内部工作流
 - Context 保持最小，用户偏好通过工具获取
@@ -92,36 +93,46 @@ def run_get_page_structure() -> str:
     })
 ```
 
-### 3.2 pick_element
+### 3.2 grep
 
 ```python
-PICK_ELEMENT_TOOL = {
-    "name": "pick_element",
-    "description": "激活页面元素选择模式。用户点击后返回元素的原始信息。",
+GREP_TOOL = {
+    "name": "grep",
+    "description": "获取指定CSS选择器的详细信息。返回元素的HTML结构、当前样式、文本内容等。",
     "input_schema": {
         "type": "object",
         "properties": {
-            "prompt": {
+            "selector": {
                 "type": "string",
-                "description": "提示用户选择什么元素"
+                "description": "CSS选择器，如 'nav', '.content', '#main', 'article h1'"
             }
         },
-        "required": ["prompt"]
+        "required": ["selector"]
     }
 }
 
-def run_pick_element(prompt: str) -> str:
-    """纯交互，返回选中元素的原始信息。"""
+def run_grep(selector: str) -> str:
+    """
+    模型主动查询选择器信息，而非强制用户交互。
+
+    这符合 agent-builder 哲学：模型自己决定需要什么信息。
+    """
     # 由 Chrome 插件处理，返回结果
     return json.dumps({
-        "selector": "#main-content > .article > h1.title",
-        "tag": "h1",
-        "text": "标题文本",
-        "current_styles": {
-            "font-size": "24px",
-            "color": "rgb(51, 51, 51)",
-            "background-color": "rgba(0, 0, 0, 0)"
-        }
+        "selector": selector,
+        "found": True,
+        "count": 1,
+        "elements": [{
+            "tag": "nav",
+            "classes": ["navbar", "navbar-default"],
+            "text_preview": "首页 产品 关于...",
+            "styles": {
+                "background-color": "#ffffff",
+                "height": "60px",
+                "position": "fixed"
+            },
+            "children": ["a", "button", "ul"]
+        }]
     })
 ```
 
@@ -238,7 +249,7 @@ Subagent 设计原则：
 AGENT_TYPES = {
     "StyleGenerator": {
         "description": "样式生成专家。根据用户意图和页面结构生成CSS代码。",
-        "tools": ["get_page_structure", "load_skill"],  # 可以获取页面信息、加载知识
+        "tools": ["get_page_structure", "grep", "load_skill"],  # 可以获取页面信息、查询元素、加载知识
         "prompt": """你是样式生成专家。
 
 任务：根据用户意图生成CSS代码
@@ -469,12 +480,12 @@ SYSTEM = """你是 StyleSwift，网页样式个性化智能体。
 - 优先行动，而非长篇解释
 - 完成后简要总结
 
-可用工具：get_page_structure, pick_element, apply_styles, save_preference, load_skill, Task, TodoWrite"""
+可用工具：get_page_structure, grep, apply_styles, save_preference, load_skill, Task, TodoWrite"""
 
 # 工具定义
 BASE_TOOLS = [
     GET_PAGE_STRUCTURE_TOOL,
-    PICK_ELEMENT_TOOL,
+    GREP_TOOL,
     APPLY_STYLES_TOOL,
     SAVE_PREFERENCE_TOOL,
     LOAD_SKILL_TOOL,
@@ -488,8 +499,8 @@ def execute_tool(name: str, args: dict) -> str:
     """执行工具调用。"""
     if name == "get_page_structure":
         return run_get_page_structure()
-    if name == "pick_element":
-        return run_pick_element(args["prompt"])
+    if name == "grep":
+        return run_grep(args["selector"])
     if name == "apply_styles":
         return run_apply_styles(args["css"], args["mode"])
     if name == "save_preference":
@@ -617,6 +628,7 @@ Agent:
 |------|-------------|-------------|
 | Skills 加载 | 代码预判，`load_relevant_skills(intent)` | 模型请求，`load_skill` 工具 |
 | get_page_structure | 返回页面类型判断 | 返回原始结构，模型自己判断 |
+| 元素信息获取 | `pick_element` 强制用户交互 | `grep` 模型主动查询 |
 | Subagent | 预设内部工作流 | 只给任务描述，自由发挥 |
 | TodoWrite | 每一步都更新 | 模型决定是否使用 |
 | Context | 包含用户偏好 | 精简，偏好通过工具获取 |
