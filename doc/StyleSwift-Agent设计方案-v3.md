@@ -1,7 +1,7 @@
 # StyleSwift Agent 设计方案
 
-> 版本：v3.1
-> 日期：2026-03-02
+> 版本：v3.2
+> 日期：2026-03-03
 > 设计理念：基于 agent-builder 哲学 - The model IS the agent, code just provides capabilities
 
 ---
@@ -26,11 +26,14 @@ Trust: 模型自己决定改什么、怎么改、改到什么程度
 ```
 StyleSwift Agent
 │
+├── SessionContext               # 会话上下文（域名+会话ID，工具的隐式依赖）
+│
 ├── Tools (原子能力) - 全部是动作，不做推理
 │   ├── get_page_structure()    # 返回页面整体结构概览
 │   ├── grep()                  # 查询指定选择器详细信息
-│   ├── apply_styles()          # 纯注入
-│   ├── save_preference()       # 纯存储
+│   ├── apply_styles()          # 预览/应用/保存/回滚（含原 save_preference）
+│   ├── get_user_profile()      # 读取用户风格画像
+│   ├── update_user_profile()   # 更新用户风格画像
 │   └── load_skill()            # 按需加载知识
 │
 ├── Task (子智能体) - 隔离上下文的推理
@@ -59,6 +62,38 @@ StyleSwift Agent
 3. 简单输出 - 返回事实，不返回判断
 ```
 
+### SessionContext（工具的隐式依赖）
+
+所有工具通过 SessionContext 获取当前域名和会话信息，而非每次调用 `get_active_tab_domain()`。
+SessionContext 在会话启动时创建一次，工具内部读取，模型接口不暴露 path/domain 参数。
+
+```python
+class SessionContext:
+    """会话上下文 — 工具的隐式依赖，模型无感知"""
+    def __init__(self, domain: str, session_id: str):
+        self.domain = domain
+        self.session_id = session_id
+
+    @property
+    def page_html_path(self):
+        return STORAGE_DIR / f"domains/{self.domain}/page.html"
+
+    @property
+    def session_dir(self):
+        return STORAGE_DIR / f"domains/{self.domain}/sessions/{self.session_id}"
+
+    @property
+    def styles_path(self):
+        return self.session_dir / "styles.css"
+
+    @property
+    def history_path(self):
+        return self.session_dir / "history.json"
+
+# 会话启动时创建，全局可用
+current_session: SessionContext = None
+```
+
 ### 3.1 get_page_structure
 
 整体流程：
@@ -69,12 +104,12 @@ Chrome Extension (用户发消息时触发)
 ├── cloneNode(true) 克隆 DOM（不碰原页面）
 ├── 白名单过滤标签 + 跳过 Shadow DOM 元素
 ├── getComputedStyle() 注入关键计算样式为 data-cs 属性
-└── 保存 outerHTML → {域名}.html（如 example.com.html）
+└── 保存 outerHTML → storage/domains/{域名}/page.html
 
-Agent 端（通过当前活动标签页的域名定位对应文件）
+Agent 端（通过 SessionContext 定位对应文件）
 │
-├── get_page_structure()  → 读取对应域名的 html → 解析+简化 → 返回树形概览
-└── grep()                → 直接搜索对应域名的 html 源码获取详细信息
+├── get_page_structure()  → 读取 current_session.page_html_path → 解析+简化 → 返回树形概览
+└── grep()                → 搜索同一文件获取详细信息
 ```
 
 #### 3.1.1 Chrome 插件端：采集与保存
@@ -157,10 +192,10 @@ function captureAndSave() {
     }
   });
 
-  // 以域名为文件名保存，方便区分不同页面
+  // 保存到 storage/domains/{domain}/page.html，与 Agent 端 SessionContext 路径对齐
   const html = clone.outerHTML;
   const domain = window.location.hostname;  // 如 "example.com"
-  saveToLocal(html, `${domain}.html`);
+  saveToLocal(html, `domains/${domain}/page.html`);
 }
 ```
 
@@ -190,12 +225,11 @@ GET_PAGE_STRUCTURE_TOOL = {
 
 def run_get_page_structure() -> str:
     """
-    读取当前页面域名对应的本地 HTML 文件，解析并简化后返回树形结构概览。
+    读取当前会话域名对应的本地 HTML 文件，解析并简化后返回树形结构概览。
     返回原始结构信息，不做任何判断，让模型自己推理。
     目标 token 量：500 - 2000。
     """
-    domain = get_active_tab_domain()  # 从 Chrome 插件获取当前活动标签页的域名
-    html = read_file(f"{domain}.html")
+    html = read_file(current_session.page_html_path)
     soup = BeautifulSoup(html, 'html.parser')
 
     # 1. 提取元信息
@@ -415,11 +449,10 @@ SELECTOR_PATTERN = re.compile(r'[.#\[\]>+~:=]|^\w+\s+\w+')
 
 def run_grep(query: str, scope: str = "children", max_results: int = 5) -> str:
     """
-    在当前页面域名对应的本地 HTML 文件中搜索元素，返回详细信息。
+    在当前会话域名对应的本地 HTML 文件中搜索元素，返回详细信息。
     自动检测 query 类型：CSS 选择器 → DOM 查询，关键词 → 全文匹配。
     """
-    domain = get_active_tab_domain()
-    html = read_file(f"{domain}.html")
+    html = read_file(current_session.page_html_path)
     soup = BeautifulSoup(html, 'html.parser')
 
     max_results = min(max_results, 20)
@@ -732,20 +765,29 @@ def short_selector(el) -> str:
    - max_results 上限 20，默认 5
 ```
 
-### 3.3 apply_styles
+### 3.3 apply_styles（含原 save_preference）
+
+将原来的 `apply_styles` 和 `save_preference` 合并为一个工具，用 mode 区分持久化级别：
+`preview`（临时）→ `apply`（会话级）→ `save`（永久级）
 
 ```python
 APPLY_STYLES_TOOL = {
     "name": "apply_styles",
-    "description": "应用CSS样式到页面。preview模式可回滚，apply模式正式生效。",
+    "description": """应用CSS样式到页面。
+
+mode 说明：
+- preview: 预览，可 rollback
+- apply: 应用到当前会话（会话内持久，重新打开会话可恢复）
+- save: 应用 + 永久保存（下次访问该域名自动应用）
+- rollback: 回滚上一次 preview""",
     "input_schema": {
         "type": "object",
         "properties": {
             "css": {"type": "string", "description": "CSS代码"},
             "mode": {
                 "type": "string",
-                "enum": ["preview", "apply", "rollback"],
-                "description": "preview=预览, apply=正式, rollback=回滚"
+                "enum": ["preview", "apply", "save", "rollback"],
+                "description": "preview=预览可回滚, apply=应用到会话, save=永久保存, rollback=回滚"
             }
         },
         "required": ["css", "mode"]
@@ -753,34 +795,139 @@ APPLY_STYLES_TOOL = {
 }
 
 def run_apply_styles(css: str, mode: str) -> str:
-    """纯注入，不验证CSS正确性（由模型负责）。"""
-    # 注入到页面
-    return f"已{mode}样式"
+    """
+    纯注入 + 按 mode 持久化，不验证 CSS 正确性（由模型负责）。
+    三个 mode 是递进关系：preview ⊂ apply ⊂ save。
+    """
+    if mode == "rollback":
+        send_to_extension("rollback")
+        return "已回滚"
+
+    # 所有模式都注入到页面
+    send_to_extension("inject_css", css)
+
+    if mode in ("apply", "save"):
+        # 写入会话样式文件（累积追加）
+        append_css(current_session.styles_path, css)
+        # 更新会话 meta 中的样式摘要（供 context 注入用）
+        update_styles_summary(current_session)
+
+    if mode == "save":
+        # 注册到 Chrome Storage，该域名下次访问自动应用
+        register_persistent_style(current_session.domain, css)
+
+    return {
+        "preview": "已预览，可 rollback",
+        "apply": "已应用到当前会话",
+        "save": f"已保存，下次访问 {current_session.domain} 自动应用"
+    }[mode]
 ```
 
-### 3.4 save_preference
+### 3.4 get_user_profile
 
 ```python
-SAVE_PREFERENCE_TOOL = {
-    "name": "save_preference",
-    "description": "保存样式偏好，下次访问自动应用。",
+GET_USER_PROFILE_TOOL = {
+    "name": "get_user_profile",
+    "description": """获取用户的风格偏好画像。包含用户在历史对话中表现出的风格偏好。
+新用户可能为空。建议在以下情况获取：
+- 新会话开始时，了解用户已知偏好
+- 用户请求模糊（如"好看点"），需参考历史偏好""",
     "input_schema": {
         "type": "object",
-        "properties": {
-            "url_pattern": {"type": "string", "description": "URL匹配模式"},
-            "css": {"type": "string", "description": "CSS代码"}
-        },
-        "required": ["url_pattern", "css"]
+        "properties": {},
+        "required": []
     }
 }
 
-def run_save_preference(url_pattern: str, css: str) -> str:
-    """纯存储。"""
-    # 存储到 Chrome Storage
-    return f"已保存，访问 {url_pattern} 时自动应用"
+PROFILE_PATH = STORAGE_DIR / "user_profile.md"
+
+def run_get_user_profile() -> str:
+    """读取用户风格画像，原样返回。"""
+    if not PROFILE_PATH.exists():
+        return "(新用户，暂无风格偏好记录)"
+    content = PROFILE_PATH.read_text().strip()
+    if not content:
+        return "(暂无风格偏好记录)"
+    return content
 ```
 
-### 3.5 load_skill（关键！）
+### 3.5 update_user_profile
+
+```python
+UPDATE_USER_PROFILE_TOOL = {
+    "name": "update_user_profile",
+    "description": """记录从当前对话中学到的用户风格偏好。
+当发现新的偏好信号时调用：
+- 用户明确表达："我喜欢圆角"
+- 用户通过修正暗示："太黑了，用深蓝" → 偏好深蓝不是纯黑
+- 反复的选择模式
+
+记录有意义的偏好洞察，不记录具体 CSS 代码。
+content 为完整的画像内容（覆盖写入），应在读取现有画像基础上整合新洞察。""",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "content": {
+                "type": "string",
+                "description": "完整的用户画像内容（覆盖写入）"
+            }
+        },
+        "required": ["content"]
+    }
+}
+
+def run_update_user_profile(content: str) -> str:
+    """
+    覆盖写入用户画像。
+    选择覆盖而非追加：模型每次读取现有画像 → 整合新洞察 → 写回完整版本。
+    模型自然会做信息压缩和去重，代码零复杂度。
+    """
+    PROFILE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    PROFILE_PATH.write_text(content)
+    return "已更新用户画像"
+```
+
+#### 画像的自然演化过程
+
+画像是自由文本（.md），模型全权管理内容和结构。以下是典型的演化轨迹：
+
+**第 1 次使用后：**
+
+```
+偏好深蓝底色(#1a1a2e)的深色模式，不喜欢纯黑
+```
+
+**使用 5 次后：**
+
+```
+整体偏好：深色系、柔和对比度、扁平风格
+
+配色：深蓝底色(#1a1a2e)为主，文字用 #e0e0e0 而非纯白，不喜欢纯黑(#000)
+字体：偏好 16px+ 正文字号，行高 1.6+
+形状：大圆角(12px+)，少阴影
+```
+
+**使用 20 次后：**
+
+```
+整体偏好：深色系、柔和对比度、扁平风格、注重可读性
+
+配色：
+- 底色偏好深蓝(#1a1a2e)或深灰蓝(#1e1e2e)，拒绝纯黑
+- 文字用柔和浅色(#e0e0e0)，不用纯白
+- 强调色偏好蓝紫系(#6c5ce7, #74b9ff)
+
+字体：16px+ 正文，行高 1.6-1.8，偏好无衬线
+
+形状：圆角 12px+，极少阴影，偏好 border 分隔
+
+域名特殊偏好：
+- GitHub: 极简，只改配色不改布局
+- 新闻类网站: 大字体 + 宽行距，隐藏广告区域
+- 文档类: 增加代码块对比度
+```
+
+### 3.6 load_skill（关键！）
 
 ```python
 LOAD_SKILL_TOOL = {
@@ -1017,47 +1164,257 @@ TODO_WRITE_TOOL = {
 
 ## 六、Context（上下文管理）
 
-### 6.1 精简的上下文
+### 6.1 四层上下文模型
 
-```python
-# 正确设计：只保留当前状态
-context = {
-    "page": {
-        "url": "https://example.com",
-        "title": "页面标题"
-    },
-    "active_styles": "body { background: #1a1a1a; }"
-}
+```
+Layer 0 — System Prompt（恒定，~200 tokens）
+  身份 + 工作方式 + 工具列表
 
-# 错误设计：包含用户偏好
-# context = {
-#     "user_preferences": {...}  # ❌ 不应该常驻 context
-# }
+Layer 1 — Session Context（每次会话注入，~50-100 tokens）
+  域名 + 会话标题 + 已有样式摘要 + 用户画像一句话提示
+
+Layer 2 — Conversation History（动态增长，有 token 预算）
+  用户消息 + Agent 回复 + 工具调用结果
+
+Layer 3 — Tool Results（临时，各工具自控 token）
+  get_page_structure: 500-2000 / grep: 200-800 / get_user_profile: 按画像大小
 ```
 
-### 6.2 Context 保护策略
+### 6.2 Layer 1 — Session Context 注入
+
+在 system prompt 末尾追加，控制在 ~100 tokens 以内：
+
+```python
+def build_session_context(domain: str, session_meta: dict, profile_hint: str) -> str:
+    """构建注入到 system prompt 的会话上下文"""
+    ctx = f"\n[会话上下文]\n域名: {domain}\n会话: {session_meta.get('title', '新会话')}\n"
+
+    if session_meta.get('active_styles_summary'):
+        ctx += f"已应用样式: {session_meta['active_styles_summary']}\n"
+
+    if profile_hint:
+        ctx += f"用户风格偏好: {profile_hint} (详情可通过 get_user_profile 获取)\n"
+
+    return ctx
+```
+
+`active_styles_summary` 是一句话描述（非完整 CSS），由 `apply_styles(mode="apply"|"save")` 时更新到 session meta。
+
+`profile_hint` 取 user_profile.md 的第一行（模型自然会把摘要写在开头）：
+
+```python
+def get_profile_one_liner() -> str:
+    """从用户画像中提取一行摘要，用于 context 注入"""
+    if not PROFILE_PATH.exists():
+        return ""
+    first_line = PROFILE_PATH.read_text().strip().split("\n")[0]
+    return first_line[:100]
+```
+
+实际注入效果：
+
+```
+[会话上下文]
+域名: example.com
+会话: 深色模式改造
+已应用样式: 深色背景(#1a1a2e) + 浅色文字 + 导航栏半透明
+用户风格偏好: 整体偏好：深色系、柔和对比度、扁平风格、注重可读性 (详情可通过 get_user_profile 获取)
+```
+
+### 6.3 Layer 2 — 对话历史与 Token 预算控制
+
+对话历史是 context 中唯一会无限增长的部分。不用固定轮次计数，而是基于真实 token 用量做预算控制。
+
+**核心机制：利用 API 返回的 `response.usage.input_tokens` 做零成本精确检测。**
+
+```python
+TOKEN_BUDGET = 50000  # 输入 token 预算（可配置，远低于模型上限，兼顾成本和质量）
+
+def check_and_compress_history(history: list, last_input_tokens: int) -> list:
+    """
+    触发条件：上一次 API 调用的 input_tokens 超过预算。
+    压缩策略：保留最近 10 轮，旧的部分用一次 LLM 调用生成摘要。
+    """
+    if last_input_tokens <= TOKEN_BUDGET:
+        return history
+
+    # 找到保留点：最近 10 轮用户消息的起始位置
+    split = find_turn_boundary(history, keep_recent=10)
+    old_part = history[:split]
+    recent_part = history[split:]
+
+    summary = summarize_old_turns(old_part)  # 一次额外 LLM 调用（可用便宜模型）
+    summary_msg = {"role": "user", "content": f"[之前的对话摘要]\n{summary}"}
+
+    return [summary_msg] + recent_part
+```
+
+**双触发点：**
+
+| 触发时机 | 场景 | 检测方式 |
+|---------|------|---------|
+| 会话加载时 | 恢复一个长历史会话 | 粗估：`len(json.dumps(history)) / 4`，超预算则压缩 |
+| 循环内响应后 | 当轮对话使 token 超预算 | 精确：读 `response.usage.input_tokens` |
+
+```python
+def load_and_prepare_history(domain: str, session_id: str) -> list:
+    """加载历史，必要时在加载阶段就做压缩"""
+    history = load_history(domain, session_id)
+    if not history:
+        return []
+
+    estimated_tokens = len(json.dumps(history, ensure_ascii=False)) // 4
+    if estimated_tokens > TOKEN_BUDGET:
+        history = check_and_compress_history(history, estimated_tokens)
+
+    return history
+```
+
+### 6.4 Context 保护原则
 
 ```
 原则：Context 是珍贵的资源
 
 策略：
-1. Tools 返回精简结果
+1. Tools 返回精简结果（各工具有独立 token 预算）
 2. Subagent 中间推理不进入主 context
-3. 用户偏好通过工具按需获取，不常驻
-4. Skills 通过工具按需加载，不前置塞入
+3. 用户画像：context 只注入一行提示，完整内容通过 get_user_profile 按需获取
+4. Skills 通过 load_skill 按需加载，不前置塞入
+5. 对话历史基于真实 token 用量做预算控制，超预算自动压缩
+6. 会话切换时 context 完全替换（不同会话的历史不混合）
 ```
 
 ---
 
-## 七、Agent Loop（核心循环）
+## 七、Session（会话管理）
+
+### 7.1 三级隔离模型
+
+```
+全局层: user_profile.md（唯一，跨域名的用户风格画像）
+  │
+  └── 域名层: domains/{domain}/（按 hostname 分割）
+        ├── page.html（Chrome 插件采集的页面快照）
+        │
+        └── 会话层: sessions/{session_id}/（同域名可有多个会话）
+              ├── history.json（对话历史）
+              └── styles.css（该会话累积的样式产出）
+```
+
+**隔离规则：**
+- 不同域名的会话完全隔离（历史、样式、页面快照均独立）
+- 同域名的多个会话共享 page.html，但各自有独立的 history 和 styles
+- user_profile.md 是全局唯一的，模型在其中自行标注域名差异
+
+### 7.2 存储结构
+
+```
+storage/
+├── user_profile.md                     # 全局用户风格画像（自由文本，模型全权管理）
+└── domains/
+    ├── example.com/
+    │   ├── page.html                   # Chrome 插件采集的页面快照
+    │   └── sessions/
+    │       ├── index.json              # 会话索引
+    │       ├── a1b2c3/
+    │       │   ├── history.json        # 对话历史
+    │       │   └── styles.css          # 累积样式
+    │       └── d4e5f6/
+    │           ├── history.json
+    │           └── styles.css
+    └── github.com/
+        ├── page.html
+        └── sessions/
+            └── ...
+```
+
+**index.json 结构：**
+
+```json
+[
+  {
+    "id": "a1b2c3",
+    "title": "深色模式改造",
+    "created_at": "2026-03-02T10:00:00Z",
+    "updated_at": "2026-03-02T10:30:00Z",
+    "message_count": 8,
+    "active_styles_summary": "深色背景 + 浅色文字 + 导航栏半透明"
+  }
+]
+```
+
+### 7.3 会话生命周期
+
+会话的 CRUD 由 Chrome 插件 UI 负责，Agent 不参与会话管理逻辑。
+
+```
+用户打开插件（在 example.com 上）
+│
+├── 看到该域名的会话列表（从 index.json 读取）
+│
+├── [选择已有会话]
+│   ├── 加载 history.json → 恢复对话
+│   ├── 加载 styles.css → 注入页面恢复样式
+│   └── 创建 SessionContext(domain, session_id) → Agent 就绪
+│
+├── [新建会话]
+│   ├── 生成 session_id
+│   ├── 创建空目录
+│   └── 创建 SessionContext → Agent 就绪
+│
+└── [切换会话]
+    ├── 卸载当前会话样式
+    ├── 加载目标会话样式
+    └── 替换 SessionContext
+```
+
+**会话标题自动生成（纳米级）：**
+
+```python
+def auto_title(session_meta: dict, first_user_message: str):
+    """首轮对话后自动设置标题，取用户第一条消息的前 20 字"""
+    if not session_meta.get("title"):
+        session_meta["title"] = first_user_message[:20]
+```
+
+### 7.4 styles.css 的角色
+
+`styles.css` 是会话的**累积样式产出**，是对话的"结晶"。
+
+- **恢复会话时**：自动注入到页面，恢复上次的视觉效果
+- **Agent 感知**：通过 session meta 的 `active_styles_summary` 知道"这个会话已做了什么"
+- **与 save 模式的区别**：`styles.css` 是会话级的（只在该会话激活时生效），`save` 模式注册到 Chrome Storage 是域名级的（每次访问都生效）
+
+### 7.5 对话历史持久化
+
+```python
+def save_history(history: list) -> None:
+    """每轮对话结束后写入"""
+    path = current_session.history_path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(history, ensure_ascii=False))
+
+def load_history() -> list:
+    """加载会话历史"""
+    path = current_session.history_path
+    if not path.exists():
+        return []
+    return json.loads(path.read_text())
+```
+
+---
+
+## 八、Agent Loop（核心循环）
 
 ```python
 #!/usr/bin/env python3
 """
 StyleSwift Agent - 基于 agent-builder 哲学的极简实现
 
-核心：一个简单的循环 + 明确的能力
-模型自己决定做什么，代码只提供手段
+核心变化（v3.2）：
+- 会话感知：接收 domain + session_id，构建分层 context
+- Token 预算：基于 API 返回的真实 token 用量做历史压缩
+- 持久化：每轮对话结束后写入 history.json
 """
 
 from anthropic import Anthropic
@@ -1065,9 +1422,10 @@ import json
 
 client = Anthropic()
 MODEL = "claude-sonnet-4-20250514"
+TOKEN_BUDGET = 50000
 
-# 系统提示 - 保持简洁
-SYSTEM = """你是 StyleSwift，网页样式个性化智能体。
+# 系统提示 — 基础部分（Layer 0），Session Context 在运行时追加（Layer 1）
+SYSTEM_BASE = """你是 StyleSwift，网页样式个性化智能体。
 
 任务：帮助用户用一句话个性化网页样式。
 
@@ -1076,14 +1434,15 @@ SYSTEM = """你是 StyleSwift，网页样式个性化智能体。
 - 优先行动，而非长篇解释
 - 完成后简要总结
 
-可用工具：get_page_structure, grep, apply_styles, save_preference, load_skill, Task, TodoWrite"""
+可用工具：get_page_structure, grep, apply_styles, get_user_profile, update_user_profile, load_skill, Task, TodoWrite"""
 
 # 工具定义
 BASE_TOOLS = [
     GET_PAGE_STRUCTURE_TOOL,
     GREP_TOOL,
     APPLY_STYLES_TOOL,
-    SAVE_PREFERENCE_TOOL,
+    GET_USER_PROFILE_TOOL,
+    UPDATE_USER_PROFILE_TOOL,
     LOAD_SKILL_TOOL,
     TODO_WRITE_TOOL,
 ]
@@ -1099,12 +1458,13 @@ def execute_tool(name: str, args: dict) -> str:
         return run_grep(args["query"], args.get("scope", "children"), args.get("max_results", 5))
     if name == "apply_styles":
         return run_apply_styles(args["css"], args["mode"])
-    if name == "save_preference":
-        return run_save_preference(args["url_pattern"], args["css"])
+    if name == "get_user_profile":
+        return run_get_user_profile()
+    if name == "update_user_profile":
+        return run_update_user_profile(args["content"])
     if name == "load_skill":
         return run_load_skill(args["skill_name"])
     if name == "TodoWrite":
-        # 只更新状态，不做其他事
         return "任务列表已更新"
     if name == "Task":
         return run_task(
@@ -1119,32 +1479,51 @@ def execute_tool(name: str, args: dict) -> str:
     return f"未知工具: {name}"
 
 
-def agent_loop(prompt: str, history: list) -> str:
-    """主智能体循环 - 这就是 agent-builder 的核心。"""
+def agent_loop(prompt: str, domain: str, session_id: str) -> str:
+    """
+    主智能体循环 — 会话感知版本。
+
+    关键变化：
+    1. 从持久化存储加载历史（而非内存中的 list）
+    2. 构建分层 system prompt（L0 + L1）
+    3. 循环内检测 token 溢出并压缩历史
+    4. 结束后持久化历史
+    """
+    global current_session
+    current_session = SessionContext(domain, session_id)
+
+    # 1. 加载并准备历史（加载时可能触发首次压缩）
+    history = load_and_prepare_history(domain, session_id)
+
+    # 2. 构建 system prompt = L0 基础 + L1 会话上下文
+    session_meta = load_session_meta(domain, session_id)
+    profile_hint = get_profile_one_liner()
+    system = SYSTEM_BASE + build_session_context(domain, session_meta, profile_hint)
+
+    # 3. Agent Loop
     history.append({"role": "user", "content": prompt})
+    last_input_tokens = 0
 
     while True:
         response = client.messages.create(
             model=MODEL,
-            system=SYSTEM,
+            system=system,
             messages=history,
             tools=TOOLS,
             max_tokens=8000,
         )
 
+        last_input_tokens = response.usage.input_tokens
         history.append({"role": "assistant", "content": response.content})
 
-        # 如果没有工具调用，返回文本
         if response.stop_reason != "tool_use":
-            return "".join(b.text for b in response.content if hasattr(b, "text"))
+            break
 
         # 执行工具
         results = []
         for block in response.content:
             if block.type == "tool_use":
-                print(f"> {block.name}: {json.dumps(block.input, ensure_ascii=False)[:100]}")
                 output = execute_tool(block.name, block.input)
-                print(f"  {output[:100]}...")
                 results.append({
                     "type": "tool_result",
                     "tool_use_id": block.id,
@@ -1153,35 +1532,34 @@ def agent_loop(prompt: str, history: list) -> str:
 
         history.append({"role": "user", "content": results})
 
+        # Token 预算检测：超预算则在下一轮 API 调用前压缩历史
+        if last_input_tokens > TOKEN_BUDGET:
+            history = check_and_compress_history(history, last_input_tokens)
 
-if __name__ == "__main__":
-    print("StyleSwift Agent")
-    print("输入 'q' 退出\n")
+    # 4. 持久化
+    save_history(history)
 
-    history = []
-    while True:
-        try:
-            user_input = input(">> ").strip()
-        except (EOFError, KeyboardInterrupt):
-            break
+    # 5. 首轮自动生成标题
+    if not session_meta.get("title"):
+        session_meta["title"] = prompt[:20]
+        save_session_meta(domain, session_id, session_meta)
 
-        if user_input in ("q", "quit", "exit", ""):
-            break
-
-        response = agent_loop(user_input, history)
-        print(f"\n{response}\n")
+    return "".join(b.text for b in response.content if hasattr(b, "text"))
+```
 ```
 
 ---
 
-## 八、交互流程示例
+## 九、交互流程示例
 
 ### 示例1：简单请求
 
 ```
-用户: "太刺眼了"
+用户: "太刺眼了"（在 example.com 上，新用户）
 
 Agent:
+├── get_user_profile()
+│   ← "(新用户，暂无风格偏好记录)"
 ├── get_page_structure()
 │   ← 返回页面原始结构
 ├── load_skill("dark-mode-template")
@@ -1189,11 +1567,34 @@ Agent:
 ├── apply_styles(css, mode="preview")
 │   ← 注入样式
 └── 响应: "已切换深色模式，看看效果？"
-
-（没有使用 TodoWrite，因为任务很简单）
 ```
 
-### 示例2：复杂请求
+### 示例2：偏好学习过程
+
+```
+用户: "不错，但底色用深蓝，别纯黑"
+
+Agent:
+├── apply_styles(navy_css, mode="preview")
+│   ← 调整底色
+├── get_user_profile()
+│   ← "(新用户)"
+├── update_user_profile("偏好深蓝底色(#1a1a2e)的深色模式，不喜欢纯黑")
+│   ← 记录偏好洞察
+└── 响应: "调整好了，底色换成了深蓝"
+
+--- 几天后，用户在 github.com 新建会话 ---
+
+用户: "深色模式"
+
+Agent:（system prompt 中已有：用户风格偏好: 偏好深蓝底色...）
+├── get_page_structure()
+├── [直接使用深蓝底色生成 CSS]
+├── apply_styles(css, mode="preview")
+└── 响应: "已应用深色模式（用了你偏好的深蓝底色）"
+```
+
+### 示例3：复杂请求
 
 ```
 用户: "把导航栏改成蓝色，文章区用大字体，侧边栏隐藏"
@@ -1214,30 +1615,44 @@ Agent:
 ├── apply_styles(css_article, mode="preview")
 ├── ...
 └── 响应: "已完成：导航栏蓝色、文章区放大、侧边栏隐藏"
+
+用户: "不错，保存下来"
+
+Agent:
+├── apply_styles(combined_css, mode="save")
+│   ← 注入 + 写入 session/styles.css + 注册 Chrome Storage
+└── 响应: "已保存，下次访问 example.com 自动应用"
 ```
 
 ---
 
-## 九、与原设计的对比
+## 十、与原设计的对比
 
-| 方面 | v2.0（错误） | v3.0（正确） |
+| 方面 | v2.0（错误） | v3.2（正确） |
 |------|-------------|-------------|
 | Skills 加载 | 代码预判，`load_relevant_skills(intent)` | 模型请求，`load_skill` 工具 |
 | get_page_structure | 返回页面类型判断 | 返回原始结构，模型自己判断 |
 | 元素信息获取 | `pick_element` 强制用户交互 | `grep` 模型主动查询 |
 | Subagent | 预设内部工作流 | 只给任务描述，自由发挥 |
 | TodoWrite | 每一步都更新 | 模型决定是否使用 |
-| Context | 包含用户偏好 | 精简，偏好通过工具获取 |
+| Context | 用户偏好常驻 context | 四层分离，画像一行提示 + 工具按需获取 |
+| 样式保存 | `apply_styles` + `save_preference` 两个工具 | `apply_styles` 四模式递进（preview/apply/save/rollback） |
+| 会话管理 | 单一内存 history | 域名隔离 + 多会话 + 持久化 |
+| 偏好学习 | 无 | `get/update_user_profile` + 自由文本画像 |
+| 历史控制 | 无限增长 | 基于真实 token 用量的预算控制 |
+| 工具上下文 | 每次调 `get_active_tab_domain()` | `SessionContext` 会话启动时创建一次 |
 | "理解意图" | 作为显式任务 | 不是任务，是模型能力 |
 
 ---
 
-## 十、项目结构
+## 十一、项目结构
 
 ```
 StyleSwift/
 ├── agent/
-│   ├── style_agent.py           # 主智能体（~100行）
+│   ├── style_agent.py           # 主智能体（Agent Loop + 工具注册）
+│   ├── session.py               # SessionContext + 会话管理（加载/保存/压缩）
+│   ├── profile.py               # 用户画像读写（get/update_user_profile）
 │   └── skills/
 │       ├── design-principles.md
 │       ├── color-theory.md
@@ -1252,13 +1667,24 @@ StyleSwift/
 │   └── content/
 │       └── protocol.js          # 页面交互
 │
+├── storage/                     # 运行时数据（不入 git）
+│   ├── user_profile.md          # 全局用户风格画像
+│   └── domains/
+│       └── {domain}/
+│           ├── page.html        # Chrome 插件采集的页面快照
+│           └── sessions/
+│               ├── index.json   # 会话索引
+│               └── {session_id}/
+│                   ├── history.json
+│                   └── styles.css
+│
 └── doc/
     └── StyleSwift-Agent设计方案-v3.md
 ```
 
 ---
 
-## 十一、设计原则总结
+## 十二、设计原则总结
 
 遵循 agent-builder 哲学：
 
@@ -1269,6 +1695,8 @@ StyleSwift/
 | **知识按需加载** | `load_skill` 工具 | 代码自动加载 |
 | **推理隔离** | Subagent 隔离上下文 | 主循环处理复杂推理 |
 | **信任模型** | 让模型自己决定 | 预设工作流 |
-| **Context 珍贵** | 保持最小 | 塞入所有信息 |
+| **Context 珍贵** | 四层分离，按需获取 | 塞入所有信息 |
+| **记忆即文本** | 自由文本画像，模型自己管理 | 结构化 JSON 限制表达 |
+| **会话隔离** | 域名分割 + 多会话 | 单一全局 history |
 
 > **The model already knows how to be an agent. Your job is to get out of the way.**
