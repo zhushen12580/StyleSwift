@@ -1,0 +1,111 @@
+/* App-specific styles for ASCII + Minimal + Dot Matrix */
+
+/* Ensure full-width sections */
+section {
+  width: 100%;
+}
+
+/* Image handling */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Custom selection - terminal green */
+::selection {
+  background-color: rgba(0, 255, 65, 0.3);
+  color: white;
+}
+
+/* Focus states - minimal */
+:focus-visible {
+  outline: 1px solid rgba(0, 255, 65, 0.5);
+  outline-offset: 2px;
+}
+
+/* Smooth transitions */
+* {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ASCII art pre formatting */
+pre {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+  white-space: pre;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Hide scrollbar for ASCII art but allow scroll */
+pre::-webkit-scrollbar {
+  height: 2px;
+}
+
+pre::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+pre::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Marquee animation */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 40s linear infinite;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .animate-marquee {
+    animation: none;
+  }
+}
+
+/* Mobile touch improvements */
+@media (hover: none) {
+  .group:active {
+    transform: scale(0.98);
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .glass,
+  .glass-light {
+    background: rgba(0, 0, 0, 0.95);
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+}
+
+/* Print styles */
+@media print {
+  .ascii-grid,
+  .dot-matrix,
+  .dot-matrix-dense,
+  .scanlines {
+    display: none;
+  }
+  
+  body {
+    background: white;
+    color: black;
+  }
+}

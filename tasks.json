@@ -27,7 +27,8 @@
           "module": "project-setup",
           "designRef": "§2.2 项目结构",
           "testCriteria": "所有目录存在且路径正确",
-          "estimatedHours": 0.5
+          "estimatedHours": 0.5,
+          "files": []
         },
         {
           "id": "T002",
@@ -35,11 +36,14 @@
           "description": "Manifest V3 配置文件，包含 permissions(activeTab, storage, sidePanel)、host_permissions(api.anthropic.com)、optional_host_permissions(https://*/*)、background service_worker、side_panel、content_scripts(early-inject.js + content.js)",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T001"],
+          "dependencies": [
+            "T001"
+          ],
           "module": "project-setup",
           "designRef": "§2.3 Manifest 配置",
           "testCriteria": "Chrome 可加载未打包扩展，无 manifest 报错",
-          "estimatedHours": 0.5
+          "estimatedHours": 0.5,
+          "files": ["extension/manifest.json"]
         },
         {
           "id": "T003",
@@ -47,11 +51,14 @@
           "description": "生成 icon-16.png、icon-48.png、icon-128.png 占位图标文件（可用简单纯色或文字 S 图标）",
           "status": "pending",
           "priority": "low",
-          "dependencies": ["T001"],
+          "dependencies": [
+            "T001"
+          ],
           "module": "project-setup",
           "designRef": "§2.2 icons/",
           "testCriteria": "三个尺寸图标文件存在，Chrome 加载后图标正常显示",
-          "estimatedHours": 0.5
+          "estimatedHours": 0.5,
+          "files": ["extension/icons/icon-16.png", "extension/icons/icon-48.png", "extension/icons/icon-128.png"]
         },
         {
           "id": "T004",
@@ -59,11 +66,14 @@
           "description": "创建 sidepanel/index.html，引入 panel.css 和各 JS 模块（panel.js, agent-loop.js, tools.js, css-merge.js, session.js, profile.js, api.js），设置基本 DOM 结构容器",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T001"],
+          "dependencies": [
+            "T001"
+          ],
           "module": "project-setup",
           "designRef": "§2.2 sidepanel/index.html",
           "testCriteria": "Side Panel 可打开，HTML 结构正确加载，无 JS 错误",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/sidepanel/index.html"]
         }
       ]
     },
@@ -78,11 +88,14 @@
           "description": "设置 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })，点击扩展图标自动打开 Side Panel",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T002"],
+          "dependencies": [
+            "T002"
+          ],
           "module": "background",
           "designRef": "§2.3 Service Worker",
           "testCriteria": "点击扩展图标后 Side Panel 正确打开",
-          "estimatedHours": 0.5
+          "estimatedHours": 0.5,
+          "files": ["extension/background/service-worker.js"]
         }
       ]
     },
@@ -97,11 +110,14 @@
           "description": "实现 openDB() 函数，创建 StyleSwiftDB 数据库和 conversations Object Store。纯 Promise 封装，无外部依赖",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T004"],
+          "dependencies": [
+            "T004"
+          ],
           "module": "storage",
           "designRef": "§7.3 IndexedDB 封装",
           "testCriteria": "调用 openDB() 成功返回 IDBDatabase 实例，重复调用不报错",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/sidepanel/session.js"]
         },
         {
           "id": "T021",
@@ -109,11 +125,14 @@
           "description": "实现对话历史的增删查：saveHistory(domain, sessionId, history)、loadHistory(domain, sessionId)、deleteHistory(domain, sessionId)，key 格式为 {domain}:{sessionId}",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T020"],
+          "dependencies": [
+            "T020"
+          ],
           "module": "storage",
           "designRef": "§7.3 IndexedDB 封装",
           "testCriteria": "保存对话历史后可正确读取，删除后返回空数组",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/sidepanel/session.js"]
         },
         {
           "id": "T022",
@@ -121,11 +140,14 @@
           "description": "实现 SessionContext 类，包含 domain/sessionId 属性和 stylesKey/metaKey/historyKey/persistKey/sessionIndex 五个 getter，生成正确的 storage key 路径",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T004"],
+          "dependencies": [
+            "T004"
+          ],
           "module": "storage",
           "designRef": "§3 SessionContext / §7.1 双层存储架构",
           "testCriteria": "new SessionContext('github.com', 'abc123') 的各 getter 返回正确 key 格式",
-          "estimatedHours": 0.5
+          "estimatedHours": 0.5,
+          "files": ["extension/sidepanel/session.js"]
         },
         {
           "id": "T023",
@@ -133,23 +155,30 @@
           "description": "实现 StyleSkillStore 静态类：INDEX_KEY 常量、skillKey(id) 方法、list() 列出所有技能索引、save(id, name, mood, sourceDomain, content) 保存技能、load(id) 加载技能内容、remove(id) 删除技能。使用 chrome.storage.local",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T004"],
+          "dependencies": [
+            "T004"
+          ],
           "module": "storage",
           "designRef": "§7.7 StyleSkillStore",
           "testCriteria": "save 后 list 可见，load 返回正确内容，remove 后 list 不可见",
-          "estimatedHours": 1.5
+          "estimatedHours": 1.5,
+          "files": ["extension/sidepanel/style-skill.js"]
         },
         {
           "id": "T024",
           "title": "实现存储 Schema 版本迁移机制",
-          "description": "实现 checkAndMigrateStorage() 函数，读取 _schemaVersion，按版本号顺序执行迁移函数。当前 CURRENT_SCHEMA_VERSION = 1，初始版本无需迁移逻辑",
+          "description": "实现 checkAndMigrateStorage() 函数，读取 _schemaVersion，按版本号顺序执行迁移函数。当前 CURRENT_SCHEMA_VERSION = 1，初始版本无需迁移逻辑。同时处理 IndexedDB 的 onupgradeneeded 版本升级",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T004"],
+          "dependencies": [
+            "T004",
+            "T020"
+          ],
           "module": "storage",
           "designRef": "§7.6 存储 Schema 版本迁移",
-          "testCriteria": "首次运行后 _schemaVersion 被写入为 1，再次运行跳过迁移",
-          "estimatedHours": 1
+          "testCriteria": "首次运行后 _schemaVersion 被写入为 1，再次运行跳过迁移，IndexedDB 版本升级正确处理",
+          "estimatedHours": 1.5,
+          "files": ["extension/sidepanel/session.js"]
         },
         {
           "id": "T025",
@@ -157,11 +186,15 @@
           "description": "实现 cleanupStorage()：遍历所有域名会话索引，按 MAX_SESSIONS_PER_DOMAIN=20 和 SESSION_EXPIRE_DAYS=90 清理过期/超限会话，删除关联 meta/styles/IndexedDB 数据。实现 cleanupStyleSkills() 限制最多 50 个技能",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T021", "T023"],
+          "dependencies": [
+            "T021",
+            "T023"
+          ],
           "module": "storage",
           "designRef": "§7.5 存储清理策略",
           "testCriteria": "超过 20 个会话后自动清理最旧的，90 天前的会话被清理，技能超过 50 个后清理最旧的",
-          "estimatedHours": 2
+          "estimatedHours": 2,
+          "files": ["extension/sidepanel/session.js", "extension/sidepanel/style-skill.js"]
         },
         {
           "id": "T026",
@@ -169,11 +202,14 @@
           "description": "实现 getStorageUsage() 函数，返回 { bytes, maxBytes, percent }，基于 chrome.storage.local.getBytesInUse",
           "status": "pending",
           "priority": "low",
-          "dependencies": ["T004"],
+          "dependencies": [
+            "T004"
+          ],
           "module": "storage",
           "designRef": "§7.5 存储清理策略",
           "testCriteria": "返回的 bytes > 0，percent 在 0-100 范围内",
-          "estimatedHours": 0.5
+          "estimatedHours": 0.5,
+          "files": ["extension/sidepanel/session.js"]
         }
       ]
     },
@@ -185,14 +221,17 @@
         {
           "id": "T030",
           "title": "实现 early-inject.js 永久样式注入",
-          "description": "在 document_start 阶段执行，读取 chrome.storage.local 中 persistent:{domain} 的 CSS，创建 <style id='styleswift-persistent'> 并注入到 document.head（不存在时注入到 document.documentElement）。使用 IIFE 自执行",
+          "description": "在 document_start 阶段执行，读取 chrome.storage.local 中 persistent:{domain} 的 CSS，创建 <style id='styleswift-persistent'> 并注入到 document.head（不存在时注入到 document.documentElement）。使用 IIFE 自执行。包含域名获取逻辑（location.hostname）",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T002"],
+          "dependencies": [
+            "T002"
+          ],
           "module": "content-early",
           "designRef": "§7.4 永久样式自动注入",
-          "testCriteria": "页面加载时永久样式立即生效，无闪烁（FOUC）；无永久样式时不注入 <style> 元素",
-          "estimatedHours": 1
+          "testCriteria": "页面加载时永久样式立即生效，无闪烁（FOUC）；无永久样式时不注入 <style> 元素；document.head 不存在时正确降级到 documentElement",
+          "estimatedHours": 1.5,
+          "files": ["extension/content/early-inject.js"]
         }
       ]
     },
@@ -207,11 +246,14 @@
           "description": "定义 TAG_WHITELIST、LANDMARKS、STYLE_WHITELIST、SKIP_VALUES、COLLAPSE_THRESHOLD、TEXT_TAGS、VISUAL_PROPS、SELECTOR_PATTERN 等常量集合",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T002"],
+          "dependencies": [
+            "T002"
+          ],
           "module": "content-script",
           "designRef": "§3.1.2 常量定义",
           "testCriteria": "所有常量类型正确，Set/Array 元素无拼写错误",
-          "estimatedHours": 0.5
+          "estimatedHours": 0.5,
+          "files": ["extension/content/content.js"]
         },
         {
           "id": "T041",
@@ -219,11 +261,14 @@
           "description": "shortSelector(el): 生成最短选择器（tag#id > tag.className > tag）。getDirectText(el): 仅获取直接文本节点内容。sameSignature(a,b): tagName + className 相同判定",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T040"],
+          "dependencies": [
+            "T040"
+          ],
           "module": "content-script",
           "designRef": "§3.1.2 辅助函数",
           "testCriteria": "shortSelector 对 id/class/纯标签三种情况返回正确选择器；getDirectText 不包含子元素文本",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/content/content.js"]
         },
         {
           "id": "T042",
@@ -231,11 +276,14 @@
           "description": "groupSimilar(children): 连续相同签名的子元素分组。summarizeChildren(childEls): 生成 'tag×count' 格式摘要",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T041"],
+          "dependencies": [
+            "T041"
+          ],
           "module": "content-script",
           "designRef": "§3.1.2 分组折叠",
           "testCriteria": "3 个连续相同 className 的 div 被折叠为 1 组(count=3)；摘要格式正确",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/content/content.js"]
         },
         {
           "id": "T043",
@@ -243,11 +291,14 @@
           "description": "getComputedStyles(el, tag): 读取 STYLE_WHITELIST 中的计算样式，过滤 SKIP_VALUES。pickStylesForDisplay(tag, pairs): 根据元素类型筛选样式（LANDMARKS 全量、TEXT_TAGS 文本属性、其他 VISUAL_PROPS）",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T040"],
+          "dependencies": [
+            "T040"
+          ],
           "module": "content-script",
           "designRef": "§3.1.2 实时读取计算样式",
           "testCriteria": "对 h1 元素只返回文本相关样式，对 header 返回全量样式，过滤 'none'/'auto' 等跳过值",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/content/content.js"]
         },
         {
           "id": "T044",
@@ -255,11 +306,16 @@
           "description": "buildTree(element, depth, maxDepth): 递归遍历 DOM 构建简化树，跳过非白名单标签和 shadowRoot，对 LANDMARKS 元素延伸 maxDepth，对超限/无子元素节点生成 summary",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T041", "T042", "T043"],
+          "dependencies": [
+            "T041",
+            "T042",
+            "T043"
+          ],
           "module": "content-script",
           "designRef": "§3.1.2 核心：直接从 live DOM 构建简化树",
           "testCriteria": "对标准 HTML 页面返回正确树结构，深度限制生效，折叠阈值生效",
-          "estimatedHours": 2
+          "estimatedHours": 2,
+          "files": ["extension/content/content.js"]
         },
         {
           "id": "T045",
@@ -267,11 +323,14 @@
           "description": "formatTree: 根节点格式化。formatTreeNode: 子节点树形缩进（├── / └──）。formatNodeDecoration: 附加样式/count/text/summary 信息。estimateTokens: 按 length/3.5 估算 token",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T044"],
+          "dependencies": [
+            "T044"
+          ],
           "module": "content-script",
           "designRef": "§3.1.2 格式化输出",
           "testCriteria": "输出包含正确的树形缩进符号，超 2000 token 自动降级压缩",
-          "estimatedHours": 1.5
+          "estimatedHours": 1.5,
+          "files": ["extension/content/content.js"]
         },
         {
           "id": "T046",
@@ -279,11 +338,15 @@
           "description": "getPageStructure(): 调用 extractMeta() 获取 URL/Title/Viewport，调用 buildTree(document.body, 0, 3) 构建树，调用 formatOutput 合并输出",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T044", "T045"],
+          "dependencies": [
+            "T044",
+            "T045"
+          ],
           "module": "content-script",
           "designRef": "§3.1.2 核心 getPageStructure",
           "testCriteria": "在任意页面调用返回包含 URL/Title/Viewport 和树形结构的文本",
-          "estimatedHours": 0.5
+          "estimatedHours": 0.5,
+          "files": ["extension/content/content.js"]
         },
         {
           "id": "T047",
@@ -291,11 +354,15 @@
           "description": "isCssSelector(query): 用 SELECTOR_PATTERN 检测。selectorSearch: 用 querySelectorAll。keywordSearch: TreeWalker 遍历匹配 tag/class/id/text/计算样式",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T041", "T043"],
+          "dependencies": [
+            "T041",
+            "T043"
+          ],
           "module": "content-script",
           "designRef": "§3.2.2 Content Script 端实现",
           "testCriteria": "CSS 选择器模式正确识别，关键词搜索能匹配 class 名和文本内容",
-          "estimatedHours": 2
+          "estimatedHours": 2,
+          "files": ["extension/content/content.js"]
         },
         {
           "id": "T048",
@@ -303,11 +370,14 @@
           "description": "groupSimilarElements: 按 elementSignature 折叠。formatGrepOutput: 格式化输出含 Path/Styles/Attrs/Text/Children，超 800 token 自动降级 scope。getAllComputedStyles / buildFullPathSelector / formatUsefulAttrs / formatChildren",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T047"],
+          "dependencies": [
+            "T047"
+          ],
           "module": "content-script",
           "designRef": "§3.2.3-3.2.4 相似元素折叠与输出格式化",
           "testCriteria": "相同签名元素正确折叠，输出包含完整路径和样式信息，超 token 自动降级",
-          "estimatedHours": 2
+          "estimatedHours": 2,
+          "files": ["extension/content/content.js"]
         },
         {
           "id": "T049",
@@ -315,11 +385,15 @@
           "description": "runGrep(query, scope, maxResults): 组合 isCssSelector 分派、结果分组、格式化输出。maxResults 上限 20，默认 5",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T047", "T048"],
+          "dependencies": [
+            "T047",
+            "T048"
+          ],
           "module": "content-script",
           "designRef": "§3.2.2 runGrep",
           "testCriteria": "传入 '.header' 返回选择器搜索结果，传入 'logo' 返回关键词搜索结果",
-          "estimatedHours": 0.5
+          "estimatedHours": 0.5,
+          "files": ["extension/content/content.js"]
         },
         {
           "id": "T050",
@@ -327,11 +401,14 @@
           "description": "实现 injectCSS(css) 和 rollbackCSS(scope)。维护 activeStyleEl(<style id='styleswift-active'>) 和 cssStack 数组。支持 'last' 弹出最后一条和 'all' 清空全部",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T040"],
+          "dependencies": [
+            "T040"
+          ],
           "module": "content-script",
           "designRef": "§3.3.2 Content Script 端：CSS 注入/回滚",
           "testCriteria": "注入 CSS 后页面样式生效，rollback_last 只撤最后一条，rollback_all 全部清除",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/content/content.js"]
         },
         {
           "id": "T051",
@@ -339,11 +416,14 @@
           "description": "实现 injectCSSAdopted(css) 和 rollbackCSSAdopted(scope)。使用 CSSStyleSheet + document.adoptedStyleSheets，绕过部分 CSP 限制",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T050"],
+          "dependencies": [
+            "T050"
+          ],
           "module": "content-script",
           "designRef": "§3.3.5 CSP 兼容性 — 方案 2",
           "testCriteria": "在 CSP 限制 style-src 的页面能正常注入样式",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/content/content.js"]
         },
         {
           "id": "T052",
@@ -351,23 +431,47 @@
           "description": "实现 detectCSSInjectionMethod()（检测 style-element → adopted-stylesheets → scripting-api 降级）和 injectCSSAuto(css) 统一入口。检测结果缓存，只执行一次",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T050", "T051"],
+          "dependencies": [
+            "T050",
+            "T051"
+          ],
           "module": "content-script",
           "designRef": "§3.3.5 CSP 兼容性",
           "testCriteria": "正常页面使用 style-element，CSP 页面降级到 adopted-stylesheets，结果缓存生效",
-          "estimatedHours": 1.5
+          "estimatedHours": 1.5,
+          "files": ["extension/content/content.js"]
         },
         {
           "id": "T053",
           "title": "实现 Content Script 消息监听器",
-          "description": "chrome.runtime.onMessage.addListener 处理所有工具消息：get_domain、get_page_structure、grep、inject_css、rollback_css、get_active_css。使用 sendResponse 回调返回结果",
+          "description": "chrome.runtime.onMessage.addListener 处理所有工具消息：get_domain、get_page_structure、grep、inject_css、rollback_css、get_active_css。使用 sendResponse 回调返回结果。get_active_css 返回当前 cssStack 合并后的内容",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T046", "T049", "T052"],
+          "dependencies": [
+            "T046",
+            "T049",
+            "T052"
+          ],
           "module": "content-script",
           "designRef": "§10.3 Content Script 通信",
-          "testCriteria": "从 Side Panel 发送各类 tool 消息均能收到正确响应",
-          "estimatedHours": 1
+          "testCriteria": "从 Side Panel 发送各类 tool 消息均能收到正确响应，包括 get_active_css 返回正确的当前 CSS",
+          "estimatedHours": 1.5,
+          "files": ["extension/content/content.js"]
+        },
+        {
+          "id": "T054A",
+          "title": "实现 Content Script 重新注入检测",
+          "description": "页面刷新后 Content Script 失效，Side Panel 需要检测并提示用户。实现 checkContentScriptAlive() 函数，发送 ping 消息，超时或失败返回 false",
+          "status": "pending",
+          "priority": "medium",
+          "dependencies": [
+            "T053"
+          ],
+          "module": "content-script",
+          "designRef": "§11.2 Content Script 生命周期",
+          "testCriteria": "页面刷新后检测返回 false，正常页面返回 true",
+          "estimatedHours": 1,
+          "files": ["extension/sidepanel/tools.js", "extension/content/content.js"]
         },
         {
           "id": "T054",
@@ -375,11 +479,14 @@
           "description": "MutationObserver 监听 document.body 变化 + popstate 事件，检测 URL 变化时发送 page_navigated 消息到 runtime",
           "status": "pending",
           "priority": "low",
-          "dependencies": ["T053"],
+          "dependencies": [
+            "T053"
+          ],
           "module": "content-script",
           "designRef": "§10.3 页面导航检测",
           "testCriteria": "SPA 页面跳转时 page_navigated 消息被正确发送",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/content/content.js"]
         }
       ]
     },
@@ -394,11 +501,14 @@
           "description": "实现 getSettings() 从 chrome.storage.local 读取 settings（apiKey, apiBase, model），无 Key 抛错。saveSettings() 合并写入，DEFAULT_API_BASE = 'https://api.anthropic.com'",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T004"],
+          "dependencies": [
+            "T004"
+          ],
           "module": "api",
           "designRef": "§9.1 存储",
           "testCriteria": "saveSettings 后 getSettings 返回正确值，无 Key 时抛出错误",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/sidepanel/api.js"]
         },
         {
           "id": "T061",
@@ -406,11 +516,14 @@
           "description": "当 apiBase 非默认地址时，通过 chrome.permissions.request() 动态申请对应 origin 的访问权限",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T060"],
+          "dependencies": [
+            "T060"
+          ],
           "module": "api",
           "designRef": "§9.2 自定义 API 地址 — 权限动态申请",
           "testCriteria": "默认地址跳过申请返回 true，自定义地址触发权限请求弹窗",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/sidepanel/api.js"]
         },
         {
           "id": "T062",
@@ -418,11 +531,14 @@
           "description": "向 apiBase/v1/messages 发送最小测试请求，返回 { ok, status } 或 { ok: false, error }",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T060"],
+          "dependencies": [
+            "T060"
+          ],
           "module": "api",
           "designRef": "§9.2 连接验证",
           "testCriteria": "有效 Key 返回 ok: true，无效 Key 返回 ok: false + status 401",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/sidepanel/api.js"]
         },
         {
           "id": "T063",
@@ -430,11 +546,14 @@
           "description": "实现 SSE 流式解析：处理 content_block_start/delta/stop、message_delta 事件。支持 onText/onToolCall 回调。tool_use 的 input 为增量 JSON 拼接后解析。支持 AbortSignal 取消",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T060"],
+          "dependencies": [
+            "T060"
+          ],
           "module": "api",
           "designRef": "§10.1 LLM API 调用（Streaming）",
           "testCriteria": "流式文本回调逐步触发，工具调用 input 正确解析，abort 信号能中断请求",
-          "estimatedHours": 3
+          "estimatedHours": 3,
+          "files": ["extension/sidepanel/api.js"]
         },
         {
           "id": "T064",
@@ -442,11 +561,29 @@
           "description": "包装 callAnthropicStream，处理 401(Key无效)、429(限流重试，指数退避)、TypeError(网络错误)、5xx(API异常)。AgentError 类定义",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T063"],
+          "dependencies": [
+            "T063"
+          ],
           "module": "api",
           "designRef": "§11.3 API 调用错误处理",
           "testCriteria": "401 直接抛 API_KEY_INVALID，429 重试 2 次后抛 MAX_RETRIES，网络断开抛 NETWORK_ERROR",
-          "estimatedHours": 1.5
+          "estimatedHours": 2,
+          "files": ["extension/sidepanel/api.js"]
+        },
+        {
+          "id": "T065",
+          "title": "实现首次启动检测和引导逻辑",
+          "description": "实现 checkFirstRun() 函数，检测 chrome.storage.local 中是否有 apiKey。无 Key 时返回 { needsSetup: true }，触发引导页显示。包含 API 配置验证和错误提示 UI",
+          "status": "pending",
+          "priority": "high",
+          "dependencies": [
+            "T060"
+          ],
+          "module": "api",
+          "designRef": "§9.4 首次使用引导",
+          "testCriteria": "首次打开无 Key 时返回 needsSetup: true，有 Key 时返回 false",
+          "estimatedHours": 1,
+          "files": ["extension/sidepanel/api.js"]
         }
       ]
     },
@@ -461,11 +598,14 @@
           "description": "正确处理嵌套花括号（@media, @keyframes 等）的顶层块分割，追踪大括号深度",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T004"],
+          "dependencies": [
+            "T004"
+          ],
           "module": "css-merge",
           "designRef": "§3.3.4 CSS 去重/合并策略 — splitTopLevelBlocks",
           "testCriteria": "正确分割普通规则和嵌套的 @media/@keyframes 块",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/sidepanel/css-merge.js"]
         },
         {
           "id": "T071",
@@ -473,11 +613,14 @@
           "description": "解析 CSS 文本为 Map<selector, Map<prop, val>>。at-rule 整体以 __raw__ 标记保留。普通规则按选择器+属性解析",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T070"],
+          "dependencies": [
+            "T070"
+          ],
           "module": "css-merge",
           "designRef": "§3.3.4 parseRules",
           "testCriteria": "正确解析普通规则为属性 Map，@media 规则保留原始文本",
-          "estimatedHours": 1.5
+          "estimatedHours": 1.5,
+          "files": ["extension/sidepanel/css-merge.js"]
         },
         {
           "id": "T072",
@@ -485,11 +628,14 @@
           "description": "合并两段 CSS：同选择器同属性覆盖，不同选择器合并，at-rule 整体覆盖。基于 parseRules 结果做属性级合并",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T071"],
+          "dependencies": [
+            "T071"
+          ],
           "module": "css-merge",
           "designRef": "§3.3.4 mergeCSS",
           "testCriteria": "同属性覆盖、不同属性追加、不同选择器合并、@media 整体替换",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/sidepanel/css-merge.js"]
         },
         {
           "id": "T073",
@@ -497,11 +643,29 @@
           "description": "将 Map<selector, Map<prop, val>> 序列化为格式化 CSS 文本，at-rule 输出原始文本，普通规则输出缩进格式",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T071"],
+          "dependencies": [
+            "T071"
+          ],
           "module": "css-merge",
           "designRef": "§3.3.4 serializeRules",
           "testCriteria": "输出的 CSS 格式正确，缩进和换行符正确",
-          "estimatedHours": 0.5
+          "estimatedHours": 0.5,
+          "files": ["extension/sidepanel/css-merge.js"]
+        },
+        {
+          "id": "T074",
+          "title": "实现 CSS 解析错误处理和降级",
+          "description": "为 parseRules 和 mergeCSS 添加 try-catch 错误处理。畸形 CSS（未闭合花括号、非法字符）时返回空 Map 或原始 CSS，记录警告日志但不中断流程",
+          "status": "pending",
+          "priority": "medium",
+          "dependencies": [
+            "T072"
+          ],
+          "module": "css-merge",
+          "designRef": "§11.3 CSS 解析容错",
+          "testCriteria": "畸形 CSS 不导致崩溃，返回降级结果，控制台有警告日志",
+          "estimatedHours": 1,
+          "files": ["extension/sidepanel/css-merge.js"]
         }
       ]
     },
@@ -516,11 +680,14 @@
           "description": "根据域名读取 sessions:{domain}:index，若无则新建会话。生成 session_id 用 crypto.randomUUID()。更新 index 数组",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T022"],
+          "dependencies": [
+            "T022"
+          ],
           "module": "session",
           "designRef": "§8.2 会话生命周期",
           "testCriteria": "首次调用创建新会话并返回 id，再次调用返回已存在的最近会话",
-          "estimatedHours": 1.5
+          "estimatedHours": 1.5,
+          "files": ["extension/sidepanel/session.js"]
         },
         {
           "id": "T081",
@@ -528,11 +695,14 @@
           "description": "loadSessionMeta: 读取 sessions:{domain}:{id}:meta，默认返回 { title: null, created_at: Date.now(), message_count: 0 }。saveSessionMeta: 写入 meta",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T022"],
+          "dependencies": [
+            "T022"
+          ],
           "module": "session",
           "designRef": "§8.5 会话辅助函数",
           "testCriteria": "保存后读取一致，无 meta 时返回默认值",
-          "estimatedHours": 0.5
+          "estimatedHours": 0.5,
+          "files": ["extension/sidepanel/session.js"]
         },
         {
           "id": "T082",
@@ -540,11 +710,14 @@
           "description": "loadAndPrepareHistory(domain, sessionId): 从 IndexedDB 加载对话历史，确保返回数组",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T021"],
+          "dependencies": [
+            "T021"
+          ],
           "module": "session",
           "designRef": "§8.5 会话辅助函数",
           "testCriteria": "已有历史返回数组，无历史返回空数组",
-          "estimatedHours": 0.5
+          "estimatedHours": 0.5,
+          "files": ["extension/sidepanel/session.js"]
         },
         {
           "id": "T083",
@@ -552,11 +725,16 @@
           "description": "deleteSession(domain, sessionId): 从 index 移除、删除 meta 和 styles key、删除 IndexedDB 历史。若为最后一个会话返回 { lastSession: true }",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T080", "T081", "T021"],
+          "dependencies": [
+            "T080",
+            "T081",
+            "T021"
+          ],
           "module": "session",
           "designRef": "§8.3 会话删除",
           "testCriteria": "删除后 index 不含该会话，storage 和 IndexedDB 数据清除，最后会话标识正确",
-          "estimatedHours": 1.5
+          "estimatedHours": 1.5,
+          "files": ["extension/sidepanel/session.js"]
         },
         {
           "id": "T084",
@@ -564,11 +742,14 @@
           "description": "autoTitle(sessionMeta, firstUserMessage): 无标题时取首条消息前 20 字",
           "status": "pending",
           "priority": "low",
-          "dependencies": ["T081"],
+          "dependencies": [
+            "T081"
+          ],
           "module": "session",
           "designRef": "§8.4 会话标题自动生成",
           "testCriteria": "首条消息截断为 20 字标题，已有标题不覆盖",
-          "estimatedHours": 0.5
+          "estimatedHours": 0.5,
+          "files": ["extension/sidepanel/session.js"]
         },
         {
           "id": "T085",
@@ -576,11 +757,15 @@
           "description": "updateStylesSummary(): 读取当前会话 CSS，统计规则数和前 3 个选择器，写入 meta.activeStylesSummary",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T022", "T081"],
+          "dependencies": [
+            "T022",
+            "T081"
+          ],
           "module": "session",
           "designRef": "§8.5 updateStylesSummary",
           "testCriteria": "摘要包含正确的规则数和选择器列表",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/sidepanel/session.js"]
         }
       ]
     },
@@ -595,11 +780,14 @@
           "description": "从 chrome.storage.local 读取 userProfile，为空返回 '(新用户，暂无风格偏好记录)'",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T004"],
+          "dependencies": [
+            "T004"
+          ],
           "module": "profile",
           "designRef": "§3.4 get_user_profile",
           "testCriteria": "有画像返回内容，无画像返回默认提示",
-          "estimatedHours": 0.5
+          "estimatedHours": 0.5,
+          "files": ["extension/sidepanel/profile.js"]
         },
         {
           "id": "T091",
@@ -607,11 +795,14 @@
           "description": "将 content 写入 chrome.storage.local 的 userProfile key",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T004"],
+          "dependencies": [
+            "T004"
+          ],
           "module": "profile",
           "designRef": "§3.5 update_user_profile",
           "testCriteria": "写入后读取一致",
-          "estimatedHours": 0.5
+          "estimatedHours": 0.5,
+          "files": ["extension/sidepanel/profile.js"]
         },
         {
           "id": "T092",
@@ -619,11 +810,14 @@
           "description": "读取画像的第一行（最多 100 字），用于 Session Context L1 注入",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T090"],
+          "dependencies": [
+            "T090"
+          ],
           "module": "profile",
           "designRef": "§6.2 Layer 1 — getProfileOneLiner",
           "testCriteria": "返回第一行内容且不超过 100 字",
-          "estimatedHours": 0.5
+          "estimatedHours": 0.5,
+          "files": ["extension/sidepanel/profile.js"]
         }
       ]
     },
@@ -638,11 +832,14 @@
           "description": "定义 GET_PAGE_STRUCTURE_TOOL、GREP_TOOL、APPLY_STYLES_TOOL、GET_USER_PROFILE_TOOL、UPDATE_USER_PROFILE_TOOL、LOAD_SKILL_TOOL、SAVE_STYLE_SKILL_TOOL、LIST_STYLE_SKILLS_TOOL、DELETE_STYLE_SKILL_TOOL、TODO_WRITE_TOOL、TASK_TOOL 的 JSON Schema",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T004"],
+          "dependencies": [
+            "T004"
+          ],
           "module": "tools",
           "designRef": "§3.1-3.9 各工具定义",
           "testCriteria": "所有 Tool Schema 格式正确，name/description/input_schema 完整",
-          "estimatedHours": 2
+          "estimatedHours": 2,
+          "files": ["extension/sidepanel/tools.js"]
         },
         {
           "id": "T101",
@@ -650,11 +847,14 @@
           "description": "lockedTabId 变量，getTargetTabId() 优先返回锁定 ID，lockTab/unlockTab 控制锁。getTargetDomain() 通过 Content Script 获取域名",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T004"],
+          "dependencies": [
+            "T004"
+          ],
           "module": "tools",
           "designRef": "§2.5 多 Tab 场景处理",
           "testCriteria": "锁定后切换 Tab 不影响通信目标，解锁后获取新的活跃 Tab",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/sidepanel/tools.js"]
         },
         {
           "id": "T102",
@@ -662,11 +862,14 @@
           "description": "sendToContentScript(message): 通过 chrome.tabs.sendMessage 发送到锁定的 Tab，Promise 包装，处理 chrome.runtime.lastError",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T101"],
+          "dependencies": [
+            "T101"
+          ],
           "module": "tools",
           "designRef": "§10.3 sendToContentScript",
           "testCriteria": "消息正确发送到目标 Tab，Content Script 不可用时抛出明确错误",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/sidepanel/tools.js"]
         },
         {
           "id": "T103",
@@ -674,11 +877,16 @@
           "description": "runApplyStyles(css, mode): save 模式调 inject_css + mergeCSS + 写 stylesKey + persistKey。rollback_last 调 rollback_css + 同步存储。rollback_all 清空。调用 updateStylesSummary",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T072", "T085", "T102"],
+          "dependencies": [
+            "T072",
+            "T085",
+            "T102"
+          ],
           "module": "tools",
           "designRef": "§3.3.2 Side Panel 端：工具执行 + 持久化",
           "testCriteria": "save 后 storage 有合并后 CSS，rollback_last 移除最后一条，rollback_all 清空",
-          "estimatedHours": 2
+          "estimatedHours": 2,
+          "files": ["extension/sidepanel/tools.js"]
         },
         {
           "id": "T104",
@@ -686,11 +894,14 @@
           "description": "runLoadSkill(skillName): 内置技能通过 chrome.runtime.getURL + fetch 加载静态 .md 文件。用户技能通过 StyleSkillStore.load。未知名称返回可用列表",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T023"],
+          "dependencies": [
+            "T023"
+          ],
           "module": "tools",
           "designRef": "§3.6 load_skill",
           "testCriteria": "加载内置技能返回 markdown 内容，加载用户技能返回存储内容，未知名称返回提示",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/sidepanel/tools.js"]
         },
         {
           "id": "T105",
@@ -698,11 +909,14 @@
           "description": "runSaveStyleSkill(name, mood, skillContent): 生成 8 位 UUID，组装 header，调用 StyleSkillStore.save",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T023"],
+          "dependencies": [
+            "T023"
+          ],
           "module": "tools",
           "designRef": "§3.7 save_style_skill",
           "testCriteria": "保存后通过 list 可见，load 返回完整内容，返回消息包含 id",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/sidepanel/tools.js"]
         },
         {
           "id": "T106",
@@ -710,11 +924,14 @@
           "description": "runListStyleSkills: 调用 StyleSkillStore.list 格式化输出。runDeleteStyleSkill: 检查存在性后调用 StyleSkillStore.remove",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T023"],
+          "dependencies": [
+            "T023"
+          ],
           "module": "tools",
           "designRef": "§3.8-3.9 list/delete_style_skill",
           "testCriteria": "空列表返回提示，非空返回格式化列表，删除不存在的 id 返回错误提示",
-          "estimatedHours": 0.5
+          "estimatedHours": 0.5,
+          "files": ["extension/sidepanel/tools.js"]
         },
         {
           "id": "T107",
@@ -722,11 +939,20 @@
           "description": "executeTool(name, args): switch 分派所有工具，Content Script 工具走 sendToContentScript，本地工具直接调用。未知工具返回错误提示",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T102", "T103", "T104", "T105", "T106", "T090", "T091"],
+          "dependencies": [
+            "T102",
+            "T103",
+            "T104",
+            "T105",
+            "T106",
+            "T090",
+            "T091"
+          ],
           "module": "tools",
           "designRef": "§10.2 工具执行器",
           "testCriteria": "每个工具名正确路由到对应实现函数",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/sidepanel/tools.js"]
         }
       ]
     },
@@ -741,11 +967,14 @@
           "description": "定义系统提示词常量（身份、工作方式、CSS 生成规则、风格技能指引），组装 BASE_TOOLS 和 ALL_TOOLS(含 TASK_TOOL) 数组",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T100"],
+          "dependencies": [
+            "T100"
+          ],
           "module": "agent-loop",
           "designRef": "§10.4 主循环 — SYSTEM_BASE",
           "testCriteria": "SYSTEM_BASE 包含所有关键指引，ALL_TOOLS 包含所有工具定义",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/sidepanel/agent-loop.js"]
         },
         {
           "id": "T111",
@@ -753,11 +982,14 @@
           "description": "buildSessionContext(domain, sessionMeta, profileHint): 拼接 [会话上下文] 块，包含域名、会话标题、已应用样式摘要、用户偏好一行提示",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T092"],
+          "dependencies": [
+            "T092"
+          ],
           "module": "agent-loop",
           "designRef": "§6.2 Layer 1 — Session Context 注入",
           "testCriteria": "输出包含域名和会话标题，有摘要时包含样式信息，有画像时包含偏好提示",
-          "estimatedHours": 0.5
+          "estimatedHours": 0.5,
+          "files": ["extension/sidepanel/agent-loop.js"]
         },
         {
           "id": "T112",
@@ -765,11 +997,14 @@
           "description": "checkAndCompressHistory: 基于 lastInputTokens 和 TOKEN_BUDGET(50000) 判断是否压缩。findTurnBoundary: 保留最近 10 轮。summarizeOldTurns: 独立 LLM 调用生成摘要，替换旧历史为 [之前的对话摘要]",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T063"],
+          "dependencies": [
+            "T063"
+          ],
           "module": "agent-loop",
           "designRef": "§6.3 Layer 2 — 对话历史与 Token 预算控制",
           "testCriteria": "未超预算不压缩，超预算后保留最近 10 轮+摘要，摘要生成调用正确",
-          "estimatedHours": 2
+          "estimatedHours": 2,
+          "files": ["extension/sidepanel/agent-loop.js"]
         },
         {
           "id": "T113",
@@ -777,11 +1012,14 @@
           "description": "isRestrictedPage(url): 正则匹配 chrome:// 等受限 URL。checkPageAccess(tabId): 尝试发送 get_domain 消息，不可达返回失败原因",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T102"],
+          "dependencies": [
+            "T102"
+          ],
           "module": "agent-loop",
           "designRef": "§11.2 受限页面预检测",
           "testCriteria": "chrome:// 页面返回 ok: false，正常页面返回 ok: true + domain",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/sidepanel/agent-loop.js"]
         },
         {
           "id": "T114",
@@ -789,11 +1027,14 @@
           "description": "定义 StyleGenerator 子智能体配置：description、tools 列表、prompt 模板",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T100"],
+          "dependencies": [
+            "T100"
+          ],
           "module": "agent-loop",
           "designRef": "§4.1 Agent Types 注册表",
           "testCriteria": "AGENT_TYPES.StyleGenerator 包含完整的 description/tools/prompt",
-          "estimatedHours": 0.5
+          "estimatedHours": 0.5,
+          "files": ["extension/sidepanel/agent-loop.js"]
         },
         {
           "id": "T115",
@@ -801,11 +1042,16 @@
           "description": "runTask(description, prompt, agentType): 构建独立 system/tools/messages，在 SUB_MAX_ITERATIONS=10 内执行 tool-use 循环，返回最终文本摘要",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T063", "T107", "T114"],
+          "dependencies": [
+            "T063",
+            "T107",
+            "T114"
+          ],
           "module": "agent-loop",
           "designRef": "§4.3 Subagent 执行",
           "testCriteria": "子智能体能独立完成工具调用循环并返回摘要，达到上限时返回提示",
-          "estimatedHours": 2
+          "estimatedHours": 2,
+          "files": ["extension/sidepanel/agent-loop.js"]
         },
         {
           "id": "T116",
@@ -813,11 +1059,21 @@
           "description": "agentLoop(prompt, uiCallbacks): 完整流程包括——并发保护(isAgentRunning)、Tab 锁定、域名获取、会话加载/创建、system prompt 构建(L0+L1)、流式 API 循环(MAX_ITERATIONS=20)、工具执行、取消支持(AbortController)、历史持久化、自动标题",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T064", "T080", "T082", "T107", "T110", "T111", "T112", "T113"],
+          "dependencies": [
+            "T064",
+            "T080",
+            "T082",
+            "T107",
+            "T110",
+            "T111",
+            "T112",
+            "T113"
+          ],
           "module": "agent-loop",
           "designRef": "§10.4 主循环",
           "testCriteria": "完整对话循环可执行：发送消息→流式回复→工具调用→结果返回→历史保存",
-          "estimatedHours": 3
+          "estimatedHours": 6,
+          "files": ["extension/sidepanel/agent-loop.js"]
         },
         {
           "id": "T117",
@@ -825,11 +1081,29 @@
           "description": "cancelAgentLoop(): 调用 AbortController.abort()，重置 isAgentRunning，解锁 Tab",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T116"],
+          "dependencies": [
+            "T116"
+          ],
           "module": "agent-loop",
           "designRef": "§10.4 cancelAgentLoop",
           "testCriteria": "调用后 API 请求中断，状态正确重置",
-          "estimatedHours": 0.5
+          "estimatedHours": 0.5,
+          "files": ["extension/sidepanel/agent-loop.js"]
+        },
+        {
+          "id": "T118",
+          "title": "实现工具调用失败重试和循环检测",
+          "description": "实现工具调用失败重试逻辑（最多 2 次）和同一工具连续调用检测（连续 3 次相同工具+参数视为死循环，强制中断）。记录工具调用历史用于检测",
+          "status": "pending",
+          "priority": "high",
+          "dependencies": [
+            "T116"
+          ],
+          "module": "agent-loop",
+          "designRef": "§11.4 死循环保护",
+          "testCriteria": "工具失败后自动重试，连续 3 次相同调用时中断并提示",
+          "estimatedHours": 2,
+          "files": ["extension/sidepanel/agent-loop.js"]
         }
       ]
     },
@@ -844,11 +1118,14 @@
           "description": "CSS 变量（颜色、间距、字体）、Side Panel 整体布局（360-420px 单列纵向流）、基础组件样式（按钮、输入框、卡片）、暗色/亮色主题变量",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T004"],
+          "dependencies": [
+            "T004"
+          ],
           "module": "ui",
           "designRef": "§16.1 设计约束",
           "testCriteria": "CSS 变量定义完整，布局在 360-420px 宽度下正确显示",
-          "estimatedHours": 2
+          "estimatedHours": 2,
+          "files": ["extension/sidepanel/panel.css"]
         },
         {
           "id": "T121",
@@ -856,11 +1133,16 @@
           "description": "检测无 API Key 时展示引导页：Logo + 标语 + API Key 输入框 + API 地址输入框(可选) + 开始按钮 + 教程链接。保存后验证连接，成功则切换到主界面",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T120", "T060", "T062"],
+          "dependencies": [
+            "T120",
+            "T065",
+            "T062"
+          ],
           "module": "ui",
           "designRef": "§16.7 首次引导页 / §9.4 首次使用引导",
           "testCriteria": "无 Key 时自动展示引导页，输入有效 Key 后跳转主界面，无效 Key 显示错误",
-          "estimatedHours": 2
+          "estimatedHours": 2,
+          "files": ["extension/sidepanel/panel.js", "extension/sidepanel/index.html", "extension/sidepanel/panel.css"]
         },
         {
           "id": "T122",
@@ -868,11 +1150,14 @@
           "description": "状态指示灯（绿/黄/红/灰）+ 域名 + 会话标题 + 下拉箭头 + 设置图标。状态灯支持呼吸脉动动画（处理中）",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T120"],
+          "dependencies": [
+            "T120"
+          ],
           "module": "ui",
           "designRef": "§16.3 ① 顶栏",
           "testCriteria": "四种状态灯颜色切换正确，域名和会话标题显示，黄色状态有脉动动画",
-          "estimatedHours": 1.5
+          "estimatedHours": 1.5,
+          "files": ["extension/sidepanel/panel.js", "extension/sidepanel/panel.css"]
         },
         {
           "id": "T123",
@@ -880,11 +1165,15 @@
           "description": "横向滚动 chip 列表：内置技能（实心 chip）在前，用户技能（描边 chip + 来源域名小标签）在后。点击自动填入并发送。空状态显示 '+ 从当前风格创建'。可折叠",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T120", "T023"],
+          "dependencies": [
+            "T120",
+            "T023"
+          ],
           "module": "ui",
           "designRef": "§16.3 ② 风格技能快捷区",
           "testCriteria": "chip 列表横向滚动，点击触发消息发送，内置和用户技能视觉区分",
-          "estimatedHours": 2
+          "estimatedHours": 2,
+          "files": ["extension/sidepanel/panel.js", "extension/sidepanel/panel.css"]
         },
         {
           "id": "T124",
@@ -892,11 +1181,14 @@
           "description": "用户消息右对齐气泡样式，简洁色调",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T120"],
+          "dependencies": [
+            "T120"
+          ],
           "module": "ui",
           "designRef": "§16.3 ③ 对话区 — 用户消息",
           "testCriteria": "用户消息右对齐，气泡样式美观，文字换行正常",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/sidepanel/panel.js", "extension/sidepanel/panel.css"]
         },
         {
           "id": "T125",
@@ -904,11 +1196,14 @@
           "description": "左对齐文本区域，支持流式逐字追加（打字机效果），支持基础 markdown 渲染（加粗、代码块等）",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T120"],
+          "dependencies": [
+            "T120"
+          ],
           "module": "ui",
           "designRef": "§16.3 ③ 对话区 — Agent 文本回复",
           "testCriteria": "文本逐字出现，光标/打字机效果流畅，长文本自动滚动到底部",
-          "estimatedHours": 2
+          "estimatedHours": 2,
+          "files": ["extension/sidepanel/panel.js", "extension/sidepanel/panel.css"]
         },
         {
           "id": "T126",
@@ -916,11 +1211,14 @@
           "description": "可交互折叠卡片：处理中 '🔧 工具名 ◌ 进行中'，完成后 '✅ 工具名 ▸'。点击展开显示输入/输出详情。连续工具调用聚合为卡片组",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T120"],
+          "dependencies": [
+            "T120"
+          ],
           "module": "ui",
           "designRef": "§16.3 ③ 对话区 — 工具调用卡片",
           "testCriteria": "处理中/完成态切换正确，展开/折叠交互流畅，连续工具聚合显示",
-          "estimatedHours": 2.5
+          "estimatedHours": 2.5,
+          "files": ["extension/sidepanel/panel.js", "extension/sidepanel/panel.css"]
         },
         {
           "id": "T127",
@@ -928,11 +1226,15 @@
           "description": "Agent 轮次结束后若有 apply_styles(save)，在输入框上方淡入确认/撤销按钮。单次：[✓确认] [↶撤销]。多次：[✓全部确认] [↶撤销最后一步▾]（展开可选全部撤销）。60s 超时自动淡出",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T120", "T103"],
+          "dependencies": [
+            "T120",
+            "T103"
+          ],
           "module": "ui",
           "designRef": "§16.3 ④ 操作确认浮层",
           "testCriteria": "浮层正确显示/隐藏，确认/撤销触发正确操作，超时自动消失",
-          "estimatedHours": 2
+          "estimatedHours": 2,
+          "files": ["extension/sidepanel/panel.js", "extension/sidepanel/panel.css"]
         },
         {
           "id": "T128",
@@ -940,11 +1242,14 @@
           "description": "空闲态：输入框 + ➤ 发送按钮。处理中：禁用输入 + '正在处理中...' + ■ 停止按钮。受限页面：整体置灰 + '此页面不支持样式修改'",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T120"],
+          "dependencies": [
+            "T120"
+          ],
           "module": "ui",
           "designRef": "§16.3 ⑤ 输入区",
           "testCriteria": "三种状态切换正确，发送按钮/停止按钮功能正常，Enter 键发送",
-          "estimatedHours": 1.5
+          "estimatedHours": 1.5,
+          "files": ["extension/sidepanel/panel.js", "extension/sidepanel/panel.css"]
         },
         {
           "id": "T129",
@@ -952,11 +1257,16 @@
           "description": "点击顶栏标题展开：当前域名会话列表（标题+日期+预览），当前会话高亮，hover 显示删除图标，新建会话按钮。删除二次确认弹窗（最后会话额外提示清除永久样式）",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T122", "T080", "T083"],
+          "dependencies": [
+            "T122",
+            "T080",
+            "T083"
+          ],
           "module": "ui",
           "designRef": "§16.4 会话下拉面板",
           "testCriteria": "会话列表正确展示，切换/新建/删除操作正确，最后会话删除提示清除样式",
-          "estimatedHours": 2.5
+          "estimatedHours": 2.5,
+          "files": ["extension/sidepanel/panel.js", "extension/sidepanel/panel.css"]
         },
         {
           "id": "T130",
@@ -964,11 +1274,18 @@
           "description": "返回按钮 + API Key 输入（密码遮罩）+ API 地址 + 验证连接按钮 + 模型选择下拉 + 存储用量进度条 + 清理历史数据按钮 + 版本号",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T120", "T060", "T061", "T062", "T026"],
+          "dependencies": [
+            "T120",
+            "T060",
+            "T061",
+            "T062",
+            "T026"
+          ],
           "module": "ui",
           "designRef": "§16.6 设置页",
           "testCriteria": "所有设置项可读写，连接验证反馈正确，存储用量显示正确，清理功能工作",
-          "estimatedHours": 2.5
+          "estimatedHours": 2.5,
+          "files": ["extension/sidepanel/panel.js", "extension/sidepanel/panel.css"]
         },
         {
           "id": "T131",
@@ -976,11 +1293,14 @@
           "description": "顶栏下方可关闭的错误横幅：显示错误信息 + 操作按钮（如 '去设置→'）。支持 API_KEY_INVALID / NETWORK_ERROR / API_ERROR 等错误类型",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T122"],
+          "dependencies": [
+            "T122"
+          ],
           "module": "ui",
           "designRef": "§16.5 错误横幅",
           "testCriteria": "错误横幅正确显示，关闭按钮可用，操作按钮跳转正确",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/sidepanel/panel.js", "extension/sidepanel/panel.css"]
         },
         {
           "id": "T132",
@@ -988,11 +1308,32 @@
           "description": "统一的状态管理：就绪/处理中/有样式/API Key 缺失/无效/网络错误/受限页面 等状态下，顶栏/对话区/输入区/技能区的联动行为。参照状态联动表实现",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T122", "T123", "T128", "T131"],
+          "dependencies": [
+            "T122",
+            "T123",
+            "T128",
+            "T131"
+          ],
           "module": "ui",
           "designRef": "§16.5 全局状态联动",
           "testCriteria": "各状态下所有区域表现正确，状态切换无遗漏",
-          "estimatedHours": 2
+          "estimatedHours": 2,
+          "files": ["extension/sidepanel/panel.js"]
+        },
+        {
+          "id": "T133",
+          "title": "实现状态管理器",
+          "description": "实现简单的状态管理器（AppState 类或对象），集中管理全局状态：agentStatus(idle/running/error)、apiKeyStatus(valid/invalid/missing)、pageStatus(ready/restricted)、currentDomain、currentSession。提供 setState 和 subscribe 方法，状态变化时通知 UI 更新",
+          "status": "pending",
+          "priority": "high",
+          "dependencies": [
+            "T004"
+          ],
+          "module": "ui",
+          "designRef": "§16.5 状态管理",
+          "testCriteria": "状态变化时所有订阅者收到通知，UI 正确更新",
+          "estimatedHours": 2,
+          "files": ["extension/sidepanel/panel.js"]
         }
       ]
     },
@@ -1007,11 +1348,18 @@
           "description": "输入框 Enter/点击发送 → 添加用户消息气泡 → 切换为处理中状态 → 调用 agentLoop(prompt, uiCallbacks) → uiCallbacks 驱动流式文本/工具卡片渲染 → 完成后恢复就绪",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T116", "T124", "T125", "T126", "T128"],
+          "dependencies": [
+            "T116",
+            "T124",
+            "T125",
+            "T126",
+            "T128"
+          ],
           "module": "ui-integration",
           "designRef": "§16.8 UI 交互流程串联",
           "testCriteria": "完整发送→回复流程工作，状态切换正确，流式输出流畅",
-          "estimatedHours": 2
+          "estimatedHours": 4,
+          "files": ["extension/sidepanel/panel.js"]
         },
         {
           "id": "T141",
@@ -1019,11 +1367,15 @@
           "description": "处理中点击停止按钮 → cancelAgentLoop() → UI 恢复就绪态 → 已应用样式保留",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T117", "T128"],
+          "dependencies": [
+            "T117",
+            "T128"
+          ],
           "module": "ui-integration",
           "designRef": "§10.4 cancelAgentLoop / §16.3 取消操作",
           "testCriteria": "取消后 API 请求中断，UI 正确恢复，已注入样式不受影响",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/sidepanel/panel.js"]
         },
         {
           "id": "T142",
@@ -1031,23 +1383,32 @@
           "description": "Agent 轮次结束后检测是否有 apply_styles(save) → 显示浮层 → 确认/撤销/超时处理 → 撤销时自动发送 rollback 消息",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T127", "T140"],
+          "dependencies": [
+            "T127",
+            "T140"
+          ],
           "module": "ui-integration",
           "designRef": "§16.3 ④ 操作确认浮层",
           "testCriteria": "浮层在正确时机出现，各交互按钮功能正常",
-          "estimatedHours": 1.5
+          "estimatedHours": 1.5,
+          "files": ["extension/sidepanel/panel.js"]
         },
         {
           "id": "T143",
           "title": "实现会话切换与恢复",
-          "description": "切换会话 → 卸载当前样式(移除 <style>) → 加载目标会话历史(IndexedDB) → 注入目标会话样式 → 更新 UI 对话区 → 替换 SessionContext",
+          "description": "切换会话 → 卸载当前会话样式(移除 activeStyleEl) → 加载目标会话历史(IndexedDB) → 注入目标会话样式(从 stylesKey 读取) → 更新 UI 对话区 → 替换 SessionContext。注意：永久样式(persistKey)是域名级别共享，不随会话切换变化",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T129", "T082", "T103"],
+          "dependencies": [
+            "T129",
+            "T082",
+            "T103"
+          ],
           "module": "ui-integration",
           "designRef": "§8.2 会话生命周期 — 切换会话",
-          "testCriteria": "切换后对话历史正确恢复，样式正确切换，页面无残留样式",
-          "estimatedHours": 2
+          "testCriteria": "切换后对话历史正确恢复，会话样式正确切换，永久样式保持不变，页面无残留样式",
+          "estimatedHours": 4,
+          "files": ["extension/sidepanel/panel.js"]
         },
         {
           "id": "T144",
@@ -1055,23 +1416,35 @@
           "description": "点击 chip → 自动填入 '应用 [技能名] 风格' → 自动发送消息。用户技能长按弹出菜单（应用/查看详情/删除）",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T123", "T140"],
+          "dependencies": [
+            "T123",
+            "T140"
+          ],
           "module": "ui-integration",
           "designRef": "§16.3 ② 点击/长按行为",
           "testCriteria": "点击 chip 消息正确发送，长按菜单功能正常",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/sidepanel/panel.js"]
         },
         {
           "id": "T145",
           "title": "实现 Side Panel 初始化流程",
-          "description": "Side Panel 打开 → checkAndMigrateStorage → 检测 API Key → 无 Key 展示引导页 / 有 Key 进入主界面 → 获取域名 → 加载会话 → 加载技能 chip → 后台执行 cleanupStorage",
+          "description": "Side Panel 打开 → checkAndMigrateStorage → 检测 API Key(checkFirstRun) → 无 Key 展示引导页 / 有 Key 进入主界面 → 获取域名 → 加载会话 → 加载技能 chip → 后台执行 cleanupStorage",
           "status": "pending",
           "priority": "high",
-          "dependencies": ["T024", "T060", "T080", "T123", "T025", "T121"],
+          "dependencies": [
+            "T024",
+            "T065",
+            "T080",
+            "T123",
+            "T025",
+            "T121"
+          ],
           "module": "ui-integration",
           "designRef": "§16.8 完整使用流程 / §7.5 清理触发时机",
           "testCriteria": "首次打开走引导流程，后续打开直接进入主界面并恢复会话",
-          "estimatedHours": 2
+          "estimatedHours": 2,
+          "files": ["extension/sidepanel/panel.js"]
         }
       ]
     },
@@ -1086,11 +1459,14 @@
           "description": "对比度、层级、留白等视觉设计核心原则，LLM 可参考的领域知识",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T001"],
+          "dependencies": [
+            "T001"
+          ],
           "module": "skills",
           "designRef": "§3.6 SKILL_PATHS — design-principles",
           "testCriteria": "文件存在，内容涵盖核心设计原则，load_skill 可正确加载",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/skills/design-principles.md"]
         },
         {
           "id": "T151",
@@ -1098,11 +1474,14 @@
           "description": "色彩理论基础、常用配色方案、对比度标准、色彩心理学",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T001"],
+          "dependencies": [
+            "T001"
+          ],
           "module": "skills",
           "designRef": "§3.6 SKILL_PATHS — color-theory",
           "testCriteria": "文件存在，内容涵盖实用配色知识",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/skills/color-theory.md"]
         },
         {
           "id": "T152",
@@ -1110,11 +1489,14 @@
           "description": "选择器最佳实践、特异性规则、常见网站 DOM 结构模式",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T001"],
+          "dependencies": [
+            "T001"
+          ],
           "module": "skills",
           "designRef": "§3.6 SKILL_PATHS — css-selectors",
           "testCriteria": "文件存在，内容实用，对 LLM 生成 CSS 有指导价值",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/skills/css-selectors-guide.md"]
         },
         {
           "id": "T153",
@@ -1122,11 +1504,14 @@
           "description": "深色模式 CSS 模板：背景/文字/边框/阴影配色方案，关键选择器模式",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T001"],
+          "dependencies": [
+            "T001"
+          ],
           "module": "skills",
           "designRef": "§3.6 SKILL_PATHS — dark-mode-template",
           "testCriteria": "文件存在，模板完整可用",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/skills/style-templates/dark-mode.md"]
         },
         {
           "id": "T154",
@@ -1134,11 +1519,14 @@
           "description": "极简风格 CSS 模板：大留白、简洁排版、克制配色",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T001"],
+          "dependencies": [
+            "T001"
+          ],
           "module": "skills",
           "designRef": "§3.6 SKILL_PATHS — minimal-template",
           "testCriteria": "文件存在，模板完整可用",
-          "estimatedHours": 1
+          "estimatedHours": 1,
+          "files": ["extension/skills/style-templates/minimal.md"]
         }
       ]
     },
@@ -1153,11 +1541,14 @@
           "description": "安装配置 Vitest，mock chrome.storage.local API、indexedDB API、DOM API。设置测试脚本",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T004"],
+          "dependencies": [
+            "T004"
+          ],
           "module": "testing",
           "designRef": "§14.1 单元测试",
           "testCriteria": "vitest 可正常运行，mock API 可用",
-          "estimatedHours": 2
+          "estimatedHours": 2,
+          "files": ["package.json", "vitest.config.js", "tests/setup.js"]
         },
         {
           "id": "T161",
@@ -1165,11 +1556,15 @@
           "description": "覆盖：同选择器同属性覆盖、不同选择器合并、@media 规则保留、嵌套花括号解析、空输入处理、serializeRules 格式正确",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T160", "T072"],
+          "dependencies": [
+            "T160",
+            "T072"
+          ],
           "module": "testing",
           "designRef": "§14.1 示例：mergeCSS 单元测试",
           "testCriteria": "所有测试用例通过",
-          "estimatedHours": 2
+          "estimatedHours": 2,
+          "files": ["tests/css-merge.test.js"]
         },
         {
           "id": "T162",
@@ -1177,11 +1572,15 @@
           "description": "覆盖：shortSelector、getDirectText、sameSignature、groupSimilar、summarizeChildren、formatTree/formatTreeNode/formatNodeDecoration、estimateTokens、elementSignature（mock DOM）",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T160", "T045"],
+          "dependencies": [
+            "T160",
+            "T045"
+          ],
           "module": "testing",
           "designRef": "§14.1 可单测的模块 — content.js",
           "testCriteria": "所有测试用例通过",
-          "estimatedHours": 3
+          "estimatedHours": 3,
+          "files": ["tests/content.test.js"]
         },
         {
           "id": "T163",
@@ -1189,11 +1588,15 @@
           "description": "覆盖：各 getter 返回正确 key 格式",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T160", "T022"],
+          "dependencies": [
+            "T160",
+            "T022"
+          ],
           "module": "testing",
           "designRef": "§14.1 session.js",
           "testCriteria": "所有 key 格式断言通过",
-          "estimatedHours": 0.5
+          "estimatedHours": 0.5,
+          "files": ["tests/session.test.js"]
         },
         {
           "id": "T164",
@@ -1201,11 +1604,15 @@
           "description": "覆盖：save/list/load/remove CRUD 操作，mock chrome.storage.local",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T160", "T023"],
+          "dependencies": [
+            "T160",
+            "T023"
+          ],
           "module": "testing",
           "designRef": "§14.1 style-skill.js",
           "testCriteria": "CRUD 操作全部通过",
-          "estimatedHours": 1.5
+          "estimatedHours": 1.5,
+          "files": ["tests/style-skill.test.js"]
         },
         {
           "id": "T165",
@@ -1213,11 +1620,15 @@
           "description": "覆盖：findTurnBoundary 正确找到分割点、checkAndCompressHistory 预算判断（mock LLM）",
           "status": "pending",
           "priority": "medium",
-          "dependencies": ["T160", "T112"],
+          "dependencies": [
+            "T160",
+            "T112"
+          ],
           "module": "testing",
           "designRef": "§14.1 agent-loop.js",
           "testCriteria": "历史压缩逻辑正确",
-          "estimatedHours": 1.5
+          "estimatedHours": 1.5,
+          "files": ["tests/agent-loop.test.js"]
         },
         {
           "id": "T166",
@@ -1225,11 +1636,14 @@
           "description": "配置 Puppeteer 加载未打包扩展模式，编写基础 helper 函数（打开 Side Panel、等待元素、截图）",
           "status": "pending",
           "priority": "low",
-          "dependencies": ["T160"],
+          "dependencies": [
+            "T160"
+          ],
           "module": "testing",
           "designRef": "§14.2 集成测试",
           "testCriteria": "Puppeteer 能加载扩展并打开 Side Panel",
-          "estimatedHours": 3
+          "estimatedHours": 3,
+          "files": ["tests/integration/setup.js", "tests/integration/helpers.js"]
         },
         {
           "id": "T167",
@@ -1237,39 +1651,44 @@
           "description": "覆盖：Side Panel ↔ Content Script 通信（get_domain/get_page_structure/grep/inject_css/rollback_css）、chrome.storage CRUD、永久样式注入验证",
           "status": "pending",
           "priority": "low",
-          "dependencies": ["T166", "T053", "T030"],
+          "dependencies": [
+            "T166",
+            "T053",
+            "T030"
+          ],
           "module": "testing",
           "designRef": "§14.2 集成测试覆盖",
           "testCriteria": "所有集成测试用例通过",
-          "estimatedHours": 4
+          "estimatedHours": 8,
+          "files": ["tests/integration/core-flow.test.js"]
         }
       ]
     }
   ],
   "summary": {
     "totalPhases": 15,
-    "totalTasks": 68,
-    "estimatedTotalHours": 120,
+    "totalTasks": 99,
+    "estimatedTotalHours": 144.0,
     "tasksByStatus": {
-      "pending": 68,
+      "pending": 99,
       "in_progress": 0,
       "completed": 0,
       "blocked": 0,
       "testing": 0
     },
     "tasksByPriority": {
-      "high": 32,
-      "medium": 30,
+      "high": 50,
+      "medium": 43,
       "low": 6
     },
     "criticalPath": [
       "T001 → T002 → T004",
-      "T004 → T060 → T063 → T064",
+      "T004 → T065 → T063 → T064",
       "T004 → T100 → T110",
-      "T040 → T041 → T044 → T046 → T053",
-      "T070 → T071 → T072 → T103",
-      "T064 + T107 + T110 + T111 → T116",
-      "T116 + T124-T128 → T140"
+      "T040 → T041 → T044 → T046 → T053 → T054A",
+      "T070 → T071 → T072 → T074 → T103",
+      "T064 + T107 + T110 + T111 → T116 → T118",
+      "T116 + T124-T128 + T133 → T140"
     ],
     "suggestedOrder": [
       "P1(基础设施) → P2(Service Worker) → P3(存储层) → P4(early-inject)",

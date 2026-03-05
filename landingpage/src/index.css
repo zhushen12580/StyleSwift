@@ -1,0 +1,355 @@
+@import url('https://fonts.googleapis.com/css2?family=SF+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Apple-inspired minimal palette + ASCII terminal colors */
+    --bg-primary: #000000;
+    --bg-secondary: #0a0a0a;
+    --bg-tertiary: #141414;
+    
+    --text-primary: #ffffff;
+    --text-secondary: #86868b;
+    --text-tertiary: #424245;
+    
+    /* ASCII/Terminal accent colors */
+    --ascii-green: #00ff41;
+    --ascii-amber: #ffb000;
+    --ascii-cyan: #00ffff;
+    --ascii-magenta: #ff00ff;
+    
+    /* Dot matrix dots */
+    --dot-color: rgba(255, 255, 255, 0.15);
+    --dot-active: rgba(255, 255, 255, 0.6);
+    
+    --border-color: rgba(255, 255, 255, 0.08);
+    --grid-line: rgba(255, 255, 255, 0.03);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-[var(--border-color)];
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply bg-black text-white antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    letter-spacing: -0.01em;
+  }
+  
+  /* ASCII/Monospace for code elements */
+  code, pre, .font-mono {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+  }
+}
+
+/* === ASCII ART STYLE === */
+
+/* Terminal cursor blink */
+@keyframes cursor-blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.cursor-blink::after {
+  content: '_';
+  animation: cursor-blink 1s step-end infinite;
+  color: var(--ascii-green);
+}
+
+/* ASCII grid background */
+.ascii-grid {
+  background-image: 
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Terminal scanline effect */
+.scanlines::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* === DOT MATRIX STYLE === */
+
+/* Dot matrix pattern */
+.dot-matrix {
+  background-image: radial-gradient(circle, var(--dot-color) 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+
+.dot-matrix-dense {
+  background-image: radial-gradient(circle, var(--dot-color) 0.5px, transparent 0.5px);
+  background-size: 4px 4px;
+}
+
+/* Active dots animation */
+@keyframes dot-flicker {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.6; }
+}
+
+.dot-flicker {
+  animation: dot-flicker 2s ease-in-out infinite;
+}
+
+/* === APPLE MINIMAL STYLE === */
+
+/* Ultra-clean typography */
+.text-display {
+  font-size: clamp(3rem, 8vw, 6rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.text-headline {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.text-title {
+  font-size: clamp(1.25rem, 2vw, 1.5rem);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.text-body {
+  font-size: 1.0625rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.text-caption {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+/* Minimal buttons */
+.btn-minimal {
+  @apply inline-flex items-center justify-center px-8 py-4 rounded-full text-sm font-medium transition-all duration-300;
+  background: white;
+  color: black;
+}
+
+.btn-minimal:hover {
+  transform: scale(1.02);
+  box-shadow: 0 0 40px rgba(255, 255, 255, 0.2);
+}
+
+.btn-ghost {
+  @apply inline-flex items-center justify-center px-8 py-4 rounded-full text-sm font-medium transition-all duration-300;
+  background: transparent;
+  color: white;
+  border: 1px solid var(--border-color);
+}
+
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* ASCII Terminal Button */
+.btn-terminal {
+  @apply inline-flex items-center justify-center px-6 py-3 font-mono text-sm transition-all duration-200;
+  background: var(--bg-tertiary);
+  color: var(--ascii-green);
+  border: 1px solid var(--ascii-green);
+  box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+}
+
+.btn-terminal:hover {
+  background: rgba(0, 255, 65, 0.1);
+  box-shadow: 0 0 20px rgba(0, 255, 65, 0.4);
+}
+
+/* === GLASS MORPHISM (Apple style) === */
+.glass {
+  background: rgba(20, 20, 20, 0.6);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+.glass-light {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+/* === ASCII DECORATIONS === */
+
+/* Bracket decorations */
+.bracket::before {
+  content: '[';
+  color: var(--text-tertiary);
+  margin-right: 0.5em;
+}
+
+.bracket::after {
+  content: ']';
+  color: var(--text-tertiary);
+  margin-left: 0.5em;
+}
+
+/* Code block styling */
+.code-block {
+  @apply font-mono text-sm p-6 rounded-lg;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+}
+
+.code-comment { color: var(--text-tertiary); }
+.code-keyword { color: var(--ascii-magenta); }
+.code-string { color: var(--ascii-green); }
+.code-function { color: var(--ascii-cyan); }
+
+/* === SECTION SPACING (Apple style generous whitespace) === */
+.section-padding {
+  @apply py-32 md:py-48 px-6 md:px-12 lg:px-20;
+}
+
+.container-minimal {
+  @apply max-w-6xl mx-auto;
+}
+
+/* === ANIMATIONS === */
+
+/* Smooth fade in */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.8s ease-out forwards;
+}
+
+/* Typewriter effect */
+@keyframes typewriter {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+.typewriter {
+  overflow: hidden;
+  white-space: nowrap;
+  animation: typewriter 2s steps(40) forwards;
+}
+
+/* Dot matrix reveal */
+@keyframes dot-reveal {
+  0% { opacity: 0; transform: scale(0.8); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Glitch effect for ASCII */
+@keyframes glitch {
+  0%, 100% { transform: translate(0); }
+  20% { transform: translate(-2px, 2px); }
+  40% { transform: translate(-2px, -2px); }
+  60% { transform: translate(2px, 2px); }
+  80% { transform: translate(2px, -2px); }
+}
+
+.glitch-hover:hover {
+  animation: glitch 0.3s ease-in-out;
+}
+
+/* === SCROLLBAR (Minimal) === */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--text-tertiary);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* === SELECTION === */
+::selection {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+/* === FOCUS STATES === */
+:focus-visible {
+  outline: 1px solid white;
+  outline-offset: 2px;
+}
+
+/* === UTILITY CLASSES === */
+
+/* ASCII art text shadow */
+.text-ascii-shadow {
+  text-shadow: 
+    0 0 10px rgba(0, 255, 65, 0.5),
+    0 0 20px rgba(0, 255, 65, 0.3),
+    0 0 30px rgba(0, 255, 65, 0.1);
+}
+
+/* Dot border */
+.border-dots {
+  border: 1px dashed var(--border-color);
+}
+
+/* Grid lines */
+.grid-lines {
+  position: relative;
+}
+
+.grid-lines::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+/* Monospace numbers */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
