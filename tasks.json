@@ -104,11 +104,11 @@
       "name": "存储层（Storage）",
       "description": "chrome.storage.local + IndexedDB 双层存储基础设施",
       "tasks": [
-        {
+{
           "id": "T020",
           "title": "实现 IndexedDB 封装（openDB）",
           "description": "实现 openDB() 函数，创建 StyleSwiftDB 数据库和 conversations Object Store。纯 Promise 封装，无外部依赖",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T004"
