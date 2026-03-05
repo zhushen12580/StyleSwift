@@ -138,7 +138,7 @@
           "id": "T022",
           "title": "实现 SessionContext 类",
           "description": "实现 SessionContext 类，包含 domain/sessionId 属性和 stylesKey/metaKey/historyKey/persistKey/sessionIndex 五个 getter，生成正确的 storage key 路径",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T004"

@@ -171,6 +171,83 @@ async function deleteHistory(domain, sessionId) {
 }
 
 // ============================================================================
+// SessionContext 类
+// ============================================================================
+
+/**
+ * 会话上下文类
+ * 
+ * 基于 Chrome Storage key 映射，为每个会话生成标准化的存储 key 路径。
+ * 包含会话相关的元数据 key、样式 key、历史 key 等。
+ * 
+ * @example
+ * const ctx = new SessionContext('github.com', 'abc123');
+ * console.log(ctx.stylesKey);    // 'sessions:github.com:abc123:styles'
+ * console.log(ctx.metaKey);      // 'sessions:github.com:abc123:meta'
+ * console.log(ctx.historyKey);   // 'github.com:abc123'
+ * console.log(ctx.persistKey);   // 'persistent:github.com'
+ * console.log(ctx.sessionIndex); // 'sessions:github.com:index'
+ */
+class SessionContext {
+  /**
+   * 创建会话上下文实例
+   * @param {string} domain - 域名，如 'github.com'
+   * @param {string} sessionId - 会话 ID，如 'abc123-def456'
+   */
+  constructor(domain, sessionId) {
+    this.domain = domain;
+    this.sessionId = sessionId;
+  }
+
+  /**
+   * 获取会话样式的 chrome.storage.local key
+   * @returns {string} 格式: 'sessions:{domain}:{sessionId}:styles'
+   */
+  get stylesKey() {
+    return `sessions:${this.domain}:${this.sessionId}:styles`;
+  }
+
+  /**
+   * 获取会话元数据的 chrome.storage.local key
+   * @returns {string} 格式: 'sessions:{domain}:{sessionId}:meta'
+   */
+  get metaKey() {
+    return `sessions:${this.domain}:${this.sessionId}:meta`;
+  }
+
+  /**
+   * 获取对话历史的 IndexedDB key
+   * @returns {string} 格式: '{domain}:{sessionId}'
+   */
+  get historyKey() {
+    return `${this.domain}:${this.sessionId}`;
+  }
+
+  /**
+   * 获取永久样式的 chrome.storage.local key
+   * @returns {string} 格式: 'persistent:{domain}'
+   */
+  get persistKey() {
+    return `persistent:${this.domain}`;
+  }
+
+  /**
+   * 获取域名会话索引的 chrome.storage.local key
+   * @returns {string} 格式: 'sessions:{domain}:index'
+   */
+  get sessionIndex() {
+    return `sessions:${this.domain}:index`;
+  }
+}
+
+/**
+ * 当前会话的 SessionContext 实例
+ * 在用户打开 Side Panel 或创建新会话时设置
+ * @type {SessionContext|null}
+ */
+let currentSession = null;
+
+// ============================================================================
 // 导出
 // ============================================================================
 
@@ -179,3 +256,6 @@ export { DB_NAME, DB_VERSION, STORE_NAME };
 
 // 导出函数
 export { openDB, closeDB, saveHistory, loadHistory, deleteHistory };
+
+// 导出 SessionContext 类和当前会话变量
+export { SessionContext, currentSession };
