@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StyleSwift</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <!-- 主容器 -->
+  <div id="app">
+    
+    <!-- 引导页：首次使用时显示 -->
+    <section id="onboarding-view" class="view hidden">
+      <div class="onboarding-content">
+        <div class="logo-area">
+          <!-- Logo 占位 -->
+          <div class="logo-icon">S</div>
+          <h1 class="logo-text">StyleSwift</h1>
+          <p class="tagline">用一句话个性化任意网页</p>
+        </div>
+        
+        <div class="setup-form">
+          <div class="form-group">
+            <label for="api-key-input">API Key</label>
+            <input type="password" id="api-key-input" placeholder="sk-ant-..." autocomplete="off">
+            <p class="hint">输入你的 Anthropic API Key</p>
+          </div>
+          
+          <div class="form-group">
+            <label for="api-base-input">API 地址 (可选)</label>
+            <input type="text" id="api-base-input" placeholder="https://api.anthropic.com" autocomplete="off">
+            <p class="hint">默认使用 Anthropic 官方地址</p>
+          </div>
+          
+          <button id="start-btn" class="btn-primary" disabled>开始使用</button>
+          
+          <div id="setup-error" class="error-message hidden"></div>
+          
+          <div class="help-links">
+            <a href="https://console.anthropic.com/" target="_blank">获取 API Key</a>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 主界面 -->
+    <section id="main-view" class="view hidden">
+      
+      <!-- 顶栏 -->
+      <header id="top-bar">
+        <div class="status-indicator" id="status-dot">
+          <span class="dot"></span>
+        </div>
+        <div class="session-info">
+          <span id="current-domain" class="domain">--</span>
+          <span id="session-title" class="title">新会话</span>
+        </div>
+        <div class="top-bar-actions">
+          <button id="session-list-toggle" class="icon-btn" title="会话列表">
+            <span class="icon">▼</span>
+          </button>
+          <button id="settings-btn" class="icon-btn" title="设置">
+            <span class="icon">⚙</span>
+          </button>
+        </div>
+      </header>
+      
+      <!-- 会话列表下拉面板 -->
+      <div id="session-list-panel" class="dropdown-panel hidden">
+        <div class="panel-header">
+          <span>会话历史</span>
+          <button id="new-session-btn" class="text-btn">新会话</button>
+        </div>
+        <div id="session-list" class="session-list">
+          <!-- 动态生成会话项 -->
+        </div>
+      </div>
+      
+      <!-- 聊天区域 -->
+      <main id="chat-area">
+        <div id="messages-container">
+          <!-- 动态生成消息 -->
+        </div>
+        
+        <!-- 样式摘要 -->
+        <div id="styles-summary" class="hidden">
+          <span class="label">已应用样式:</span>
+          <span id="styles-info" class="info"></span>
+        </div>
+      </main>
+      
+      <!-- 输入区域 -->
+      <footer id="input-area">
+        <div class="input-wrapper">
+          <textarea 
+            id="message-input" 
+            placeholder="描述你想要的样式效果..."
+            rows="1"
+          ></textarea>
+          <button id="send-btn" class="btn-send" disabled>
+            <span class="icon">↑</span>
+          </button>
+        </div>
+        <div class="input-hints">
+          <span id="token-count" class="hidden"></span>
+          <button id="rollback-btn" class="text-btn hidden">撤销样式</button>
+        </div>
+      </footer>
+      
+    </section>
+    
+    <!-- 设置页 -->
+    <section id="settings-view" class="view hidden">
+      <header class="settings-header">
+        <button id="settings-back-btn" class="icon-btn">
+          <span class="icon">←</span>
+        </button>
+        <h2>设置</h2>
+      </header>
+      
+      <div class="settings-content">
+        <div class="settings-group">
+          <h3>API 配置</h3>
+          <div class="form-group">
+            <label for="settings-api-key">API Key</label>
+            <div class="input-with-action">
+              <input type="password" id="settings-api-key" placeholder="sk-ant-...">
+              <button id="toggle-key-visibility" class="icon-btn">👁</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="settings-api-base">API 地址</label>
+            <input type="text" id="settings-api-base" placeholder="https://api.anthropic.com">
+          </div>
+          <div class="form-group">
+            <label for="settings-model">模型</label>
+            <select id="settings-model">
+              <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
+              <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
+              <option value="claude-3-opus-20240229">Claude 3 Opus</option>
+            </select>
+          </div>
+          <button id="verify-connection-btn" class="btn-secondary">验证连接</button>
+          <div id="connection-status" class="status-message hidden"></div>
+        </div>
+        
+        <div class="settings-group">
+          <h3>风格技能</h3>
+          <div id="skill-list" class="skill-list">
+            <!-- 动态生成技能列表 -->
+          </div>
+          <p class="hint">保存的风格技能可在任意网站复用</p>
+        </div>
+        
+        <div class="settings-group">
+          <h3>存储</h3>
+          <div class="storage-info">
+            <span>已使用: </span>
+            <span id="storage-usage">-- KB</span>
+          </div>
+          <button id="clear-storage-btn" class="btn-danger">清除所有数据</button>
+        </div>
+        
+        <div class="settings-group">
+          <h3>关于</h3>
+          <p class="about-text">StyleSwift v1.0.0</p>
+          <p class="about-text">用一句话个性化任意网页的视觉样式</p>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 加载状态 -->
+    <div id="loading-overlay" class="overlay hidden">
+      <div class="loading-spinner"></div>
+    </div>
+    
+    <!-- 错误提示 -->
+    <div id="error-toast" class="toast hidden">
+      <span id="error-message"></span>
+      <button id="dismiss-error" class="icon-btn">×</button>
+    </div>
+    
+  </div>
+  
+  <!-- JavaScript 模块 -->
+  <!-- 注意：加载顺序很重要，依赖关系如下：
+       session.js → 依赖无
+       profile.js → 依赖无
+       css-merge.js → 依赖无
+       api.js → 依赖 session.js
+       tools.js → 依赖 api.js, session.js, profile.js, css-merge.js
+       agent-loop.js → 依赖 api.js, tools.js, session.js, profile.js
+       panel.js → 依赖以上所有模块
+  -->
+  <script src="session.js"></script>
+  <script src="profile.js"></script>
+  <script src="css-merge.js"></script>
+  <script src="api.js"></script>
+  <script src="tools.js"></script>
+  <script src="agent-loop.js"></script>
+  <script src="panel.js"></script>
+</body>
+</html>

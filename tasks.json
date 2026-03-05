@@ -64,7 +64,7 @@
           "id": "T004",
           "title": "创建 Side Panel HTML 骨架",
           "description": "创建 sidepanel/index.html，引入 panel.css 和各 JS 模块（panel.js, agent-loop.js, tools.js, css-merge.js, session.js, profile.js, api.js），设置基本 DOM 结构容器",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T001"
