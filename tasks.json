@@ -200,7 +200,7 @@
           "id": "T026",
           "title": "实现存储用量监控（getStorageUsage）",
           "description": "实现 getStorageUsage() 函数，返回 { bytes, maxBytes, percent }，基于 chrome.storage.local.getBytesInUse",
-          "status": "pending",
+          "status": "completed",
           "priority": "low",
           "dependencies": [
             "T004"
@@ -222,7 +222,7 @@
           "id": "T030",
           "title": "实现 early-inject.js 永久样式注入",
           "description": "在 document_start 阶段执行，读取 chrome.storage.local 中 persistent:{domain} 的 CSS，创建 <style id='styleswift-persistent'> 并注入到 document.head（不存在时注入到 document.documentElement）。使用 IIFE 自执行。包含域名获取逻辑（location.hostname）",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T002"
