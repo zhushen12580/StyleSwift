@@ -596,7 +596,7 @@
           "id": "T070",
           "title": "实现 splitTopLevelBlocks",
           "description": "正确处理嵌套花括号（@media, @keyframes 等）的顶层块分割，追踪大括号深度",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T004"
