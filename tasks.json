@@ -611,7 +611,7 @@
           "id": "T071",
           "title": "实现 parseRules",
           "description": "解析 CSS 文本为 Map<selector, Map<prop, val>>。at-rule 整体以 __raw__ 标记保留。普通规则按选择器+属性解析",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T070"

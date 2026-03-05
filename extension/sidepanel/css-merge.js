@@ -69,7 +69,65 @@ function splitTopLevelBlocks(css) {
 }
 
 // ============================================================================
+// CSS 规则解析
+// ============================================================================
+
+/**
+ * 解析 CSS 文本为结构化数据
+ * 
+ * 将 CSS 文本解析为 Map<selector, Map<prop, val>> 结构。
+ * - 普通规则：按选择器+属性解析，属性存储在 Map 中
+ * - at-rule（@media, @keyframes 等）：整体作为一个单元，使用 __raw__ 标记保留原始文本
+ * 
+ * @param {string} css - CSS 文本
+ * @returns {Map<string, Map<string, string>>} 解析后的规则映射
+ * 
+ * @example
+ * // 普通规则
+ * parseRules('.header { color: red; font-size: 14px; }')
+ * // → Map { '.header' => Map { 'color' => 'red', 'font-size' => '14px' } }
+ * 
+ * @example
+ * // @media 规则
+ * parseRules('@media (max-width: 600px) { .header { color: blue; } }')
+ * // → Map { '@media (max-width: 600px)' => Map { '__raw__ => '@media (max-width: 600px) { .header { color: blue; } }' } }
+ */
+function parseRules(css) {
+  const rules = new Map();
+  if (!css?.trim()) return rules;
+
+  const blocks = splitTopLevelBlocks(css);
+
+  for (const block of blocks) {
+    if (block.startsWith('@')) {
+      // at-rule（@media, @keyframes 等）：整体作为一个单元，按 header 去重
+      const headerEnd = block.indexOf('{');
+      if (headerEnd === -1) continue;
+      const header = block.slice(0, headerEnd).trim();
+      rules.set(header, new Map([['__raw__', block]]));
+    } else {
+      // 普通规则：按选择器+属性去重
+      const braceIdx = block.indexOf('{');
+      if (braceIdx === -1) continue;
+      const selector = block.slice(0, braceIdx).trim();
+      const body = block.slice(braceIdx + 1, block.lastIndexOf('}'));
+      const props = new Map();
+      for (const decl of body.split(';')) {
+        const colonIdx = decl.indexOf(':');
+        if (colonIdx === -1) continue;
+        const prop = decl.slice(0, colonIdx).trim();
+        const val = decl.slice(colonIdx + 1).trim();
+        if (prop && val) props.set(prop, val);
+      }
+      rules.set(selector, props);
+    }
+  }
+
+  return rules;
+}
+
+// ============================================================================
 // 导出
 // ============================================================================
 
-export { splitTopLevelBlocks };
+export { splitTopLevelBlocks, parseRules };
