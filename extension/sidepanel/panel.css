@@ -1336,3 +1336,205 @@ pre code {
     transform: rotate(360deg);
   }
 }
+
+/* ============================================================
+   8. 引导页样式 (Onboarding)
+   ============================================================ */
+
+/* 视图容器 */
+.view {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* 引导页内容 */
+.onboarding-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-2xl) var(--spacing-lg);
+  text-align: center;
+}
+
+/* Logo 区域 */
+.logo-area {
+  margin-bottom: var(--spacing-2xl);
+}
+
+.logo-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto var(--spacing-md);
+  background: linear-gradient(135deg, var(--color-primary), #667eea);
+  border-radius: var(--radius-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-inverse);
+  box-shadow: var(--shadow-lg);
+}
+
+.logo-text {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-xs);
+}
+
+.tagline {
+  font-size: var(--font-size-md);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* 设置表单 */
+.setup-form {
+  width: 100%;
+  max-width: 320px;
+}
+
+.form-group {
+  margin-bottom: var(--spacing-lg);
+  text-align: left;
+}
+
+.form-group label {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.form-group input {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  transition: all var(--duration-fast) var(--easing-default);
+}
+
+.form-group input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.form-group input:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+.form-group .hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  margin: var(--spacing-xs) 0 0;
+}
+
+/* 开始按钮 */
+.setup-form .btn-primary {
+  width: 100%;
+  padding: var(--spacing-md);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--spacing-md);
+}
+
+/* 错误消息 */
+.setup-form .error-message {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--color-error-bg);
+  border-radius: var(--radius-md);
+  color: var(--color-error);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--spacing-md);
+  text-align: left;
+}
+
+/* 帮助链接 */
+.help-links {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-md);
+}
+
+.help-links a {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.help-links a:hover {
+  color: var(--color-primary);
+}
+
+/* ============================================================
+   9. 加载和错误状态
+   ============================================================ */
+
+/* 加载遮罩 */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: var(--radius-full);
+  animation: spin 0.8s linear infinite;
+}
+
+/* Toast 提示 */
+.toast {
+  position: fixed;
+  bottom: var(--spacing-lg);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-notification);
+  animation: slideUp var(--duration-normal) var(--easing-default);
+}
+
+.toast span {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+.toast .icon-btn {
+  padding: var(--spacing-xs);
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  font-size: var(--font-size-lg);
+  line-height: 1;
+}
+
+.toast .icon-btn:hover {
+  color: var(--color-text-primary);
+}
