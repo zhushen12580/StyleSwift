@@ -384,6 +384,66 @@ class SessionContext {
 let currentSession = null;
 
 // ============================================================================
+// 会话索引管理
+// ============================================================================
+
+/**
+ * 获取或创建会话
+ * 
+ * 根据域名读取会话索引，若无会话则新建。返回会话 ID。
+ * - 如果索引中已有会话，返回最新创建的会话 ID（按 created_at 降序）
+ * - 如果索引为空或不存在，创建新会话并更新索引
+ * 
+ * @param {string} domain - 域名，如 'github.com'
+ * @returns {Promise<string>} 返回会话 ID
+ * 
+ * @example
+ * // 首次调用：创建新会话
+ * const sessionId1 = await getOrCreateSession('github.com');
+ * console.log(sessionId1); // 'a1b2c3d4-...'
+ * 
+ * // 再次调用：返回已存在的最新会话
+ * const sessionId2 = await getOrCreateSession('github.com');
+ * console.log(sessionId2); // 'a1b2c3d4-...' (与 sessionId1 相同)
+ */
+async function getOrCreateSession(domain) {
+  const indexKey = `sessions:${domain}:index`;
+  
+  try {
+    // 读取会话索引
+    const { [indexKey]: index = [] } = await chrome.storage.local.get(indexKey);
+    
+    // 如果索引中有会话，返回最新创建的（created_at 最大的）
+    if (Array.isArray(index) && index.length > 0) {
+      // 按 created_at 降序排序，取第一个（最新的）
+      const sorted = [...index].sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+      return sorted[0].id;
+    }
+    
+    // 没有会话，创建新会话
+    const sessionId = crypto.randomUUID();
+    const now = Date.now();
+    
+    // 新会话条目
+    const newSession = {
+      id: sessionId,
+      created_at: now
+    };
+    
+    // 更新索引
+    const newIndex = [newSession];
+    await chrome.storage.local.set({ [indexKey]: newIndex });
+    
+    console.log(`[Session] Created new session: ${sessionId} for domain: ${domain}`);
+    return sessionId;
+    
+  } catch (error) {
+    console.error('[Session] Failed to get or create session:', error);
+    throw error;
+  }
+}
+
+// ============================================================================
 // 存储清理策略
 // ============================================================================
 
@@ -535,6 +595,7 @@ export { MAX_SESSIONS_PER_DOMAIN, SESSION_EXPIRE_DAYS };
 // 导出函数
 export { openDB, closeDB, saveHistory, loadHistory, deleteHistory, checkAndMigrateStorage };
 export { cleanupStorage, cleanupStyleSkills, getStorageUsage };
+export { getOrCreateSession };
 
 // 导出 SessionContext 类和当前会话变量
 export { SessionContext, currentSession };

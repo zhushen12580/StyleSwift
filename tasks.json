@@ -430,7 +430,7 @@
           "id": "T080",
           "title": "实现会话索引管理（getOrCreateSession）",
           "description": "根据域名读取 sessions:{domain}:index，若无则新建会话。生成 session_id 用 crypto.randomUUID()。更新 index 数组",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T022"
