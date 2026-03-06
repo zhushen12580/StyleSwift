@@ -579,6 +579,64 @@ async function runLoadSkill(skillName) {
 }
 
 // =============================================================================
+// §3.7 Side Panel 端：runSaveStyleSkill - 保存风格技能
+// =============================================================================
+
+/**
+ * 从当前会话中提取视觉风格特征，保存为可复用的风格技能
+ * 
+ * **工作流程：**
+ * 1. 生成 8 位 UUID 作为技能 ID
+ * 2. 获取当前域名作为来源
+ * 3. 组装 header（名称、来源、日期、风格描述）
+ * 4. 调用 StyleSkillStore.save 保存技能内容和索引
+ * 
+ * **Header 格式：**
+ * ```markdown
+ * # {name}
+ * 
+ * > 来源: {domain} | 创建: {date}
+ * > 风格: {mood}
+ * 
+ * {skillContent}
+ * ```
+ * 
+ * 如果 skillContent 已经以 `# ` 开头，则不重复添加 header。
+ * 
+ * @param {string} name - 风格名称，如"赛博朋克"、"清新日式"
+ * @param {string} mood - 一句话风格描述（可选）
+ * @param {string} skillContent - 风格技能文档（markdown 格式）
+ * @returns {Promise<string>} 成功消息，包含技能 ID 和使用方法
+ * 
+ * @example
+ * const result = await runSaveStyleSkill(
+ *   '赛博朋克',
+ *   '深色背景+霓虹色调的高科技感',
+ *   '## 风格描述\n深色背景配合霓虹色调...'
+ * );
+ * // → '已保存风格技能「赛博朋克」(id: a1b2c3d4)，可在任意网站通过 load_skill('skill:a1b2c3d4') 加载使用。'
+ */
+async function runSaveStyleSkill(name, mood, skillContent) {
+  // 1. 生成 8 位 UUID
+  const id = crypto.randomUUID().slice(0, 8);
+  
+  // 2. 获取来源域名
+  const sourceDomain = currentSession?.domain || 'unknown';
+  
+  // 3. 组装 header
+  const header = `# ${name}\n\n> 来源: ${sourceDomain} | 创建: ${new Date().toLocaleDateString()}\n> 风格: ${mood || ''}\n\n`;
+  
+  // 4. 处理完整内容（避免重复添加 header）
+  const fullContent = skillContent.startsWith('# ') ? skillContent : header + skillContent;
+  
+  // 5. 保存技能
+  await StyleSkillStore.save(id, name, mood || '', sourceDomain, fullContent);
+  
+  // 6. 返回成功消息
+  return `已保存风格技能「${name}」(id: ${id})，可在任意网站通过 load_skill('skill:${id}') 加载使用。`;
+}
+
+// =============================================================================
 // 导出函数
 // =============================================================================
 
@@ -589,5 +647,6 @@ export {
   getTargetDomain,
   sendToContentScript,
   runApplyStyles,
-  runLoadSkill
+  runLoadSkill,
+  runSaveStyleSkill
 };

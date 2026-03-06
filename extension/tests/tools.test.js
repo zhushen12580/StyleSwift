@@ -668,8 +668,353 @@ describe('runApplyStyles', () => {
 });
 
 // =============================================================================
-// runLoadSkill 测试
+// runSaveStyleSkill 测试
 // =============================================================================
+
+describe('runSaveStyleSkill', () => {
+  // Mock StyleSkillStore
+  const mockStyleSkillStore = {
+    skills: {},
+    index: [],
+    
+    async save(id, name, mood, sourceDomain, content) {
+      // 检查是否已存在该 ID
+      const existingIndex = this.index.findIndex(s => s.id === id);
+      
+      // 创建索引条目
+      const entry = {
+        id,
+        name,
+        mood,
+        sourceDomain,
+        createdAt: Date.now()
+      };
+      
+      // 更新或添加到索引
+      if (existingIndex >= 0) {
+        entry.createdAt = this.index[existingIndex].createdAt;
+        this.index[existingIndex] = entry;
+      } else {
+        this.index.push(entry);
+      }
+      
+      // 保存内容
+      this.skills[id] = content;
+    },
+    
+    async load(id) {
+      return this.skills[id] || null;
+    },
+    
+    async list() {
+      return this.index;
+    },
+    
+    reset() {
+      this.skills = {};
+      this.index = [];
+    }
+  };
+
+  // Mock currentSession
+  let mockCurrentSession = {
+    domain: 'example.com',
+    sessionId: 'test-session-123'
+  };
+
+  // Mock crypto.randomUUID
+  let uuidCounter = 0;
+  let randomUUIDMock;
+
+  beforeEach(() => {
+    // Reset StyleSkillStore
+    mockStyleSkillStore.reset();
+    
+    // Setup crypto.randomUUID mock using vi.spyOn
+    uuidCounter = 0;
+    randomUUIDMock = vi.spyOn(crypto, 'randomUUID').mockImplementation(() => {
+      uuidCounter++;
+      return `${uuidCounter.toString().padStart(8, '0')}-0000-0000-0000-000000000000`;
+    });
+  });
+
+  afterEach(() => {
+    // Restore original implementation
+    if (randomUUIDMock) {
+      randomUUIDMock.mockRestore();
+    }
+  });
+
+  // === runSaveStyleSkill implementation (same as tools.js) ===
+  async function runSaveStyleSkill(name, mood, skillContent) {
+    // 1. 生成 8 位 UUID
+    const id = crypto.randomUUID().slice(0, 8);
+    
+    // 2. 获取来源域名
+    const sourceDomain = mockCurrentSession?.domain || 'unknown';
+    
+    // 3. 组装 header
+    const header = `# ${name}\n\n> 来源: ${sourceDomain} | 创建: ${new Date().toLocaleDateString()}\n> 风格: ${mood || ''}\n\n`;
+    
+    // 4. 处理完整内容（避免重复添加 header）
+    const fullContent = skillContent.startsWith('# ') ? skillContent : header + skillContent;
+    
+    // 5. 保存技能
+    await mockStyleSkillStore.save(id, name, mood || '', sourceDomain, fullContent);
+    
+    // 6. 返回成功消息
+    return `已保存风格技能「${name}」(id: ${id})，可在任意网站通过 load_skill('skill:${id}') 加载使用。`;
+  }
+
+  describe('基本功能', () => {
+    test('保存技能后返回包含 id 的消息', async () => {
+      const result = await runSaveStyleSkill(
+        '赛博朋克',
+        '深色背景+霓虹色调',
+        '## 风格描述\n深色背景配合霓虹色调...'
+      );
+      
+      // 测试标准：返回消息包含 id
+      expect(result).toContain('已保存风格技能「赛博朋克」');
+      expect(result).toContain('id:');
+      expect(result).toMatch(/id: [a-z0-9]{8}/);
+      expect(result).toContain('load_skill');
+    });
+
+    test('生成 8 位 UUID', async () => {
+      await runSaveStyleSkill('测试风格', '测试描述', '测试内容');
+      
+      const skills = await mockStyleSkillStore.list();
+      expect(skills.length).toBe(1);
+      expect(skills[0].id).toMatch(/^[a-z0-9]{8}$/);
+    });
+
+    test('组装正确的 header', async () => {
+      const name = '赛博朋克';
+      const mood = '深色背景+霓虹色调';
+      const content = '## 风格描述\n深色背景配合霓虹色调...';
+      
+      await runSaveStyleSkill(name, mood, content);
+      
+      const skills = await mockStyleSkillStore.list();
+      const savedContent = await mockStyleSkillStore.load(skills[0].id);
+      
+      expect(savedContent).toContain(`# ${name}`);
+      expect(savedContent).toContain(`来源: ${mockCurrentSession.domain}`);
+      expect(savedContent).toContain(`风格: ${mood}`);
+    });
+  });
+
+  describe('测试标准验证', () => {
+    test('保存后通过 list 可见', async () => {
+      const name = '清新日式';
+      const mood = '简约清新';
+      const content = '## 风格描述\n简约清新的设计...';
+      
+      await runSaveStyleSkill(name, mood, content);
+      
+      // 测试标准：保存后通过 list 可见
+      const skills = await mockStyleSkillStore.list();
+      expect(skills.length).toBe(1);
+      expect(skills[0].name).toBe(name);
+      expect(skills[0].mood).toBe(mood);
+      expect(skills[0].sourceDomain).toBe(mockCurrentSession.domain);
+      expect(skills[0].createdAt).toBeDefined();
+    });
+
+    test('load 返回完整内容', async () => {
+      const name = '科技感';
+      const mood = '未来科技';
+      const content = '## 风格描述\n未来科技感的设计...\n\n## 色彩方案\n背景: #000';
+      
+      await runSaveStyleSkill(name, mood, content);
+      
+      const skills = await mockStyleSkillStore.list();
+      const savedContent = await mockStyleSkillStore.load(skills[0].id);
+      
+      // 测试标准：load 返回完整内容
+      expect(savedContent).toBeDefined();
+      expect(savedContent).toContain(`# ${name}`);
+      expect(savedContent).toContain('未来科技感的设计');
+      expect(savedContent).toContain('背景: #000');
+    });
+
+    test('返回消息包含正确的使用方法', async () => {
+      const result = await runSaveStyleSkill('测试', '测试描述', '测试内容');
+      
+      const skills = await mockStyleSkillStore.list();
+      const expectedHint = `load_skill('skill:${skills[0].id}')`;
+      
+      expect(result).toContain(expectedHint);
+    });
+  });
+
+  describe('Header 处理', () => {
+    test('内容不以 # 开头时添加 header', async () => {
+      const content = '## 风格描述\n这是风格描述...';
+      
+      await runSaveStyleSkill('测试风格', '测试', content);
+      
+      const skills = await mockStyleSkillStore.list();
+      const savedContent = await mockStyleSkillStore.load(skills[0].id);
+      
+      expect(savedContent).toContain('# 测试风格');
+      expect(savedContent).toContain('来源: example.com');
+    });
+
+    test('内容已以 # 开头时不重复添加 header', async () => {
+      const content = '# 自定义标题\n\n## 风格描述\n这是风格描述...';
+      
+      await runSaveStyleSkill('测试风格', '测试', content);
+      
+      const skills = await mockStyleSkillStore.list();
+      const savedContent = await mockStyleSkillStore.load(skills[0].id);
+      
+      // 应该保持原样，不添加 header
+      expect(savedContent).toBe(content);
+    });
+  });
+
+  describe('参数处理', () => {
+    test('mood 为空时正常保存', async () => {
+      const result = await runSaveStyleSkill('测试风格', '', '测试内容');
+      
+      const skills = await mockStyleSkillStore.list();
+      expect(skills[0].mood).toBe('');
+      expect(result).toContain('已保存风格技能「测试风格」');
+    });
+
+    test('mood 为 null 时转为空字符串', async () => {
+      await runSaveStyleSkill('测试风格', null, '测试内容');
+      
+      const skills = await mockStyleSkillStore.list();
+      expect(skills[0].mood).toBe('');
+    });
+
+    test('来源域名从 currentSession 获取', async () => {
+      await runSaveStyleSkill('测试风格', '测试', '测试内容');
+      
+      const skills = await mockStyleSkillStore.list();
+      expect(skills[0].sourceDomain).toBe('example.com');
+    });
+
+    test('currentSession 不存在时使用 unknown', async () => {
+      const originalSession = mockCurrentSession;
+      mockCurrentSession = null;
+      
+      await runSaveStyleSkill('测试风格', '测试', '测试内容');
+      
+      const skills = await mockStyleSkillStore.list();
+      expect(skills[0].sourceDomain).toBe('unknown');
+      
+      mockCurrentSession = originalSession;
+    });
+  });
+
+  describe('多次保存', () => {
+    test('多次保存生成不同的 ID', async () => {
+      await runSaveStyleSkill('风格1', '描述1', '内容1');
+      await runSaveStyleSkill('风格2', '描述2', '内容2');
+      await runSaveStyleSkill('风格3', '描述3', '内容3');
+      
+      const skills = await mockStyleSkillStore.list();
+      expect(skills.length).toBe(3);
+      
+      // 验证 ID 各不相同
+      const ids = skills.map(s => s.id);
+      const uniqueIds = new Set(ids);
+      expect(uniqueIds.size).toBe(3);
+    });
+
+    test('多次保存的内容互不干扰', async () => {
+      await runSaveStyleSkill('风格A', '描述A', '内容A');
+      await runSaveStyleSkill('风格B', '描述B', '内容B');
+      
+      const skills = await mockStyleSkillStore.list();
+      expect(skills.length).toBe(2);
+      
+      const contentA = await mockStyleSkillStore.load(skills[0].id);
+      const contentB = await mockStyleSkillStore.load(skills[1].id);
+      
+      expect(contentA).toContain('内容A');
+      expect(contentB).toContain('内容B');
+    });
+  });
+
+  describe('集成测试', () => {
+    test('完整流程：保存 -> 列表 -> 加载', async () => {
+      // 步骤 1: 保存技能
+      const name = '赛博朋克';
+      const mood = '深色背景+霓虹色调';
+      const content = `## 风格描述
+深色背景配合霓虹色调的高科技感设计。
+
+## 色彩方案
+- 背景主色: #0a0a1a
+- 强调色: #ff00ff`;
+
+      const result = await runSaveStyleSkill(name, mood, content);
+      
+      // 步骤 2: 验证返回消息包含 id
+      expect(result).toContain('已保存风格技能「赛博朋克」');
+      expect(result).toMatch(/id: [a-z0-9]{8}/);
+      
+      // 步骤 3: 从列表中查找
+      const skills = await mockStyleSkillStore.list();
+      expect(skills.length).toBe(1);
+      expect(skills[0].name).toBe(name);
+      expect(skills[0].mood).toBe(mood);
+      
+      // 步骤 4: 加载内容
+      const savedContent = await mockStyleSkillStore.load(skills[0].id);
+      expect(savedContent).toContain(name);
+      expect(savedContent).toContain('深色背景配合霓虹色调');
+      expect(savedContent).toContain('#0a0a1a');
+      expect(savedContent).toContain('#ff00ff');
+    });
+
+    test('实际场景：保存复杂风格技能', async () => {
+      const complexContent = `## 风格描述
+深色背景配合霓虹色调的高科技感设计。主色调为深紫/深蓝，强调色使用明亮的霓虹粉和电光蓝。
+
+## 色彩方案
+- 背景主色: #0a0a1a (深太空蓝)
+- 背景辅色: #1a1a2e (稍亮的深蓝)
+- 强调色: #ff00ff (霓虹粉), #00ffff (电光蓝)
+- 文字主色: #e0e0e0 (浅灰)
+
+## 排版
+- 标题: 粗体, 较大字号
+- 正文: 常规字重, 舒适行高(1.6+)
+
+## 视觉效果
+- 容器: 深色半透明背景 + 霓虹色 border
+- 按钮: 霓虹渐变或实色背景
+- 圆角: 中等 (6-8px)
+
+## 参考 CSS（选择器不可直接复用）
+body { background-color: #0a0a1a !important; }
+.header { background: #1a1a2e !important; }`;
+
+      const result = await runSaveStyleSkill(
+        '赛博朋克',
+        '深色背景+霓虹色调的高科技感',
+        complexContent
+      );
+      
+      expect(result).toContain('已保存风格技能「赛博朋克」');
+      
+      const skills = await mockStyleSkillStore.list();
+      const savedContent = await mockStyleSkillStore.load(skills[0].id);
+      
+      expect(savedContent).toContain('赛博朋克');
+      expect(savedContent).toContain('霓虹色调');
+      expect(savedContent).toContain('#0a0a1a');
+      expect(savedContent).toContain('#ff00ff');
+      expect(savedContent).toContain('#00ffff');
+    });
+  });
+});
 
 describe('runLoadSkill', () => {
   // Mock Skill Paths

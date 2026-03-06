@@ -659,7 +659,7 @@
           "id": "T105",
           "title": "实现 runSaveStyleSkill",
           "description": "runSaveStyleSkill(name, mood, skillContent): 生成 8 位 UUID，组装 header，调用 StyleSkillStore.save",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T023"
