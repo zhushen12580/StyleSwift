@@ -796,5 +796,102 @@ async function init() {
 // DOM 加载完成后初始化
 document.addEventListener('DOMContentLoaded', init);
 
+// ============================================================================
+// 消息渲染函数
+// ============================================================================
+
+/**
+ * 渲染用户消息气泡
+ * @param {string} content - 消息内容
+ * @returns {HTMLElement} - 消息 DOM 元素
+ */
+function renderUserMessage(content) {
+  const messageDiv = document.createElement('div');
+  messageDiv.className = 'message message-user';
+  
+  const bubbleDiv = document.createElement('div');
+  bubbleDiv.className = 'message-bubble';
+  bubbleDiv.textContent = content;
+  
+  messageDiv.appendChild(bubbleDiv);
+  return messageDiv;
+}
+
+/**
+ * 渲染助手消息容器（用于流式输出）
+ * @returns {HTMLElement} - 消息 DOM 元素（包含气泡容器）
+ */
+function renderAssistantMessageContainer() {
+  const messageDiv = document.createElement('div');
+  messageDiv.className = 'message message-assistant';
+  
+  const bubbleDiv = document.createElement('div');
+  bubbleDiv.className = 'message-bubble';
+  
+  messageDiv.appendChild(bubbleDiv);
+  return messageDiv;
+}
+
+/**
+ * 添加消息到对话区
+ * @param {HTMLElement} messageElement - 消息 DOM 元素
+ */
+function addMessageToContainer(messageElement) {
+  if (DOM.messagesContainer) {
+    DOM.messagesContainer.appendChild(messageElement);
+    // 自动滚动到底部
+    scrollToBottom();
+  }
+}
+
+/**
+ * 清空对话区所有消息
+ */
+function clearMessages() {
+  if (DOM.messagesContainer) {
+    DOM.messagesContainer.innerHTML = '';
+  }
+}
+
+/**
+ * 滚动对话区到底部
+ */
+function scrollToBottom() {
+  if (DOM.messagesContainer) {
+    DOM.messagesContainer.scrollTop = DOM.messagesContainer.scrollHeight;
+  }
+}
+
+/**
+ * 显示空状态提示
+ */
+function showEmptyState() {
+  if (!DOM.messagesContainer) return;
+  
+  const emptyState = document.createElement('div');
+  emptyState.className = 'chat-area-empty';
+  emptyState.innerHTML = `
+    <div class="empty-state-icon">💬</div>
+    <div class="empty-state-title">开始对话</div>
+    <div class="empty-state-description">描述你想要的样式效果，或点击上方技能快捷按钮</div>
+  `;
+  
+  DOM.messagesContainer.appendChild(emptyState);
+}
+
+// ============================================================================
 // 导出供其他模块使用（可选）
-export { AppState, switchView, showError, updateStatusIndicator };
+// ============================================================================
+
+export { 
+  AppState, 
+  switchView, 
+  showError, 
+  updateStatusIndicator,
+  renderUserMessage,
+  renderAssistantMessageContainer,
+  addMessageToContainer,
+  clearMessages,
+  scrollToBottom,
+  showEmptyState
+};

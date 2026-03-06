@@ -931,7 +931,7 @@
           "id": "T124",
           "title": "实现对话区 — 用户消息气泡",
           "description": "用户消息右对齐气泡样式，简洁色调",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T120"
