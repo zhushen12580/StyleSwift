@@ -333,6 +333,12 @@ function initMainView() {
   // 绑定顶栏交互事件
   bindTopBarEvents();
   
+  // 绑定新建会话按钮事件
+  const newSessionBtn = document.getElementById('new-session-btn');
+  if (newSessionBtn) {
+    newSessionBtn.addEventListener('click', handleNewSession);
+  }
+  
   // 初始化输入区
   initInputArea();
   
@@ -736,6 +742,15 @@ function bindTopBarEvents() {
     });
   }
   
+  // 新建会话按钮
+  const newSessionBtn = document.getElementById('new-session-btn');
+  if (newSessionBtn) {
+    newSessionBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      handleNewSession();
+    });
+  }
+  
   // 设置按钮
   const settingsBtn = document.getElementById('settings-btn');
   if (settingsBtn) {
@@ -744,6 +759,19 @@ function bindTopBarEvents() {
       switchView('settings');
     });
   }
+  
+  // 点击会话列表外部关闭
+  document.addEventListener('click', (e) => {
+    const panel = document.getElementById('session-list-panel');
+    const sessionHeader = document.getElementById('session-header');
+    
+    if (panel && sessionHeader) {
+      const isClickInside = panel.contains(e.target) || sessionHeader.contains(e.target);
+      if (!isClickInside && !panel.classList.contains('hidden')) {
+        panel.classList.add('hidden');
+      }
+    }
+  });
 }
 
 /**
@@ -753,7 +781,439 @@ function toggleSessionList() {
   const panel = document.getElementById('session-list-panel');
   if (!panel) return;
   
-  panel.classList.toggle('hidden');
+  const isHidden = panel.classList.contains('hidden');
+  
+  if (isHidden) {
+    // 显示面板前先加载会话列表
+    renderSessionList();
+    panel.classList.remove('hidden');
+  } else {
+    panel.classList.add('hidden');
+  }
+}
+
+// ============================================================================
+// 会话下拉面板功能
+// ============================================================================
+
+/**
+ * 渲染会话列表
+ * 显示当前域名的所有会话，包括标题、日期、预览
+ */
+async function renderSessionList() {
+  const listContainer = document.getElementById('session-list');
+  if (!listContainer) return;
+  
+  // 获取当前域名
+  const domain = AppState.currentDomain;
+  if (!domain) {
+    listContainer.innerHTML = '<div class="session-list-empty">未检测到当前域名</div>';
+    return;
+  }
+  
+  try {
+    // 动态导入 session 模块
+    const session = await import('./session.js');
+    
+    // 读取会话索引
+    const indexKey = `sessions:${domain}:index`;
+    const { [indexKey]: index = [] } = await chrome.storage.local.get(indexKey);
+    
+    if (!Array.isArray(index) || index.length === 0) {
+      listContainer.innerHTML = '<div class="session-list-empty">暂无会话记录</div>';
+      return;
+    }
+    
+    // 按创建时间降序排序
+    const sorted = [...index].sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+    
+    // 清空列表
+    listContainer.innerHTML = '';
+    
+    // 获取当前会话 ID
+    const currentSessionId = session.getCurrentSession()?.sessionId;
+    
+    // 渲染每个会话
+    for (const sessionItem of sorted) {
+      const card = await createSessionCard(sessionItem, domain, currentSessionId);
+      listContainer.appendChild(card);
+    }
+    
+    console.log(`[Panel] Rendered ${sorted.length} sessions for domain: ${domain}`);
+    
+  } catch (error) {
+    console.error('[Panel] Failed to render session list:', error);
+    listContainer.innerHTML = '<div class="session-list-empty">加载会话失败</div>';
+  }
+}
+
+/**
+ * 创建会话卡片元素
+ * @param {Object} sessionItem - 会话索引项
+ * @param {string} domain - 域名
+ * @param {string|null} currentSessionId - 当前会话 ID
+ * @returns {Promise<HTMLElement>}
+ */
+async function createSessionCard(sessionItem, domain, currentSessionId) {
+  const { id, created_at } = sessionItem;
+  
+  // 动态导入 session 模块
+  const session = await import('./session.js');
+  
+  // 加载会话元数据
+  const meta = await session.loadSessionMeta(domain, id);
+  
+  // 加载首条用户消息（用于预览）
+  const history = await session.loadAndPrepareHistory(domain, id);
+  const firstUserMessage = history.find(msg => msg.role === 'user');
+  const preview = firstUserMessage?.content || '（无内容）';
+  
+  // 创建卡片元素
+  const card = document.createElement('div');
+  card.className = `session-card ${id === currentSessionId ? 'active' : ''}`;
+  card.dataset.sessionId = id;
+  card.dataset.domain = domain;
+  
+  // 格式化日期
+  const date = new Date(created_at || Date.now());
+  const dateStr = date.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
+  
+  // 组装卡片内容
+  card.innerHTML = `
+    <div class="session-info">
+      <div class="session-title">${escapeHtml(meta.title || '新会话')}</div>
+      <div class="session-date">${dateStr}</div>
+      <div class="session-preview">${escapeHtml(preview.slice(0, 50))}</div>
+    </div>
+    <div class="session-actions">
+      <button class="session-delete-btn" title="删除会话" ${id === currentSessionId ? 'disabled' : ''}>
+        🗑️
+      </button>
+    </div>
+  `;
+  
+  // 绑定点击事件（切换会话）
+  card.addEventListener('click', (e) => {
+    // 如果点击的是删除按钮，不触发切换
+    if (e.target.closest('.session-delete-btn')) return;
+    handleSessionClick(domain, id);
+  });
+  
+  // 绑定删除按钮事件
+  const deleteBtn = card.querySelector('.session-delete-btn');
+  deleteBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!deleteBtn.disabled) {
+      handleDeleteSession(domain, id, meta.title || '新会话');
+    }
+  });
+  
+  return card;
+}
+
+/**
+ * 处理会话点击（切换会话）
+ * @param {string} domain - 域名
+ * @param {string} sessionId - 会话 ID
+ */
+async function handleSessionClick(domain, sessionId) {
+  try {
+    console.log(`[Panel] Switching to session: ${sessionId}`);
+    
+    // 动态导入 session 模块
+    const session = await import('./session.js');
+    
+    // 创建新的 SessionContext
+    const newSession = new session.SessionContext(domain, sessionId);
+    
+    // 设置为当前会话
+    session.setCurrentSession(newSession);
+    
+    // 更新顶栏显示
+    const meta = await session.loadSessionMeta(domain, sessionId);
+    updateTopBarDisplay(domain, meta.title || '新会话');
+    
+    // 关闭下拉面板
+    const panel = document.getElementById('session-list-panel');
+    if (panel) panel.classList.add('hidden');
+    
+    // 清空当前对话区
+    clearMessages();
+    
+    // TODO: 加载会话历史并渲染
+    // 这部分需要等到消息发送流程实现后才能完成
+    // const history = await session.loadAndPrepareHistory(domain, sessionId);
+    // 渲染历史消息...
+    
+    console.log('[Panel] Session switched successfully');
+    
+  } catch (error) {
+    console.error('[Panel] Failed to switch session:', error);
+    showError('切换会话失败');
+  }
+}
+
+/**
+ * 处理新建会话
+ */
+async function handleNewSession() {
+  try {
+    console.log('[Panel] Creating new session');
+    
+    // 获取当前域名
+    const domain = AppState.currentDomain;
+    if (!domain) {
+      showError('未检测到当前域名');
+      return;
+    }
+    
+    // 动态导入 session 模块
+    const session = await import('./session.js');
+    
+    // 生成新会话 ID
+    const newSessionId = crypto.randomUUID();
+    
+    // 更新会话索引
+    const indexKey = `sessions:${domain}:index`;
+    const { [indexKey]: index = [] } = await chrome.storage.local.get(indexKey);
+    
+    const now = Date.now();
+    const newSessionItem = {
+      id: newSessionId,
+      created_at: now
+    };
+    
+    // 添加到索引（最新会话放在最前面）
+    const newIndex = [newSessionItem, ...index];
+    await chrome.storage.local.set({ [indexKey]: newIndex });
+    
+    // 创建新的 SessionContext
+    const newSession = new session.SessionContext(domain, newSessionId);
+    
+    // 设置为当前会话
+    session.setCurrentSession(newSession);
+    
+    // 创建默认元数据
+    await session.saveSessionMeta(domain, newSessionId, {
+      title: null,
+      created_at: now,
+      message_count: 0
+    });
+    
+    // 更新顶栏显示
+    updateTopBarDisplay(domain, '新会话');
+    
+    // 关闭下拉面板
+    const panel = document.getElementById('session-list-panel');
+    if (panel) panel.classList.add('hidden');
+    
+    // 清空当前对话区
+    clearMessages();
+    showEmptyState();
+    
+    console.log(`[Panel] New session created: ${newSessionId}`);
+    
+  } catch (error) {
+    console.error('[Panel] Failed to create new session:', error);
+    showError('创建会话失败');
+  }
+}
+
+/**
+ * 处理删除会话
+ * @param {string} domain - 域名
+ * @param {string} sessionId - 会话 ID
+ * @param {string} sessionTitle - 会话标题
+ */
+async function handleDeleteSession(domain, sessionId, sessionTitle) {
+  try {
+    // 动态导入 session 模块
+    const session = await import('./session.js');
+    
+    // 先执行删除（不立即删除，等待确认）
+    const indexKey = `sessions:${domain}:index`;
+    const { [indexKey]: index = [] } = await chrome.storage.local.get(indexKey);
+    
+    // 判断是否为最后一个会话
+    const isLastSession = index.length === 1;
+    
+    if (isLastSession) {
+      // 最后一个会话，显示特殊提示
+      showLastSessionModal(domain, sessionId, sessionTitle);
+    } else {
+      // 普通删除，显示标准确认弹窗
+      showDeleteConfirmationModal(domain, sessionId, sessionTitle);
+    }
+    
+  } catch (error) {
+    console.error('[Panel] Failed to handle delete session:', error);
+    showError('删除会话失败');
+  }
+}
+
+/**
+ * 显示删除确认弹窗
+ * @param {string} domain - 域名
+ * @param {string} sessionId - 会话 ID
+ * @param {string} sessionTitle - 会话标题
+ */
+function showDeleteConfirmationModal(domain, sessionId, sessionTitle) {
+  // 创建遮罩
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  
+  // 创建弹窗
+  const modal = document.createElement('div');
+  modal.className = 'modal-container';
+  
+  modal.innerHTML = `
+    <div class="modal-header">
+      <h3 class="modal-title">删除「${escapeHtml(sessionTitle)}」？</h3>
+    </div>
+    <div class="modal-body">
+      <p>会话记录和该会话的样式将被永久删除。</p>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn modal-btn-secondary" data-action="cancel">取消</button>
+      <button class="modal-btn modal-btn-danger" data-action="confirm">确认删除</button>
+    </div>
+  `;
+  
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+  
+  // 绑定事件
+  const handleAction = async (action) => {
+    if (action === 'confirm') {
+      await executeDeleteSession(domain, sessionId, false);
+    }
+    // 关闭弹窗
+    overlay.remove();
+  };
+  
+  modal.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (btn) {
+      handleAction(btn.dataset.action);
+    }
+  });
+  
+  // 点击遮罩关闭
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      handleAction('cancel');
+    }
+  });
+}
+
+/**
+ * 显示最后会话删除提示
+ * @param {string} domain - 域名
+ * @param {string} sessionId - 会话 ID
+ * @param {string} sessionTitle - 会话标题
+ */
+function showLastSessionModal(domain, sessionId, sessionTitle) {
+  // 创建遮罩
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  
+  // 创建弹窗
+  const modal = document.createElement('div');
+  modal.className = 'modal-container';
+  
+  modal.innerHTML = `
+    <div class="modal-header">
+      <h3 class="modal-title">这是 ${domain} 的最后一个会话</h3>
+    </div>
+    <div class="modal-body">
+      <p>删除后将清除该域名的所有会话数据。</p>
+      <p>是否同时清除该网站的永久样式？</p>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn modal-btn-secondary" data-action="delete-only">仅删会话</button>
+      <button class="modal-btn modal-btn-danger" data-action="delete-all">一并清除样式</button>
+    </div>
+  `;
+  
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+  
+  // 绑定事件
+  const handleAction = async (action) => {
+    if (action === 'delete-only') {
+      await executeDeleteSession(domain, sessionId, false);
+    } else if (action === 'delete-all') {
+      await executeDeleteSession(domain, sessionId, true);
+    }
+    // 关闭弹窗
+    overlay.remove();
+  };
+  
+  modal.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (btn) {
+      handleAction(btn.dataset.action);
+    }
+  });
+  
+  // 点击遮罩关闭（取消操作）
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      overlay.remove();
+    }
+  });
+}
+
+/**
+ * 执行删除会话
+ * @param {string} domain - 域名
+ * @param {string} sessionId - 会话 ID
+ * @param {boolean} clearPersistent - 是否清除永久样式
+ */
+async function executeDeleteSession(domain, sessionId, clearPersistent) {
+  try {
+    console.log(`[Panel] Deleting session: ${sessionId}, clearPersistent: ${clearPersistent}`);
+    
+    // 动态导入 session 模块
+    const session = await import('./session.js');
+    
+    // 执行删除
+    const result = await session.deleteSession(domain, sessionId);
+    
+    // 如果需要清除永久样式
+    if (clearPersistent && result.lastSession) {
+      const persistKey = `persistent:${domain}`;
+      await chrome.storage.local.remove(persistKey);
+      console.log(`[Panel] Cleared persistent styles for domain: ${domain}`);
+    }
+    
+    // 如果删除的是当前会话，创建新会话
+    const currentSession = session.getCurrentSession();
+    if (currentSession && currentSession.sessionId === sessionId) {
+      // 创建新会话
+      await handleNewSession();
+    } else {
+      // 重新渲染会话列表
+      await renderSessionList();
+    }
+    
+    console.log('[Panel] Session deleted successfully');
+    
+  } catch (error) {
+    console.error('[Panel] Failed to delete session:', error);
+    showError('删除会话失败');
+  }
+}
+
+/**
+ * 转义 HTML 特殊字符
+ * @param {string} text - 原始文本
+ * @returns {string} - 转义后的文本
+ */
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 /**

@@ -68,12 +68,19 @@
       </header>
       
       <!-- 会话列表下拉面板 -->
-      <div id="session-list-panel" class="dropdown-panel hidden">
-        <div class="panel-header">
+      <div id="session-list-panel" class="session-dropdown-panel hidden">
+        <div class="session-dropdown-header">
           <span>会话历史</span>
-          <button id="new-session-btn" class="text-btn">新会话</button>
+          <button id="new-session-btn" class="new-session-btn">
+            <span>+</span>
+            <span>新会话</span>
+          </button>
         </div>
-        <div id="session-list" class="session-list">
+        <div id="session-list" class="session-list-container">
+          <!-- 动态生成会话项 -->
+        </div>
+      </div>
+        <div id="session-list" class="session-list-container">
           <!-- 动态生成会话项 -->
         </div>
       </div>

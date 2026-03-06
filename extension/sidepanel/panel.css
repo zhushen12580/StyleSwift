@@ -1999,6 +1999,323 @@ pre code {
   }
 }
 
+/* ============================================================
+   会话下拉面板样式
+   ============================================================ */
+
+/* 下拉面板容器 */
+.session-dropdown-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-dropdown);
+  animation: scaleIn var(--duration-fast) var(--easing-default);
+  transform-origin: top center;
+  margin-top: var(--spacing-xs);
+}
+
+/* 面板头部 */
+.session-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border-light);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+/* 新建会话按钮 */
+.new-session-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background-color: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--easing-default);
+}
+
+.new-session-btn:hover {
+  background-color: var(--color-primary);
+  color: var(--color-text-inverse);
+}
+
+.new-session-btn:active {
+  transform: scale(0.95);
+}
+
+/* 会话列表容器 */
+.session-list-container {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* 空状态 */
+.session-list-empty {
+  padding: var(--spacing-xl);
+  text-align: center;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+}
+
+/* 会话卡片 */
+.session-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: var(--spacing-md);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--easing-default);
+  border-bottom: 1px solid var(--color-border-light);
+  position: relative;
+}
+
+.session-card:last-child {
+  border-bottom: none;
+}
+
+.session-card:hover {
+  background-color: var(--color-bg-hover);
+}
+
+/* 当前会话高亮 */
+.session-card.active {
+  background-color: var(--color-primary-light);
+}
+
+/* 当前会话指示器 */
+.session-card.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: var(--color-primary);
+}
+
+/* 会话信息区域 */
+.session-info {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 会话标题 */
+.session-title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 会话日期 */
+.session-date {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--spacing-xs);
+}
+
+/* 会话预览 */
+.session-preview {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 260px;
+}
+
+/* 会话操作区域 */
+.session-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--easing-default);
+}
+
+.session-card:hover .session-actions {
+  opacity: 1;
+}
+
+/* 当前会话的操作按钮始终显示但禁用 */
+.session-card.active .session-actions {
+  opacity: 0.5;
+}
+
+/* 删除按钮 */
+.session-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--easing-default);
+}
+
+.session-delete-btn:hover:not(:disabled) {
+  background-color: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+.session-delete-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
+/* ============================================================
+   删除确认弹窗
+   ============================================================ */
+
+/* 弹窗遮罩 */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal);
+  animation: fadeIn var(--duration-fast) var(--easing-default);
+}
+
+/* 弹窗主体 */
+.modal-container {
+  width: calc(100% - var(--spacing-2xl));
+  max-width: 340px;
+  background-color: var(--color-bg-primary);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  animation: scaleIn var(--duration-normal) var(--easing-bounce);
+}
+
+/* 弹窗头部 */
+.modal-header {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.modal-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+/* 弹窗内容 */
+.modal-body {
+  padding: var(--spacing-lg);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+}
+
+.modal-body p {
+  margin-bottom: var(--spacing-sm);
+}
+
+.modal-body p:last-child {
+  margin-bottom: 0;
+}
+
+/* 弹窗底部 */
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-lg);
+}
+
+/* 弹窗按钮 */
+.modal-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--easing-default);
+  white-space: nowrap;
+}
+
+.modal-btn:active {
+  transform: scale(0.95);
+}
+
+.modal-btn-secondary {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+.modal-btn-secondary:hover {
+  background-color: var(--color-bg-hover);
+  border-color: var(--color-border-strong);
+}
+
+.modal-btn-primary {
+  background-color: var(--color-primary);
+  color: var(--color-text-inverse);
+}
+
+.modal-btn-primary:hover {
+  background-color: var(--color-primary-hover);
+}
+
+.modal-btn-danger {
+  background-color: var(--color-error);
+  color: var(--color-text-inverse);
+}
+
+.modal-btn-danger:hover {
+  background-color: #dc2626;
+}
+
+/* ============================================================
+   打字机光标效果
+   ============================================================ */
+
+.typing-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background-color: var(--color-primary);
+  animation: blink 1s step-end infinite;
+  vertical-align: middle;
+  margin-left: 2px;
+}
+
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
+
 /* 打印样式 */
 @media print {
   .topbar,

@@ -1007,7 +1007,7 @@
           "id": "T129",
           "title": "实现会话下拉面板",
           "description": "点击顶栏标题展开：当前域名会话列表（标题+日期+预览），当前会话高亮，hover 显示删除图标，新建会话按钮。删除二次确认弹窗（最后会话额外提示清除永久样式）",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T122",
