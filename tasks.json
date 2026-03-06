@@ -322,11 +322,11 @@
           "estimatedHours": 1,
           "files": ["extension/sidepanel/api.js", "extension/tests/api.test.js"]
         },
-        {
+{
           "id": "T061",
           "title": "实现 API 权限动态申请（ensureApiPermission）",
           "description": "当 apiBase 非默认地址时，通过 chrome.permissions.request() 动态申请对应 origin 的访问权限",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T060"
@@ -334,66 +334,6 @@
           "module": "api",
           "designRef": "§9.2 自定义 API 地址 — 权限动态申请",
           "testCriteria": "默认地址跳过申请返回 true，自定义地址触发权限请求弹窗",
-          "estimatedHours": 1,
-          "files": ["extension/sidepanel/api.js"]
-        },
-        {
-          "id": "T062",
-          "title": "实现连接验证（validateConnection）",
-          "description": "向 apiBase/v1/messages 发送最小测试请求，返回 { ok, status } 或 { ok: false, error }",
-          "status": "pending",
-          "priority": "medium",
-          "dependencies": [
-            "T060"
-          ],
-          "module": "api",
-          "designRef": "§9.2 连接验证",
-          "testCriteria": "有效 Key 返回 ok: true，无效 Key 返回 ok: false + status 401",
-          "estimatedHours": 1,
-          "files": ["extension/sidepanel/api.js"]
-        },
-        {
-          "id": "T063",
-          "title": "实现 Anthropic Streaming API 调用（callAnthropicStream）",
-          "description": "实现 SSE 流式解析：处理 content_block_start/delta/stop、message_delta 事件。支持 onText/onToolCall 回调。tool_use 的 input 为增量 JSON 拼接后解析。支持 AbortSignal 取消",
-          "status": "pending",
-          "priority": "high",
-          "dependencies": [
-            "T060"
-          ],
-          "module": "api",
-          "designRef": "§10.1 LLM API 调用（Streaming）",
-          "testCriteria": "流式文本回调逐步触发，工具调用 input 正确解析，abort 信号能中断请求",
-          "estimatedHours": 3,
-          "files": ["extension/sidepanel/api.js"]
-        },
-        {
-          "id": "T064",
-          "title": "实现 API 错误处理包装（callAnthropicStreamSafe）",
-          "description": "包装 callAnthropicStream，处理 401(Key无效)、429(限流重试，指数退避)、TypeError(网络错误)、5xx(API异常)。AgentError 类定义",
-          "status": "pending",
-          "priority": "high",
-          "dependencies": [
-            "T063"
-          ],
-          "module": "api",
-          "designRef": "§11.3 API 调用错误处理",
-          "testCriteria": "401 直接抛 API_KEY_INVALID，429 重试 2 次后抛 MAX_RETRIES，网络断开抛 NETWORK_ERROR",
-          "estimatedHours": 2,
-          "files": ["extension/sidepanel/api.js"]
-        },
-        {
-          "id": "T065",
-          "title": "实现首次启动检测和引导逻辑",
-          "description": "实现 checkFirstRun() 函数，检测 chrome.storage.local 中是否有 apiKey。无 Key 时返回 { needsSetup: true }，触发引导页显示。包含 API 配置验证和错误提示 UI",
-          "status": "pending",
-          "priority": "high",
-          "dependencies": [
-            "T060"
-          ],
-          "module": "api",
-          "designRef": "§9.4 首次使用引导",
-          "testCriteria": "首次打开无 Key 时返回 needsSetup: true，有 Key 时返回 false",
           "estimatedHours": 1,
           "files": ["extension/sidepanel/api.js"]
         }
