@@ -957,11 +957,11 @@
           "estimatedHours": 2,
           "files": ["extension/sidepanel/panel.js", "extension/sidepanel/panel.css"]
         },
-        {
+{
           "id": "T126",
           "title": "实现对话区 — 工具调用折叠卡片",
           "description": "可交互折叠卡片：处理中 '🔧 工具名 ◌ 进行中'，完成后 '✅ 工具名 ▸'。点击展开显示输入/输出详情。连续工具调用聚合为卡片组",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T120"

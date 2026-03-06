@@ -935,6 +935,79 @@ pre code {
   border-radius: var(--radius-md);
   margin-bottom: var(--spacing-sm);
   overflow: hidden;
+  transition: all var(--duration-fast) var(--easing-default);
+}
+
+/* 工具卡片组 - 聚合多个工具调用 */
+.tool-card-group {
+  margin-bottom: var(--spacing-md);
+}
+
+.tool-card-group .tool-card {
+  margin-bottom: 2px;
+  border-radius: 0;
+}
+
+.tool-card-group .tool-card:first-child {
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.tool-card-group .tool-card:last-child {
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  margin-bottom: 0;
+}
+
+.tool-card-group .tool-card:only-child {
+  border-radius: var(--radius-md);
+}
+
+/* 处理中状态 */
+.tool-card.processing {
+  border-color: var(--color-warning);
+  background-color: var(--color-warning-bg);
+}
+
+.tool-card.processing .tool-card-header {
+  background-color: transparent;
+}
+
+/* 处理中动画 */
+.tool-card.processing .status-indicator {
+  display: inline-block;
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 完成状态 */
+.tool-card.completed {
+  border-color: var(--color-border);
+}
+
+.tool-card.completed:hover {
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-xs);
+}
+
+/* 折叠状态 */
+.tool-card.collapsed .tool-card-body {
+  display: none;
+}
+
+.tool-card.collapsed .tool-card-expand {
+  transform: rotate(0deg);
+}
+
+/* 展开状态 */
+.tool-card.expanded .tool-card-body {
+  display: block;
+}
+
+.tool-card.expanded .tool-card-expand {
+  transform: rotate(90deg);
 }
 
 .tool-card-header {
@@ -944,6 +1017,7 @@ pre code {
   padding: var(--spacing-sm) var(--spacing-md);
   cursor: pointer;
   transition: background-color var(--duration-fast) var(--easing-default);
+  user-select: none;
 }
 
 .tool-card-header:hover {
@@ -959,7 +1033,22 @@ pre code {
   color: var(--color-text-primary);
 }
 
+.tool-card-icon {
+  font-size: var(--font-size-md);
+  line-height: 1;
+}
+
+.tool-card-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .tool-card-status {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
   font-size: var(--font-size-sm);
   color: var(--color-text-tertiary);
 }
@@ -972,24 +1061,88 @@ pre code {
   color: var(--color-success);
 }
 
-.tool-card-expand {
-  color: var(--color-text-tertiary);
-  transition: transform var(--duration-fast) var(--easing-default);
+.tool-card-status .status-indicator {
+  font-size: var(--font-size-sm);
 }
 
-.tool-card.expanded .tool-card-expand {
-  transform: rotate(90deg);
+.tool-card-expand {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+  transition: transform var(--duration-fast) var(--easing-default);
+  flex-shrink: 0;
+}
+
+.tool-card-header:hover .tool-card-expand {
+  color: var(--color-text-secondary);
 }
 
 .tool-card-body {
-  display: none;
   padding: var(--spacing-md);
   border-top: 1px dashed var(--color-border);
   background-color: var(--color-bg-primary);
+  animation: slideDown var(--duration-fast) var(--easing-default);
 }
 
-.tool-card.expanded .tool-card-body {
+.tool-card-section {
+  margin-bottom: var(--spacing-sm);
+}
+
+.tool-card-section:last-child {
+  margin-bottom: 0;
+}
+
+.tool-card-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--spacing-xs);
+}
+
+.tool-card-content {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.tool-card-content code {
   display: block;
+  background-color: var(--color-bg-tertiary);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.tool-card-empty {
+  font-style: italic;
+  color: var(--color-text-tertiary);
+}
+
+.tool-card-text {
+  display: block;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  background-color: var(--color-bg-tertiary);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.tool-card-truncated {
+  display: inline-block;
+  font-style: italic;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+  margin-top: var(--spacing-xs);
 }
 
 /* 会话卡片 */

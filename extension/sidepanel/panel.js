@@ -1089,6 +1089,355 @@ function showEmptyState() {
 // 导出供其他模块使用（可选）
 // ============================================================================
 
+// ============================================================================
+// 工具调用卡片渲染
+// ============================================================================
+
+/**
+ * 工具名称映射表（友好的显示名称）
+ */
+const TOOL_DISPLAY_NAMES = {
+  'get_page_structure': '查看页面结构',
+  'grep': '搜索页面元素',
+  'apply_styles': '应用样式',
+  'get_user_profile': '获取用户画像',
+  'update_user_profile': '更新用户画像',
+  'load_skill': '加载知识',
+  'save_style_skill': '保存风格技能',
+  'list_style_skills': '列出风格技能',
+  'delete_style_skill': '删除风格技能',
+  'TodoWrite': '任务规划',
+  'Task': '子任务',
+};
+
+/**
+ * 获取工具友好显示名称
+ * @param {string} toolName - 工具名称
+ * @returns {string} - 友好显示名称
+ */
+function getToolDisplayName(toolName) {
+  return TOOL_DISPLAY_NAMES[toolName] || toolName;
+}
+
+/**
+ * 工具调用卡片管理器
+ * 用于管理当前消息中的工具调用卡片组
+ */
+class ToolCardManager {
+  constructor() {
+    /** @type {HTMLElement|null} 当前卡片组容器 */
+    this.currentCardGroup = null;
+    /** @type {Map<string, HTMLElement>} 工具调用ID到卡片元素的映射 */
+    this.cardMap = new Map();
+  }
+
+  /**
+   * 创建新的工具卡片组
+   * @returns {HTMLElement} 卡片组容器
+   */
+  createCardGroup() {
+    // 如果已有卡片组，先结束它
+    if (this.currentCardGroup) {
+      this.finalizeCardGroup();
+    }
+
+    const group = document.createElement('div');
+    group.className = 'tool-card-group';
+    
+    this.currentCardGroup = group;
+    this.cardMap.clear();
+    
+    return group;
+  }
+
+  /**
+   * 添加工具调用卡片（处理中状态）
+   * @param {string} toolId - 工具调用ID
+   * @param {string} toolName - 工具名称
+   * @returns {HTMLElement} 卡片元素
+   */
+  addToolCard(toolId, toolName) {
+    if (!this.currentCardGroup) {
+      this.createCardGroup();
+    }
+
+    const card = document.createElement('div');
+    card.className = 'tool-card processing';
+    card.dataset.toolId = toolId;
+    card.dataset.toolName = toolName;
+
+    const displayName = getToolDisplayName(toolName);
+
+    card.innerHTML = `
+      <div class="tool-card-header">
+        <div class="tool-card-title">
+          <span class="tool-card-icon">🔧</span>
+          <span class="tool-card-name">${displayName}</span>
+        </div>
+        <div class="tool-card-status processing">
+          <span class="status-indicator">◌</span>
+          <span class="status-text">进行中</span>
+        </div>
+      </div>
+    `;
+
+    this.currentCardGroup.appendChild(card);
+    this.cardMap.set(toolId, card);
+
+    // 滚动到底部
+    scrollToBottom();
+
+    return card;
+  }
+
+  /**
+   * 完成工具调用卡片（显示结果）
+   * @param {string} toolId - 工具调用ID
+   * @param {string} toolName - 工具名称
+   * @param {Object|null} input - 工具输入参数
+   * @param {string} output - 工具输出结果
+   */
+  completeToolCard(toolId, toolName, input, output) {
+    const card = this.cardMap.get(toolId);
+    if (!card) return;
+
+    const displayName = getToolDisplayName(toolName);
+
+    // 更新卡片状态
+    card.classList.remove('processing');
+    card.classList.add('completed', 'collapsed');
+
+    // 格式化输入参数
+    const inputDisplay = this.formatInput(input);
+    
+    // 格式化输出（截断长文本）
+    const outputDisplay = this.formatOutput(output);
+
+    card.innerHTML = `
+      <div class="tool-card-header">
+        <div class="tool-card-title">
+          <span class="tool-card-icon">✅</span>
+          <span class="tool-card-name">${displayName}</span>
+        </div>
+        <div class="tool-card-expand">▸</div>
+      </div>
+      <div class="tool-card-body">
+        <div class="tool-card-section">
+          <div class="tool-card-label">输入:</div>
+          <div class="tool-card-content">${inputDisplay}</div>
+        </div>
+        <div class="tool-card-section">
+          <div class="tool-card-label">输出:</div>
+          <div class="tool-card-content tool-card-output">${outputDisplay}</div>
+        </div>
+      </div>
+    `;
+
+    // 绑定展开/折叠事件
+    const header = card.querySelector('.tool-card-header');
+    header.addEventListener('click', () => this.toggleCard(card));
+
+    // 更新映射
+    this.cardMap.set(toolId, card);
+  }
+
+  /**
+   * 切换卡片展开/折叠状态
+   * @param {HTMLElement} card - 卡片元素
+   */
+  toggleCard(card) {
+    const isCollapsed = card.classList.contains('collapsed');
+    
+    if (isCollapsed) {
+      // 展开前，折叠同组的其他卡片
+      if (this.currentCardGroup) {
+        const allCards = this.currentCardGroup.querySelectorAll('.tool-card');
+        allCards.forEach(c => c.classList.add('collapsed'));
+      }
+      card.classList.remove('collapsed');
+      card.classList.add('expanded');
+    } else {
+      card.classList.remove('expanded');
+      card.classList.add('collapsed');
+    }
+  }
+
+  /**
+   * 完成当前卡片组
+   */
+  finalizeCardGroup() {
+    if (this.currentCardGroup) {
+      // 检查卡片组内是否有卡片
+      const cards = this.currentCardGroup.querySelectorAll('.tool-card');
+      if (cards.length === 0) {
+        this.currentCardGroup.remove();
+      }
+    }
+    this.currentCardGroup = null;
+    this.cardMap.clear();
+  }
+
+  /**
+   * 格式化输入参数显示
+   * @param {Object|null} input - 输入参数
+   * @returns {string} - 格式化后的HTML
+   */
+  formatInput(input) {
+    if (!input || Object.keys(input).length === 0) {
+      return '<span class="tool-card-empty">(无参数)</span>';
+    }
+
+    // 特殊处理：显示关键参数
+    const keyParams = [];
+    
+    // 常见参数处理
+    if (input.query) {
+      keyParams.push(`query: "${input.query}"`);
+    }
+    if (input.mode) {
+      keyParams.push(`mode: ${input.mode}`);
+    }
+    if (input.skill_name) {
+      keyParams.push(`skill: ${input.skill_name}`);
+    }
+    if (input.name) {
+      keyParams.push(`name: ${input.name}`);
+    }
+    if (input.css) {
+      // CSS 截断显示
+      const cssPreview = input.css.length > 50 
+        ? input.css.substring(0, 50) + '...' 
+        : input.css;
+      keyParams.push(`css: "${cssPreview}"`);
+    }
+
+    if (keyParams.length > 0) {
+      return `<code>${keyParams.join(', ')}</code>`;
+    }
+
+    // 默认：JSON 格式
+    try {
+      const json = JSON.stringify(input, null, 2);
+      if (json.length > 200) {
+        return `<code>${json.substring(0, 200)}...</code>`;
+      }
+      return `<code>${json}</code>`;
+    } catch {
+      return '<span class="tool-card-empty">(无法显示)</span>';
+    }
+  }
+
+  /**
+   * 格式化输出结果显示
+   * @param {string} output - 输出结果
+   * @returns {string} - 格式化后的HTML
+   */
+  formatOutput(output) {
+    if (!output) {
+      return '<span class="tool-card-empty">(无输出)</span>';
+    }
+
+    // 截断长文本
+    const maxLen = 500;
+    let displayText = output;
+    let truncated = false;
+
+    if (output.length > maxLen) {
+      displayText = output.substring(0, maxLen);
+      truncated = true;
+    }
+
+    // 转义HTML
+    const escaped = this.escapeHtml(displayText);
+    
+    // 保留换行
+    const formatted = escaped.replace(/\n/g, '<br>');
+
+    if (truncated) {
+      return `<span class="tool-card-text">${formatted}</span><span class="tool-card-truncated">(已截断)</span>`;
+    }
+
+    return `<span class="tool-card-text">${formatted}</span>`;
+  }
+
+  /**
+   * 转义HTML特殊字符
+   * @param {string} text - 原始文本
+   * @returns {string} - 转义后的文本
+   */
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  /**
+   * 获取当前卡片组（用于添加到消息容器）
+   * @returns {HTMLElement|null}
+   */
+  getCurrentCardGroup() {
+    return this.currentCardGroup;
+  }
+
+  /**
+   * 是否有活跃的卡片组
+   * @returns {boolean}
+   */
+  hasActiveCardGroup() {
+    return this.currentCardGroup !== null && 
+           this.currentCardGroup.querySelectorAll('.tool-card').length > 0;
+  }
+}
+
+/**
+ * 全局工具卡片管理器实例
+ */
+const toolCardManager = new ToolCardManager();
+
+/**
+ * 创建工具调用卡片（处理中状态）
+ * @param {string} toolId - 工具调用ID
+ * @param {string} toolName - 工具名称
+ * @returns {HTMLElement} 卡片组容器
+ */
+function createToolCard(toolId, toolName) {
+  // 确保有卡片组
+  if (!toolCardManager.hasActiveCardGroup()) {
+    const group = toolCardManager.createCardGroup();
+    addMessageToContainer(group);
+  }
+  
+  toolCardManager.addToolCard(toolId, toolName);
+  
+  return toolCardManager.getCurrentCardGroup();
+}
+
+/**
+ * 完成工具调用卡片
+ * @param {string} toolId - 工具调用ID
+ * @param {string} toolName - 工具名称
+ * @param {Object|null} input - 工具输入参数
+ * @param {string} output - 工具输出结果
+ */
+function completeToolCard(toolId, toolName, input, output) {
+  toolCardManager.completeToolCard(toolId, toolName, input, output);
+}
+
+/**
+ * 结束当前工具卡片组
+ */
+function finalizeToolCardGroup() {
+  toolCardManager.finalizeCardGroup();
+}
+
+/**
+ * 创建新的工具卡片组
+ * @returns {HTMLElement}
+ */
+function createToolCardGroup() {
+  return toolCardManager.createCardGroup();
+}
+
 export { 
   AppState, 
   switchView, 
@@ -1101,5 +1450,13 @@ export {
   scrollToBottom,
   showEmptyState,
   StreamingTextRenderer,
-  createStreamingRenderer
+  createStreamingRenderer,
+  // 工具调用卡片导出
+  ToolCardManager,
+  toolCardManager,
+  createToolCard,
+  completeToolCard,
+  finalizeToolCardGroup,
+  createToolCardGroup,
+  getToolDisplayName
 };
