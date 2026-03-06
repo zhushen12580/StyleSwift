@@ -674,7 +674,7 @@
           "id": "T106",
           "title": "实现 runListStyleSkills / runDeleteStyleSkill",
           "description": "runListStyleSkills: 调用 StyleSkillStore.list 格式化输出。runDeleteStyleSkill: 检查存在性后调用 StyleSkillStore.remove",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T023"
@@ -689,7 +689,7 @@
           "id": "T107",
           "title": "实现 executeTool 统一分派器",
           "description": "executeTool(name, args): switch 分派所有工具，Content Script 工具走 sendToContentScript，本地工具直接调用。未知工具返回错误提示",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T102",
