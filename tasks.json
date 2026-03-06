@@ -530,7 +530,7 @@
           "id": "T090",
           "title": "实现 runGetUserProfile",
           "description": "从 chrome.storage.local 读取 userProfile，为空返回 '(新用户，暂无风格偏好记录)'",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T004"
@@ -1422,9 +1422,9 @@
     "totalTasks": 99,
     "estimatedTotalHours": 144.0,
     "tasksByStatus": {
-      "pending": 99,
+      "pending": 98,
       "in_progress": 0,
-      "completed": 0,
+      "completed": 1,
       "blocked": 0,
       "testing": 0
     },
