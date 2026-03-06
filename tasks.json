@@ -912,10 +912,10 @@
           "files": ["extension/sidepanel/panel.js", "extension/sidepanel/panel.css"]
         },
         {
-          "id": "T123",
+"id": "T123",
           "title": "实现风格技能快捷区（Skill Chips）",
           "description": "横向滚动 chip 列表：内置技能（实心 chip）在前，用户技能（描边 chip + 来源域名小标签）在后。点击自动填入并发送。空状态显示 '+ 从当前风格创建'。可折叠",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T120",
