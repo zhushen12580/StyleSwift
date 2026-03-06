@@ -244,7 +244,7 @@
           "id": "T040",
           "title": "实现常量定义",
           "description": "定义 TAG_WHITELIST、LANDMARKS、STYLE_WHITELIST、SKIP_VALUES、COLLAPSE_THRESHOLD、TEXT_TAGS、VISUAL_PROPS、SELECTOR_PATTERN 等常量集合",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T002"
