@@ -48,19 +48,20 @@
     <section id="main-view" class="view hidden">
       
       <!-- 顶栏 -->
-      <header id="top-bar">
-        <div class="status-indicator" id="status-dot">
-          <span class="dot"></span>
+      <header id="top-bar" class="topbar">
+        <div class="topbar-left">
+          <div class="status-indicator" id="status-dot">
+            <span class="dot ready"></span>
+          </div>
         </div>
-        <div class="session-info">
+        <div class="topbar-center" id="session-header" title="点击切换会话">
           <span id="current-domain" class="domain">--</span>
+          <span class="separator">·</span>
           <span id="session-title" class="title">新会话</span>
+          <span class="dropdown-arrow">▾</span>
         </div>
-        <div class="top-bar-actions">
-          <button id="session-list-toggle" class="icon-btn" title="会话列表">
-            <span class="icon">▼</span>
-          </button>
-          <button id="settings-btn" class="icon-btn" title="设置">
+        <div class="topbar-right">
+          <button id="settings-btn" class="btn-ghost btn-icon" title="设置">
             <span class="icon">⚙</span>
           </button>
         </div>

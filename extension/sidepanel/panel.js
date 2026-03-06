@@ -73,11 +73,14 @@ const AppState = {
   /** 当前视图: 'onboarding' | 'main' | 'settings' */
   currentView: 'onboarding',
   
-  /** Agent 状态: 'idle' | 'running' | 'error' */
+  /** Agent 状态: 'idle' | 'running' | 'error' | 'restricted' */
   agentStatus: 'idle',
   
   /** API Key 状态: 'valid' | 'invalid' | 'missing' */
   apiKeyStatus: 'missing',
+  
+  /** 页面状态: 'ready' | 'restricted' */
+  pageStatus: 'ready',
   
   /** 当前域名 */
   currentDomain: null,
@@ -306,18 +309,73 @@ function initMainView() {
   
   // 设置初始状态
   updateStatusIndicator('idle');
-  DOM.currentDomain.textContent = '--';
-  DOM.sessionTitle.textContent = '新会话';
+  updateTopBarDisplay('--', '新会话');
+  
+  // 绑定顶栏交互事件
+  bindTopBarEvents();
   
   // TODO: 后续任务实现完整主界面逻辑
   // - 获取当前 Tab 域名
   // - 加载/创建会话
-  // - 绑定事件处理
+  // - 绑定消息发送事件
+}
+
+/**
+ * 绑定顶栏交互事件
+ */
+function bindTopBarEvents() {
+  // 会话标题区域点击 - 展开/收起会话列表
+  const sessionHeader = document.getElementById('session-header');
+  const sessionListToggle = document.getElementById('session-list-toggle');
+  
+  if (sessionHeader) {
+    sessionHeader.addEventListener('click', toggleSessionList);
+  }
+  
+  if (sessionListToggle) {
+    sessionListToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleSessionList();
+    });
+  }
+  
+  // 设置按钮
+  const settingsBtn = document.getElementById('settings-btn');
+  if (settingsBtn) {
+    settingsBtn.addEventListener('click', () => {
+      initSettingsView();
+      switchView('settings');
+    });
+  }
+}
+
+/**
+ * 切换会话列表面板
+ */
+function toggleSessionList() {
+  const panel = document.getElementById('session-list-panel');
+  if (!panel) return;
+  
+  panel.classList.toggle('hidden');
+}
+
+/**
+ * 更新顶栏显示内容
+ * @param {string} domain - 当前域名
+ * @param {string} title - 会话标题
+ */
+function updateTopBarDisplay(domain, title) {
+  if (DOM.currentDomain) {
+    DOM.currentDomain.textContent = domain || '--';
+  }
+  if (DOM.sessionTitle) {
+    DOM.sessionTitle.textContent = title || '新会话';
+  }
 }
 
 /**
  * 更新状态指示灯
- * @param {'idle' | 'running' | 'error'} status - 状态
+ * @param {'idle' | 'running' | 'error' | 'restricted'} status - 状态
  */
 function updateStatusIndicator(status) {
   const dot = DOM.statusDot?.querySelector('.dot');
@@ -336,6 +394,11 @@ function updateStatusIndicator(status) {
     case 'error':
       dot.classList.add('error');
       break;
+    case 'restricted':
+      dot.classList.add('restricted');
+      break;
+    default:
+      dot.classList.add('ready');
   }
   
   AppState.agentStatus = status;

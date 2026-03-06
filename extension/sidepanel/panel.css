@@ -340,19 +340,63 @@ pre code {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+  flex-shrink: 0;
 }
 
 .topbar-center {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--spacing-xs);
   cursor: pointer;
+  flex: 1;
+  min-width: 0;
+  padding: 0 var(--spacing-sm);
+  border-radius: var(--radius-md);
+  transition: background-color var(--duration-fast) var(--easing-default);
+}
+
+.topbar-center:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.topbar-center .domain {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+}
+
+.topbar-center .separator {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+}
+
+.topbar-center .title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
+}
+
+.topbar-center .dropdown-arrow {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  transition: transform var(--duration-fast) var(--easing-default);
+  flex-shrink: 0;
+}
+
+.topbar-center:hover .dropdown-arrow {
+  color: var(--color-text-secondary);
 }
 
 .topbar-right {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
 }
 
 /* 技能快捷区 */
@@ -440,29 +484,38 @@ pre code {
 /* ---------- 状态指示灯 ---------- */
 
 .status-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 
-.status-indicator.ready {
+.status-indicator .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  transition: background-color var(--duration-normal) var(--easing-default);
+}
+
+/* 状态灯颜色 */
+.status-indicator .dot.ready {
   background-color: var(--color-status-ready);
 }
 
-.status-indicator.processing {
+.status-indicator .dot.processing {
   background-color: var(--color-status-processing);
   animation: pulse 1.5s ease-in-out infinite;
 }
 
-.status-indicator.error {
+.status-indicator .dot.error {
   background-color: var(--color-status-error);
 }
 
-.status-indicator.restricted {
+.status-indicator .dot.restricted {
   background-color: var(--color-status-restricted);
 }
 
+/* 呼吸脉动动画 */
 @keyframes pulse {
   0%, 100% {
     opacity: 1;
@@ -470,7 +523,7 @@ pre code {
   }
   50% {
     opacity: 0.6;
-    transform: scale(1.1);
+    transform: scale(1.2);
   }
 }
 
@@ -1214,6 +1267,49 @@ pre code {
 .rounded-md { border-radius: var(--radius-md); }
 .rounded-lg { border-radius: var(--radius-lg); }
 .rounded-full { border-radius: var(--radius-full); }
+
+/* ============================================================
+   6. 按钮样式扩展
+   ============================================================ */
+
+/* Ghost 按钮 - 透明背景 */
+.btn-ghost {
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  border: none;
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--easing-default);
+}
+
+.btn-ghost:hover {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.btn-ghost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 图标按钮 */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-md);
+}
+
+.btn-icon svg,
+.btn-icon .icon {
+  width: 16px;
+  height: 16px;
+}
 
 /* ============================================================
    6. 响应式设计
