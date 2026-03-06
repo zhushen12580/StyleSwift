@@ -299,3 +299,78 @@ const SKILL_PATHS = {
   'color-theory':       'skills/color-theory.md',
   'css-selectors':      'skills/css-selectors-guide.md',
 };
+
+// =============================================================================
+// §2.5 多 Tab 场景处理 - Tab 锁定机制
+// =============================================================================
+
+/**
+ * 锁定的 Tab ID
+ * Agent 启动时锁定当前 Tab，全程操作该 Tab，不跟随用户切换
+ */
+let lockedTabId = null;
+
+/**
+ * 获取目标 Tab ID
+ * 优先返回锁定的 Tab ID，否则获取当前活跃 Tab
+ * @returns {Promise<number>} Tab ID
+ */
+async function getTargetTabId() {
+  if (lockedTabId) return lockedTabId;
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  return tab.id;
+}
+
+/**
+ * 锁定指定 Tab
+ * @param {number} tabId - 要锁定的 Tab ID
+ */
+function lockTab(tabId) {
+  lockedTabId = tabId;
+}
+
+/**
+ * 解锁 Tab
+ */
+function unlockTab() {
+  lockedTabId = null;
+}
+
+/**
+ * 通过 Content Script 获取目标 Tab 的域名
+ * 不需要 tabs 权限读取 tab.url，通过 Content Script 的 location.hostname 获取
+ * @returns {Promise<string>} 域名，失败时返回 'unknown'
+ */
+async function getTargetDomain() {
+  const tabId = await getTargetTabId();
+  return new Promise((resolve) => {
+    chrome.tabs.sendMessage(tabId, { tool: 'get_domain' }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.warn('getTargetDomain failed:', chrome.runtime.lastError.message);
+        resolve('unknown');
+      } else {
+        resolve(response || 'unknown');
+      }
+    });
+  });
+}
+
+/**
+ * 发送消息到 Content Script
+ * 始终发送给锁定的 Tab
+ * @param {object} message - 要发送的消息对象
+ * @returns {Promise<any>} Content Script 的响应
+ * @throws {Error} Content Script 不可用时抛出错误
+ */
+async function sendToContentScript(message) {
+  const tabId = await getTargetTabId();
+  return new Promise((resolve, reject) => {
+    chrome.tabs.sendMessage(tabId, message, (response) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(`Content Script 不可用: ${chrome.runtime.lastError.message}`));
+      } else {
+        resolve(response);
+      }
+    });
+  });
+}
