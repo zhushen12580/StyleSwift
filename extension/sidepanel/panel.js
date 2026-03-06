@@ -51,6 +51,9 @@ const DOM = {
   messagesContainer: null,
   messageInput: null,
   sendBtn: null,
+  stopBtn: null,
+  inputArea: null,
+  inputWrapper: null,
   
   // Skill area elements
   skillArea: null,
@@ -314,6 +317,9 @@ function initMainView() {
   DOM.messagesContainer = document.getElementById('messages-container');
   DOM.messageInput = document.getElementById('message-input');
   DOM.sendBtn = document.getElementById('send-btn');
+  DOM.stopBtn = document.getElementById('stop-btn');
+  DOM.inputArea = document.getElementById('input-area');
+  DOM.inputWrapper = document.getElementById('input-wrapper');
   
   // 获取技能区 DOM 元素
   DOM.skillArea = document.getElementById('skill-area');
@@ -327,13 +333,194 @@ function initMainView() {
   // 绑定顶栏交互事件
   bindTopBarEvents();
   
+  // 初始化输入区
+  initInputArea();
+  
   // 初始化技能快捷区
   initSkillArea();
+  
+  // 显示空状态
+  showEmptyState();
   
   // TODO: 后续任务实现完整主界面逻辑
   // - 获取当前 Tab 域名
   // - 加载/创建会话
   // - 绑定消息发送事件
+}
+
+// ============================================================================
+// 输入区逻辑
+// ============================================================================
+
+/**
+ * 初始化输入区
+ */
+function initInputArea() {
+  // 绑定发送按钮点击事件
+  if (DOM.sendBtn) {
+    DOM.sendBtn.addEventListener('click', handleSendClick);
+  }
+  
+  // 绑定停止按钮点击事件
+  if (DOM.stopBtn) {
+    DOM.stopBtn.addEventListener('click', handleStopClick);
+  }
+  
+  // 绑定输入框 Enter 键事件
+  if (DOM.messageInput) {
+    DOM.messageInput.addEventListener('keydown', handleInputKeydown);
+  }
+  
+  // 初始化为空闲态
+  updateInputAreaState('idle');
+}
+
+/**
+ * 更新输入区状态
+ * @param {'idle' | 'processing' | 'restricted'} state - 状态
+ */
+function updateInputAreaState(state) {
+  if (!DOM.inputArea || !DOM.messageInput || !DOM.sendBtn || !DOM.stopBtn) return;
+  
+  // 移除所有状态类
+  DOM.inputArea.classList.remove('processing', 'restricted');
+  DOM.sendBtn.classList.remove('hidden');
+  DOM.stopBtn.classList.add('hidden');
+  
+  switch (state) {
+    case 'idle':
+      // 空闲态：输入框可用 + 发送按钮
+      DOM.messageInput.disabled = false;
+      DOM.messageInput.placeholder = '描述你想要的风格...';
+      DOM.messageInput.value = '';
+      DOM.sendBtn.disabled = false;
+      break;
+      
+    case 'processing':
+      // 处理中：输入框禁用 + 停止按钮
+      DOM.inputArea.classList.add('processing');
+      DOM.messageInput.disabled = true;
+      DOM.messageInput.placeholder = '正在处理中...';
+      DOM.messageInput.value = '';
+      DOM.sendBtn.classList.add('hidden');
+      DOM.stopBtn.classList.remove('hidden');
+      break;
+      
+    case 'restricted':
+      // 受限页面：整体置灰 + 提示
+      DOM.inputArea.classList.add('restricted');
+      DOM.messageInput.disabled = true;
+      DOM.messageInput.placeholder = '此页面不支持样式修改';
+      DOM.messageInput.value = '';
+      DOM.sendBtn.disabled = true;
+      break;
+      
+    default:
+      console.warn('[Panel] Unknown input area state:', state);
+      return;
+  }
+  
+  console.log('[Panel] Input area state changed to:', state);
+}
+
+/**
+ * 处理发送按钮点击
+ */
+function handleSendClick() {
+  const message = DOM.messageInput?.value?.trim();
+  
+  if (!message) {
+    console.log('[Panel] Empty message, ignored');
+    return;
+  }
+  
+  // 禁止在处理中状态发送
+  if (AppState.agentStatus === 'running') {
+    console.warn('[Panel] Agent is running, cannot send message');
+    return;
+  }
+  
+  // 禁止在受限页面发送
+  if (AppState.pageStatus === 'restricted') {
+    console.warn('[Panel] Page is restricted, cannot send message');
+    return;
+  }
+  
+  console.log('[Panel] Sending message:', message);
+  
+  // TODO: 触发 Agent Loop 发送消息
+  // 这里需要后续任务 T140 实现完整的消息发送流程
+  // 目前先清空输入框并切换到处理中状态（演示用）
+  DOM.messageInput.value = '';
+  
+  // 演示：切换到处理中状态
+  // updateInputAreaState('processing');
+  // updateStatusIndicator('running');
+  
+  // 演示：3秒后恢复空闲态
+  // setTimeout(() => {
+  //   updateInputAreaState('idle');
+  //   updateStatusIndicator('idle');
+  // }, 3000);
+}
+
+/**
+ * 处理停止按钮点击
+ */
+function handleStopClick() {
+  console.log('[Panel] Stop button clicked');
+  
+  // TODO: 调用 cancelAgentLoop 取消当前处理
+  // 这里需要后续任务 T141 实现
+  // cancelAgentLoop();
+  
+  // 演示：立即恢复空闲态
+  updateInputAreaState('idle');
+  updateStatusIndicator('idle');
+}
+
+/**
+ * 处理输入框键盘事件
+ * @param {KeyboardEvent} e - 键盘事件
+ */
+function handleInputKeydown(e) {
+  // Enter 键发送（Shift+Enter 换行）
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    handleSendClick();
+  }
+}
+
+/**
+ * 设置受限页面状态
+ * @param {boolean} isRestricted - 是否为受限页面
+ */
+function setRestrictedPageState(isRestricted) {
+  AppState.pageStatus = isRestricted ? 'restricted' : 'ready';
+  
+  if (isRestricted) {
+    updateInputAreaState('restricted');
+    updateStatusIndicator('restricted');
+  } else {
+    updateInputAreaState('idle');
+    updateStatusIndicator('idle');
+  }
+}
+
+/**
+ * 设置处理中状态
+ * @param {boolean} isProcessing - 是否处理中
+ */
+function setProcessingState(isProcessing) {
+  AppState.agentStatus = isProcessing ? 'running' : 'idle';
+  
+  if (isProcessing) {
+    updateInputAreaState('processing');
+    updateStatusIndicator('running');
+  } else {
+    updateInputAreaState('idle');
+    updateStatusIndicator('idle');
+  }
 }
 
 // ============================================================================
@@ -1818,6 +2005,9 @@ export {
   switchView, 
   showError, 
   updateStatusIndicator,
+  updateInputAreaState,
+  setRestrictedPageState,
+  setProcessingState,
   renderUserMessage,
   renderAssistantMessageContainer,
   addMessageToContainer,

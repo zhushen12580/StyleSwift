@@ -106,20 +106,20 @@
       </main>
       
       <!-- 输入区域 -->
-      <footer id="input-area">
-        <div class="input-wrapper">
+      <footer id="input-area" class="input-area">
+        <div id="input-wrapper" class="input-wrapper">
           <textarea 
             id="message-input" 
-            placeholder="描述你想要的样式效果..."
+            class="message-input"
+            placeholder="描述你想要的风格..."
             rows="1"
           ></textarea>
-          <button id="send-btn" class="btn-send" disabled>
-            <span class="icon">↑</span>
+          <button id="send-btn" class="send-btn" title="发送">
+            ➤
           </button>
-        </div>
-        <div class="input-hints">
-          <span id="token-count" class="hidden"></span>
-          <button id="rollback-btn" class="text-btn hidden">撤销样式</button>
+          <button id="stop-btn" class="stop-btn hidden" title="停止">
+            ■
+          </button>
         </div>
       </footer>
       

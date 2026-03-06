@@ -992,7 +992,7 @@
           "id": "T128",
           "title": "实现输入区三态切换",
           "description": "空闲态：输入框 + ➤ 发送按钮。处理中：禁用输入 + '正在处理中...' + ■ 停止按钮。受限页面：整体置灰 + '此页面不支持样式修改'",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T120"
