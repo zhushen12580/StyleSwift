@@ -194,5 +194,62 @@ function summarizeChildren(childEls) {
     .join(', ');
 }
 
+// === 计算样式提取 ===
+
+/**
+ * 获取元素的计算样式
+ * 从 STYLE_WHITELIST 中读取计算样式，过滤 SKIP_VALUES 中的默认值
+ * 
+ * @param {Element} element - DOM 元素
+ * @param {string} tag - 元素标签名（小写）
+ * @returns {Array<[string, string]>} 样式属性-值对数组
+ */
+function getComputedStyles(element, tag) {
+  const cs = window.getComputedStyle(element);
+  const pairs = [];
+  
+  // 遍历样式白名单，提取有意义的样式值
+  for (const prop of STYLE_WHITELIST) {
+    const val = cs.getPropertyValue(prop);
+    
+    // 过滤空值和跳过值（默认值/无意义值）
+    if (val && !SKIP_VALUES.has(val)) {
+      pairs.push([prop, val]);
+    }
+  }
+  
+  // 根据元素类型筛选要显示的样式
+  return pickStylesForDisplay(tag, pairs);
+}
+
+/**
+ * 根据元素类型筛选要显示的样式
+ * - LANDMARKS（地标元素）：返回全量样式
+ * - TEXT_TAGS（文本元素）：只返回文本相关属性
+ * - 其他元素：只返回视觉属性
+ * 
+ * @param {string} tag - 元素标签名（小写）
+ * @param {Array<[string, string]>} pairs - 样式属性-值对数组
+ * @returns {Array<[string, string]>} 筛选后的样式属性-值对数组
+ */
+function pickStylesForDisplay(tag, pairs) {
+  // 地标元素（header, nav, main, aside, footer, article, section）：返回全量样式
+  if (LANDMARKS.has(tag)) {
+    return pairs;
+  }
+  
+  // 文本元素（h1-h6, p, span, a, li, label）：只返回文本相关属性
+  if (TEXT_TAGS.has(tag)) {
+    const textProps = new Set([
+      'color', 'font-size', 'font-weight', 'font-family', 
+      'line-height', 'text-decoration', 'letter-spacing'
+    ]);
+    return pairs.filter(([prop]) => textProps.has(prop));
+  }
+  
+  // 其他元素：只返回视觉属性
+  return pairs.filter(([prop]) => VISUAL_PROPS.has(prop));
+}
+
 // === 后续功能实现区域 ===
-// T043-T053 任务将在此添加计算样式提取、DOM 操作、CSS 注入等功能
+// T044-T053 任务将在此添加 DOM 操作、CSS 注入等功能
