@@ -2,15 +2,17 @@
  * Agent Loop 单元测试
  * 
  * 测试 SYSTEM_BASE 常量定义
+ * 测试 buildSessionContext 函数
  * 
  * 测试标准：
  * - SYSTEM_BASE 包含所有关键指引
+ * - buildSessionContext 输出包含域名和会话标题，有摘要时包含样式信息，有画像时包含偏好提示
  */
 
 import { describe, test, expect } from 'vitest';
 
 // Import constants to test
-import { SYSTEM_BASE } from '../sidepanel/agent-loop.js';
+import { SYSTEM_BASE, buildSessionContext } from '../sidepanel/agent-loop.js';
 
 describe('SYSTEM_BASE 常量', () => {
   test('SYSTEM_BASE 定义为字符串', () => {
@@ -73,5 +75,68 @@ describe('工具数组导出验证', () => {
     // 这两个变量应该被导出
     expect(agentLoop).toHaveProperty('BASE_TOOLS');
     expect(agentLoop).toHaveProperty('ALL_TOOLS');
+  });
+});
+
+describe('buildSessionContext 函数', () => {
+  test('输出包含域名和会话标题', () => {
+    const ctx = buildSessionContext('github.com', { title: '深色模式' }, '');
+    
+    expect(ctx).toContain('[会话上下文]');
+    expect(ctx).toContain('域名: github.com');
+    expect(ctx).toContain('会话: 深色模式');
+  });
+
+  test('无标题时显示"新会话"', () => {
+    const ctx = buildSessionContext('example.com', { title: null }, '');
+    
+    expect(ctx).toContain('会话: 新会话');
+  });
+
+  test('有样式摘要时包含样式信息', () => {
+    const ctx = buildSessionContext('github.com', {
+      title: '样式调整',
+      activeStylesSummary: '5 条规则，涉及 body, .header 等'
+    }, '');
+    
+    expect(ctx).toContain('已应用样式: 5 条规则，涉及 body, .header 等');
+  });
+
+  test('无样式摘要时不包含样式信息', () => {
+    const ctx = buildSessionContext('github.com', { title: '新会话' }, '');
+    
+    expect(ctx).not.toContain('已应用样式');
+  });
+
+  test('有画像时包含偏好提示', () => {
+    const ctx = buildSessionContext('github.com', { title: '调整' }, '偏好深色模式、圆角设计');
+    
+    expect(ctx).toContain('用户风格偏好: 偏好深色模式、圆角设计');
+    expect(ctx).toContain('(详情可通过 get_user_profile 获取)');
+  });
+
+  test('无画像时不包含偏好提示', () => {
+    const ctx = buildSessionContext('github.com', { title: '调整' }, '');
+    
+    expect(ctx).not.toContain('用户风格偏好');
+  });
+
+  test('完整上下文包含所有信息', () => {
+    const ctx = buildSessionContext('github.com', {
+      title: '深色模式调整',
+      activeStylesSummary: '3 条规则，涉及 body, .header 等'
+    }, '偏好深色模式');
+    
+    expect(ctx).toContain('[会话上下文]');
+    expect(ctx).toContain('域名: github.com');
+    expect(ctx).toContain('会话: 深色模式调整');
+    expect(ctx).toContain('已应用样式: 3 条规则，涉及 body, .header 等');
+    expect(ctx).toContain('用户风格偏好: 偏好深色模式');
+  });
+
+  test('返回的上下文以换行符开始', () => {
+    const ctx = buildSessionContext('test.com', { title: '测试' }, '');
+    
+    expect(ctx.startsWith('\n')).toBe(true);
   });
 });

@@ -732,7 +732,7 @@
           "id": "T111",
           "title": "实现 Session Context 构建（buildSessionContext）",
           "description": "buildSessionContext(domain, sessionMeta, profileHint): 拼接 [会话上下文] 块，包含域名、会话标题、已应用样式摘要、用户偏好一行提示",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T092"
