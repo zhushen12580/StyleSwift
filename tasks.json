@@ -758,11 +758,11 @@
           "estimatedHours": 2,
           "files": ["extension/sidepanel/agent-loop.js"]
         },
-        {
+{
           "id": "T113",
           "title": "实现受限页面预检测（checkPageAccess）",
           "description": "isRestrictedPage(url): 正则匹配 chrome:// 等受限 URL。checkPageAccess(tabId): 尝试发送 get_domain 消息，不可达返回失败原因",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T102"

@@ -342,6 +342,94 @@ async function summarizeOldTurns(oldHistory) {
 }
 
 // =============================================================================
+// §11.2 受限页面预检测
+// =============================================================================
+
+/**
+ * 受限 URL 模式列表
+ * 
+ * 这些 URL 模式匹配的页面无法注入 Content Script，因此无法进行样式修改：
+ * - chrome:// - Chrome 内部页面（设置、扩展管理等）
+ * - chrome-extension:// - 扩展页面
+ * - edge:// - Edge 内部页面
+ * - about: - 浏览器内部页面（about:blank, about:newtab 等）
+ * - file:// - 本地文件页面
+ * - Chrome Web Store 和 Edge Add-ons - 扩展商店页面受限
+ * 
+ * @type {RegExp[]}
+ */
+const RESTRICTED_PATTERNS = [
+  /^chrome:\/\//,
+  /^chrome-extension:\/\//,
+  /^edge:\/\//,
+  /^about:/,
+  /^file:\/\//,
+  /^https:\/\/chrome\.google\.com\/webstore/,
+  /^https:\/\/microsoftedge\.microsoft\.com\/addons/,
+];
+
+/**
+ * 检测 URL 是否为受限页面
+ * 
+ * 通过正则匹配判断 URL 是否属于无法注入 Content Script 的受限页面。
+ * 
+ * @param {string} url - 要检测的 URL
+ * @returns {boolean} true 表示是受限页面，false 表示正常页面
+ * 
+ * @example
+ * isRestrictedPage('chrome://extensions')
+ * // 返回: true
+ * 
+ * @example
+ * isRestrictedPage('https://github.com')
+ * // 返回: false
+ */
+function isRestrictedPage(url) {
+  return RESTRICTED_PATTERNS.some(p => p.test(url));
+}
+
+/**
+ * 检测页面访问权限
+ * 
+ * 通过尝试向 Content Script 发送消息来判断页面是否可访问。
+ * 如果消息发送成功，说明 Content Script 已注入，页面可正常操作。
+ * 如果失败，说明页面受限或 Content Script 未注入。
+ * 
+ * 该函数应在 Agent Loop 启动前调用，用于预检测页面可访问性。
+ * 
+ * @param {number} tabId - 要检测的 Tab ID
+ * @returns {Promise<{ok: boolean, domain?: string, reason?: string}>}
+ *          - ok: true 表示页面可访问，返回 domain
+ *          - ok: false 表示页面不可访问，返回 reason 说明原因
+ * 
+ * @example
+ * // 正常页面
+ * const result = await checkPageAccess(123);
+ * // result = { ok: true, domain: 'github.com' }
+ * 
+ * @example
+ * // 受限页面
+ * const result = await checkPageAccess(456);
+ * // result = { ok: false, reason: '此页面不支持样式修改（浏览器内部页面或受限页面）' }
+ */
+async function checkPageAccess(tabId) {
+  try {
+    const domain = await new Promise((resolve, reject) => {
+      chrome.tabs.sendMessage(tabId, { tool: 'get_domain' }, (response) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(response);
+        }
+      });
+    });
+    return { ok: true, domain };
+  } catch {
+    return { ok: false, reason: '此页面不支持样式修改（浏览器内部页面或受限页面）' };
+  }
+}
+
+// =============================================================================
 // 导出常量和工具数组
 // =============================================================================
 
@@ -353,5 +441,8 @@ export {
   TOKEN_BUDGET,
   checkAndCompressHistory,
   findTurnBoundary,
-  summarizeOldTurns
+  summarizeOldTurns,
+  RESTRICTED_PATTERNS,
+  isRestrictedPage,
+  checkPageAccess
 };
