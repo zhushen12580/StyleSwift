@@ -311,7 +311,7 @@
           "id": "T060",
           "title": "实现 API 设置存储（getSettings / saveSettings）",
           "description": "实现 getSettings() 从 chrome.storage.local 读取 settings（apiKey, apiBase, model），无 Key 抛错。saveSettings() 合并写入，DEFAULT_API_BASE = 'https://api.anthropic.com'",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T004"
@@ -320,7 +320,7 @@
           "designRef": "§9.1 存储",
           "testCriteria": "saveSettings 后 getSettings 返回正确值，无 Key 时抛出错误",
           "estimatedHours": 1,
-          "files": ["extension/sidepanel/api.js"]
+          "files": ["extension/sidepanel/api.js", "extension/tests/api.test.js"]
         },
         {
           "id": "T061",
