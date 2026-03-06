@@ -717,7 +717,7 @@
           "id": "T110",
           "title": "定义 SYSTEM_BASE 和 BASE_TOOLS / ALL_TOOLS 常量",
           "description": "定义系统提示词常量（身份、工作方式、CSS 生成规则、风格技能指引），组装 BASE_TOOLS 和 ALL_TOOLS(含 TASK_TOOL) 数组",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T100"
