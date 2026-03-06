@@ -1043,7 +1043,7 @@
           "id": "T131",
           "title": "实现错误横幅",
           "description": "顶栏下方可关闭的错误横幅：显示错误信息 + 操作按钮（如 '去设置→'）。支持 API_KEY_INVALID / NETWORK_ERROR / API_ERROR 等错误类型",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T122"

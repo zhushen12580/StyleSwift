@@ -55,6 +55,12 @@ const DOM = {
   inputArea: null,
   inputWrapper: null,
   
+  // Error banner elements
+  errorBanner: null,
+  errorBannerMessage: null,
+  errorBannerAction: null,
+  errorBannerClose: null,
+  
   // Skill area elements
   skillArea: null,
   skillChips: null,
@@ -326,12 +332,21 @@ function initMainView() {
   DOM.skillChips = document.getElementById('skill-chips');
   DOM.skillAreaToggle = document.getElementById('skill-area-toggle');
   
+  // 获取错误横幅 DOM 元素
+  DOM.errorBanner = document.getElementById('error-banner');
+  DOM.errorBannerMessage = document.getElementById('error-banner-message');
+  DOM.errorBannerAction = document.getElementById('error-banner-action');
+  DOM.errorBannerClose = document.getElementById('error-banner-close');
+  
   // 设置初始状态
   updateStatusIndicator('idle');
   updateTopBarDisplay('--', '新会话');
   
   // 绑定顶栏交互事件
   bindTopBarEvents();
+  
+  // 初始化错误横幅事件
+  initErrorBanner();
   
   // 绑定新建会话按钮事件
   const newSessionBtn = document.getElementById('new-session-btn');
@@ -2605,7 +2620,141 @@ function getConfirmationOverlay() {
   return confirmationOverlay;
 }
 
-export { 
+// ============================================================================
+// 错误横幅逻辑
+// ============================================================================
+
+/**
+ * 错误类型配置
+ */
+const ERROR_BANNER_CONFIGS = {
+  API_KEY_INVALID: {
+    message: 'API Key 无效，请检查设置',
+    actionText: '去设置→',
+    action: 'settings'
+  },
+  NETWORK_ERROR: {
+    message: '网络错误，请检查网络连接',
+    actionText: '重试',
+    action: 'retry'
+  },
+  API_ERROR: {
+    message: 'API 调用失败',
+    actionText: '重试',
+    action: 'retry'
+  }
+};
+
+/**
+ * 显示错误横幅
+ * @param {string} errorType - 错误类型：'API_KEY_INVALID' | 'NETWORK_ERROR' | 'API_ERROR'
+ * @param {Object} options - 可选配置
+ * @param {string} options.customMessage - 自定义错误消息
+ * @param {Function} options.onRetry - 重试回调（仅 NETWORK_ERROR 和 API_ERROR）
+ */
+function showErrorBanner(errorType, options = {}) {
+  if (!DOM.errorBanner) return;
+  
+  const config = ERROR_BANNER_CONFIGS[errorType];
+  if (!config) {
+    console.error('[Panel] Unknown error type:', errorType);
+    return;
+  }
+  
+  // 设置错误消息
+  const message = options.customMessage || config.message;
+  DOM.errorBannerMessage.textContent = message;
+  
+  // 设置操作按钮
+  if (config.actionText && config.action) {
+    DOM.errorBannerAction.textContent = config.actionText;
+    DOM.errorBannerAction.classList.remove('hidden');
+    DOM.errorBannerAction.dataset.action = config.action;
+    
+    // 如果是重试操作，保存回调
+    if (config.action === 'retry' && options.onRetry) {
+      DOM.errorBannerAction.dataset.hasCallback = 'true';
+      // 使用闭包保存回调
+      DOM.errorBannerAction._retryCallback = options.onRetry;
+    } else {
+      DOM.errorBannerAction.dataset.hasCallback = 'false';
+      DOM.errorBannerAction._retryCallback = null;
+    }
+  } else {
+    DOM.errorBannerAction.classList.add('hidden');
+  }
+  
+  // 显示横幅
+  DOM.errorBanner.classList.remove('hidden');
+  
+  // 更新状态指示灯为错误状态
+  updateStatusIndicator('error');
+  
+  console.log('[Panel] Error banner shown:', errorType, message);
+}
+
+/**
+ * 隐藏错误横幅
+ */
+function hideErrorBanner() {
+  if (!DOM.errorBanner) return;
+  
+  DOM.errorBanner.classList.add('hidden');
+  
+  // 清除重试回调
+  if (DOM.errorBannerAction) {
+    DOM.errorBannerAction._retryCallback = null;
+  }
+  
+  // 恢复状态指示灯
+  if (AppState.agentStatus === 'error') {
+    updateStatusIndicator('idle');
+  }
+  
+  console.log('[Panel] Error banner hidden');
+}
+
+/**
+ * 初始化错误横幅事件
+ */
+function initErrorBanner() {
+  // 关闭按钮
+  if (DOM.errorBannerClose) {
+    DOM.errorBannerClose.addEventListener('click', () => {
+      hideErrorBanner();
+    });
+  }
+  
+  // 操作按钮
+  if (DOM.errorBannerAction) {
+    DOM.errorBannerAction.addEventListener('click', () => {
+      const action = DOM.errorBannerAction.dataset.action;
+      
+      switch (action) {
+        case 'settings':
+          // 跳转到设置页
+          hideErrorBanner();
+          initSettingsView();
+          switchView('settings');
+          break;
+          
+        case 'retry':
+          // 执行重试回调
+          if (DOM.errorBannerAction._retryCallback) {
+            hideErrorBanner();
+            DOM.errorBannerAction._retryCallback();
+          }
+          break;
+      }
+    });
+  }
+}
+
+// ============================================================================
+// 导出函数
+// ============================================================================
+
+export {
   AppState, 
   switchView, 
   showError, 
@@ -2635,5 +2784,8 @@ export {
   showConfirmationOverlay,
   hideConfirmationOverlay,
   isConfirmationOverlayVisible,
-  getConfirmationOverlay
+  getConfirmationOverlay,
+  // 错误横幅导出
+  showErrorBanner,
+  hideErrorBanner
 };
