@@ -2596,3 +2596,243 @@ pre code {
 .toast .icon-btn:hover {
   color: var(--color-text-primary);
 }
+
+/* ============================================================
+   10. 设置页样式
+   ============================================================ */
+
+/* 设置页容器 */
+.settings-view {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: var(--color-bg-primary);
+}
+
+/* 设置页头部 */
+.settings-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border-light);
+  background-color: var(--color-bg-primary);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.settings-header h2 {
+  flex: 1;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.settings-header .icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: all var(--duration-fast) var(--easing-default);
+  font-size: var(--font-size-xl);
+}
+
+.settings-header .icon-btn:hover {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+/* 设置内容区 */
+.settings-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-md);
+}
+
+/* 设置组 */
+.settings-group {
+  margin-bottom: var(--spacing-xl);
+}
+
+.settings-group h3 {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+/* 表单组 */
+.settings-group .form-group {
+  margin-bottom: var(--spacing-md);
+}
+
+.settings-group .form-group label {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.settings-group .form-group input,
+.settings-group .form-group select {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-family);
+  font-size: var(--font-size-md);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: all var(--duration-fast) var(--easing-default);
+  outline: none;
+}
+
+.settings-group .form-group input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.settings-group .form-group input:hover,
+.settings-group .form-group select:hover {
+  border-color: var(--color-border-strong);
+}
+
+.settings-group .form-group input:focus,
+.settings-group .form-group select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+.settings-group .form-group select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--spacing-sm) center;
+  padding-right: var(--spacing-xl);
+}
+
+/* 输入框带操作按钮 */
+.input-with-action {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.input-with-action input {
+  flex: 1;
+}
+
+.input-with-action .icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: all var(--duration-fast) var(--easing-default);
+  flex-shrink: 0;
+}
+
+.input-with-action .icon-btn:hover {
+  background-color: var(--color-bg-hover);
+  border-color: var(--color-border-strong);
+  color: var(--color-text-primary);
+}
+
+/* 存储用量容器 */
+.storage-usage-container {
+  margin-bottom: var(--spacing-md);
+}
+
+/* 存储用量进度条 */
+.storage-usage-bar {
+  width: 100%;
+  height: 8px;
+  background-color: var(--color-bg-tertiary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-bottom: var(--spacing-sm);
+}
+
+.storage-progress {
+  height: 100%;
+  background-color: var(--color-primary);
+  border-radius: var(--radius-full);
+  transition: width var(--duration-slow) var(--easing-default), background-color var(--duration-normal) var(--easing-default);
+}
+
+/* 存储用量文本 */
+.storage-usage-text {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.storage-usage-text #storage-percent {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.storage-usage-text #storage-detail {
+  color: var(--color-text-tertiary);
+}
+
+/* 状态消息 */
+.status-message {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  margin-top: var(--spacing-sm);
+  animation: fadeIn var(--duration-fast) var(--easing-default);
+}
+
+/* 提示文本 */
+.settings-group .hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  margin-top: var(--spacing-xs);
+}
+
+/* 关于文本 */
+.about-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-xs);
+}
+
+/* 风格技能列表 */
+.skill-list {
+  margin-bottom: var(--spacing-sm);
+}
+
+/* ============================================================
+   11. 响应式调整
+   ============================================================ */
+
+/* 最小宽度 360px */
+@media (max-width: 380px) {
+  .settings-group .form-group input,
+  .settings-group .form-group select {
+    font-size: var(--font-size-sm);
+  }
+  
+  .storage-usage-text {
+    font-size: var(--font-size-xs);
+  }
+}

@@ -177,11 +177,26 @@
         
         <div class="settings-group">
           <h3>存储</h3>
-          <div class="storage-info">
-            <span>已使用: </span>
-            <span id="storage-usage">-- KB</span>
+          <div class="storage-usage-container">
+            <div class="storage-usage-bar">
+              <div id="storage-progress" class="storage-progress" style="width: 0%"></div>
+            </div>
+            <div class="storage-usage-text">
+              <span id="storage-percent">0%</span>
+              <span id="storage-detail">-- MB / -- MB</span>
+            </div>
           </div>
-          <button id="clear-storage-btn" class="btn-danger">清除所有数据</button>
+          <button id="clear-storage-btn" class="btn-secondary">清理历史数据</button>
+          <p class="hint">清理90天前的会话和超出限制的历史记录</p>
+        </div>
+            <div class="progress">
+              <div id="storage-usage-bar" class="progress-bar" style="width: 0%"></div>
+            </div>
+            <div class="storage-percent">
+              <span id="storage-usage-percent">0%</span>
+            </div>
+          </div>
+          <button id="clear-storage-btn" class="btn-danger">清理历史数据</button>
         </div>
         
         <div class="settings-group">

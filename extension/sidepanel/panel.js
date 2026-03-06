@@ -1268,7 +1268,7 @@ function updateStatusIndicator(status) {
 /**
  * 初始化设置页
  */
-function initSettingsView() {
+async function initSettingsView() {
   // 获取 DOM 元素
   DOM.settingsApiKey = document.getElementById('settings-api-key');
   DOM.settingsApiBase = document.getElementById('settings-api-base');
@@ -1297,8 +1297,22 @@ function initSettingsView() {
     });
   }
   
+  // 清理历史数据按钮
+  const clearStorageBtn = document.getElementById('clear-storage-btn');
+  if (clearStorageBtn) {
+    clearStorageBtn.addEventListener('click', handleClearStorage);
+  }
+  
+  // 模型选择变更事件
+  if (DOM.settingsModel) {
+    DOM.settingsModel.addEventListener('change', handleModelChange);
+  }
+  
   // 加载当前设置
-  loadCurrentSettings();
+  await loadCurrentSettings();
+  
+  // 加载存储用量
+  await loadStorageUsage();
 }
 
 /**
@@ -1376,6 +1390,137 @@ function showConnectionStatus(message, type) {
     type === 'success' ? 'var(--color-success)' :
     type === 'error' ? 'var(--color-error)' :
     'var(--color-text-secondary)';
+}
+
+/**
+ * 加载存储用量
+ */
+async function loadStorageUsage() {
+  try {
+    // 动态导入 session 模块
+    const session = await import('./session.js');
+    
+    // 获取存储用量
+    const usage = await session.getStorageUsage();
+    
+    // 更新进度条
+    const progressBar = document.getElementById('storage-progress');
+    if (progressBar) {
+      progressBar.style.width = `${usage.percent}%`;
+      
+      // 根据使用率设置颜色
+      if (usage.percent >= 90) {
+        progressBar.style.backgroundColor = 'var(--color-error)';
+      } else if (usage.percent >= 70) {
+        progressBar.style.backgroundColor = 'var(--color-warning)';
+      } else {
+        progressBar.style.backgroundColor = 'var(--color-primary)';
+      }
+    }
+    
+    // 更新百分比文本
+    const percentText = document.getElementById('storage-percent');
+    if (percentText) {
+      percentText.textContent = `${usage.percent}%`;
+    }
+    
+    // 更新详细文本
+    const detailText = document.getElementById('storage-detail');
+    if (detailText) {
+      const usedMB = (usage.bytes / (1024 * 1024)).toFixed(2);
+      const maxMB = (usage.maxBytes / (1024 * 1024)).toFixed(0);
+      detailText.textContent = `${usedMB} MB / ${maxMB} MB`;
+    }
+    
+  } catch (error) {
+    console.error('[Panel] Failed to load storage usage:', error);
+    
+    // 显示错误状态
+    const percentText = document.getElementById('storage-percent');
+    if (percentText) {
+      percentText.textContent = '--';
+    }
+    
+    const detailText = document.getElementById('storage-detail');
+    if (detailText) {
+      detailText.textContent = '无法获取存储信息';
+    }
+  }
+}
+
+/**
+ * 处理清理历史数据按钮点击
+ */
+async function handleClearStorage() {
+  // 确认对话框
+  const confirmed = confirm(
+    '确定要清理历史数据吗？\n\n' +
+    '这将删除：\n' +
+    '• 超过 90 天的会话\n' +
+    '• 每个域名超过 20 个的旧会话\n' +
+    '• 超过 50 个的旧风格技能\n\n' +
+    '此操作不可撤销。'
+  );
+  
+  if (!confirmed) return;
+  
+  try {
+    // 动态导入 session 模块
+    const session = await import('./session.js');
+    
+    // 显示加载状态
+    const clearBtn = document.getElementById('clear-storage-btn');
+    if (clearBtn) {
+      clearBtn.disabled = true;
+      clearBtn.textContent = '清理中...';
+    }
+    
+    // 执行清理
+    await session.cleanupStorage();
+    
+    // 刷新存储用量显示
+    await loadStorageUsage();
+    
+    // 显示成功提示
+    alert('历史数据清理完成！');
+    
+  } catch (error) {
+    console.error('[Panel] Failed to clear storage:', error);
+    alert('清理失败：' + error.message);
+  } finally {
+    // 恢复按钮状态
+    const clearBtn = document.getElementById('clear-storage-btn');
+    if (clearBtn) {
+      clearBtn.disabled = false;
+      clearBtn.textContent = '清理历史数据';
+    }
+  }
+}
+
+/**
+ * 处理模型选择变更
+ */
+async function handleModelChange(event) {
+  const selectedModel = event.target.value;
+  
+  try {
+    // 保存模型设置
+    await saveSettings({ model: selectedModel });
+    console.log('[Panel] Model changed to:', selectedModel);
+    
+    // 显示成功提示（短暂显示）
+    const modelSelect = event.target;
+    const originalBorderColor = modelSelect.style.borderColor;
+    modelSelect.style.borderColor = 'var(--color-success)';
+    
+    setTimeout(() => {
+      modelSelect.style.borderColor = originalBorderColor;
+    }, 1000);
+    
+  } catch (error) {
+    console.error('[Panel] Failed to save model setting:', error);
+    showError('保存模型设置失败');
+  }
 }
 
 // ============================================================================

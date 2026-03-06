@@ -1024,7 +1024,7 @@
           "id": "T130",
           "title": "实现设置页",
           "description": "返回按钮 + API Key 输入（密码遮罩）+ API 地址 + 验证连接按钮 + 模型选择下拉 + 存储用量进度条 + 清理历史数据按钮 + 版本号",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T120",
