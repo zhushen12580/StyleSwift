@@ -900,7 +900,7 @@
           "id": "T122",
           "title": "实现顶栏（Top Bar）",
           "description": "状态指示灯（绿/黄/红/灰）+ 域名 + 会话标题 + 下拉箭头 + 设置图标。状态灯支持呼吸脉动动画（处理中）",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T120"
