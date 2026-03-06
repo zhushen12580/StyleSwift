@@ -632,6 +632,149 @@ let currentAbortController = null;
  */
 let isAgentRunning = false;
 
+/**
+ * 工具调用历史记录
+ * 用于检测死循环（连续 3 次相同工具+参数）
+ * @type {Array<{name: string, args: object, timestamp: number}>}
+ */
+let toolCallHistory = [];
+
+/**
+ * 最大重试次数（失败后最多重试 2 次，总共执行 3 次）
+ * @type {number}
+ */
+const MAX_RETRIES = 2;
+
+/**
+ * 连续相同调用阈值（连续 3 次相同工具+参数视为死循环）
+ * @type {number}
+ */
+const DUPLICATE_CALL_THRESHOLD = 3;
+
+// =============================================================================
+// §11.4 死循环保护
+// =============================================================================
+
+/**
+ * 重置工具调用历史
+ * 每次新的 Agent Loop 开始时调用
+ */
+function resetToolCallHistory() {
+  toolCallHistory = [];
+}
+
+/**
+ * 生成工具调用的唯一键
+ * 用于判断两次调用是否相同（相同工具名 + 相同参数）
+ * 
+ * @param {string} toolName - 工具名称
+ * @param {object} args - 工具参数
+ * @returns {string} 工具调用的唯一键
+ */
+function generateToolCallKey(toolName, args) {
+  try {
+    // 对参数进行稳定排序后序列化，确保相同参数但不同顺序产生相同的键
+    const sortedArgs = sortObjectKeys(args);
+    return `${toolName}:${JSON.stringify(sortedArgs)}`;
+  } catch (error) {
+    // 如果序列化失败，返回工具名 + 时间戳避免误判
+    console.warn('[Tool Call Key] Failed to generate key:', error);
+    return `${toolName}:${Date.now()}`;
+  }
+}
+
+/**
+ * 递归排序对象的键（确保稳定序列化）
+ * 
+ * @param {any} obj - 要排序的对象
+ * @returns {any} 排序后的对象
+ */
+function sortObjectKeys(obj) {
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(sortObjectKeys);
+  }
+  
+  const sorted = {};
+  const keys = Object.keys(obj).sort();
+  for (const key of keys) {
+    sorted[key] = sortObjectKeys(obj[key]);
+  }
+  return sorted;
+}
+
+/**
+ * 检测是否为死循环（连续相同工具调用）
+ * 
+ * @param {string} toolName - 工具名称
+ * @param {object} args - 工具参数
+ * @returns {boolean} true 表示检测到死循环
+ */
+function detectDeadLoop(toolName, args) {
+  const callKey = generateToolCallKey(toolName, args);
+  
+  // 添加到历史记录
+  toolCallHistory.push({
+    name: toolName,
+    args: args,
+    key: callKey,
+    timestamp: Date.now()
+  });
+  
+  // 检查连续相同调用
+  if (toolCallHistory.length >= DUPLICATE_CALL_THRESHOLD) {
+    const recentCalls = toolCallHistory.slice(-DUPLICATE_CALL_THRESHOLD);
+    const allSame = recentCalls.every(call => call.key === callKey);
+    
+    if (allSame) {
+      console.warn('[Dead Loop Detection] 检测到连续 3 次相同的工具调用:', {
+        tool: toolName,
+        args: args
+      });
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+/**
+ * 带重试的工具执行函数
+ * 失败后最多重试 MAX_RETRIES 次
+ * 
+ * @param {string} toolName - 工具名称
+ * @param {object} args - 工具参数
+ * @param {Function} executor - 工具执行函数
+ * @returns {Promise<string>} 工具执行结果
+ */
+async function executeToolWithRetry(toolName, args, executor) {
+  let lastError = null;
+  
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const result = await executor(toolName, args);
+      return result;
+    } catch (error) {
+      lastError = error;
+      
+      // 如果还有重试机会，记录日志并继续
+      if (attempt < MAX_RETRIES) {
+        console.warn(`[Tool Retry] ${toolName} 执行失败 (尝试 ${attempt + 1}/${MAX_RETRIES + 1})，正在重试...`, error);
+      } else {
+        // 重试次数用尽，返回错误信息
+        console.error(`[Tool Retry] ${toolName} 执行失败，已达最大重试次数`, error);
+        return `工具 ${toolName} 执行失败: ${error.message || error}. 已重试 ${MAX_RETRIES} 次仍失败。`;
+      }
+    }
+  }
+  
+  // 理论上不会到达这里，但为了类型安全
+  return `工具 ${toolName} 执行失败: ${lastError?.message || lastError}`;
+}
+
 // =============================================================================
 // §4.3 Subagent 执行
 // =============================================================================
@@ -762,6 +905,9 @@ async function agentLoop(prompt, uiCallbacks) {
   isAgentRunning = true;
   currentAbortController = new AbortController();
   const { signal } = currentAbortController;
+  
+  // 重置工具调用历史（新会话开始）
+  resetToolCallHistory();
 
   // 动态导入所需模块
   const { 
@@ -840,8 +986,24 @@ async function agentLoop(prompt, uiCallbacks) {
         }
 
         if (block.type === 'tool_use') {
+          // 检测死循环
+          if (detectDeadLoop(block.name, block.input)) {
+            // 检测到死循环，中断执行
+            const errorMsg = `\n⚠️ 检测到死循环：工具 "${block.name}" 连续调用了 ${DUPLICATE_CALL_THRESHOLD} 次。已自动中断。请尝试调整你的需求或重新开始对话。`;
+            uiCallbacks.appendText?.(errorMsg);
+            results.push({ 
+              type: 'tool_result', 
+              tool_use_id: block.id, 
+              content: `死循环检测：工具 ${block.name} 连续调用了 ${DUPLICATE_CALL_THRESHOLD} 次，已强制中断。` 
+            });
+            // 继续处理其他工具调用，但跳过这个死循环的工具
+            continue;
+          }
+          
           uiCallbacks.showToolExecuting?.(block.name);
-          const output = await executeTool(block.name, block.input);
+          
+          // 使用带重试的工具执行
+          const output = await executeToolWithRetry(block.name, block.input, executeTool);
           results.push({ type: 'tool_result', tool_use_id: block.id, content: output });
           uiCallbacks.showToolResult?.(block.id, output);
         }
@@ -962,5 +1124,12 @@ export {
   cancelAgentLoop,
   runTask,
   getIsAgentRunning,
-  getCurrentAbortController
+  getCurrentAbortController,
+  // §11.4 死循环保护
+  MAX_RETRIES,
+  DUPLICATE_CALL_THRESHOLD,
+  resetToolCallHistory,
+  generateToolCallKey,
+  detectDeadLoop,
+  executeToolWithRetry
 };

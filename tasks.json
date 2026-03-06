@@ -846,7 +846,7 @@
           "id": "T118",
           "title": "实现工具调用失败重试和循环检测",
           "description": "实现工具调用失败重试逻辑（最多 2 次）和同一工具连续调用检测（连续 3 次相同工具+参数视为死循环，强制中断）。记录工具调用历史用于检测",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T116"

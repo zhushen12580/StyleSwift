@@ -27,7 +27,14 @@ import {
   summarizeOldTurns,
   cancelAgentLoop,
   getIsAgentRunning,
-  getCurrentAbortController
+  getCurrentAbortController,
+  // §11.4 死循环保护
+  MAX_RETRIES,
+  DUPLICATE_CALL_THRESHOLD,
+  resetToolCallHistory,
+  generateToolCallKey,
+  detectDeadLoop,
+  executeToolWithRetry
 } from '../sidepanel/agent-loop.js';
 
 describe('SYSTEM_BASE 常量', () => {
@@ -492,5 +499,244 @@ describe('cancelAgentLoop 函数', () => {
     // 确保在没有运行 Agent 时调用也是安全的
     expect(() => cancelAgentLoop()).not.toThrow();
     expect(getIsAgentRunning()).toBe(false);
+  });
+});
+
+// =============================================================================
+// §11.4 死循环保护 测试
+// =============================================================================
+
+describe('§11.4 死循环保护常量', () => {
+  test('MAX_RETRIES 定义为 2（最多重试 2 次）', () => {
+    expect(MAX_RETRIES).toBe(2);
+  });
+
+  test('DUPLICATE_CALL_THRESHOLD 定义为 3（连续 3 次相同调用视为死循环）', () => {
+    expect(DUPLICATE_CALL_THRESHOLD).toBe(3);
+  });
+});
+
+describe('resetToolCallHistory 函数', () => {
+  test('重置工具调用历史为空数组', () => {
+    // 先添加一些历史记录
+    detectDeadLoop('test_tool', { arg: 'value' });
+    detectDeadLoop('another_tool', { arg: 'value2' });
+    
+    // 重置历史
+    resetToolCallHistory();
+    
+    // 再次检测应该不会检测到死循环
+    const isDeadLoop = detectDeadLoop('test_tool', { arg: 'value' });
+    expect(isDeadLoop).toBe(false);
+  });
+});
+
+describe('generateToolCallKey 函数', () => {
+  test('相同工具名和参数生成相同的键', () => {
+    const key1 = generateToolCallKey('test_tool', { arg: 'value', num: 123 });
+    const key2 = generateToolCallKey('test_tool', { arg: 'value', num: 123 });
+    
+    expect(key1).toBe(key2);
+  });
+
+  test('参数顺序不同但内容相同生成相同的键', () => {
+    const key1 = generateToolCallKey('test_tool', { a: 1, b: 2 });
+    const key2 = generateToolCallKey('test_tool', { b: 2, a: 1 });
+    
+    expect(key1).toBe(key2);
+  });
+
+  test('不同工具名生成不同的键', () => {
+    const key1 = generateToolCallKey('tool1', { arg: 'value' });
+    const key2 = generateToolCallKey('tool2', { arg: 'value' });
+    
+    expect(key1).not.toBe(key2);
+  });
+
+  test('不同参数生成不同的键', () => {
+    const key1 = generateToolCallKey('test_tool', { arg: 'value1' });
+    const key2 = generateToolCallKey('test_tool', { arg: 'value2' });
+    
+    expect(key1).not.toBe(key2);
+  });
+
+  test('嵌套对象参数也能正确比较', () => {
+    const key1 = generateToolCallKey('test_tool', { 
+      nested: { a: 1, b: 2 }, 
+      arr: [1, 2, 3] 
+    });
+    const key2 = generateToolCallKey('test_tool', { 
+      nested: { b: 2, a: 1 }, 
+      arr: [1, 2, 3] 
+    });
+    
+    expect(key1).toBe(key2);
+  });
+
+  test('空参数也能生成键', () => {
+    const key = generateToolCallKey('test_tool', {});
+    
+    expect(typeof key).toBe('string');
+    expect(key).toContain('test_tool');
+  });
+
+  test('null 参数不会崩溃', () => {
+    const key = generateToolCallKey('test_tool', null);
+    
+    expect(typeof key).toBe('string');
+  });
+});
+
+describe('detectDeadLoop 函数', () => {
+  beforeEach(() => {
+    resetToolCallHistory();
+  });
+
+  test('首次调用不检测为死循环', () => {
+    const isDeadLoop = detectDeadLoop('test_tool', { arg: 'value' });
+    
+    expect(isDeadLoop).toBe(false);
+  });
+
+  test('两次相同调用不检测为死循环', () => {
+    detectDeadLoop('test_tool', { arg: 'value' });
+    const isDeadLoop = detectDeadLoop('test_tool', { arg: 'value' });
+    
+    expect(isDeadLoop).toBe(false);
+  });
+
+  test('连续 3 次相同调用检测为死循环', () => {
+    detectDeadLoop('test_tool', { arg: 'value' });
+    detectDeadLoop('test_tool', { arg: 'value' });
+    const isDeadLoop = detectDeadLoop('test_tool', { arg: 'value' });
+    
+    expect(isDeadLoop).toBe(true);
+  });
+
+  test('不同调用不会误判为死循环', () => {
+    detectDeadLoop('tool1', { arg: 'value1' });
+    detectDeadLoop('tool2', { arg: 'value2' });
+    detectDeadLoop('tool3', { arg: 'value3' });
+    
+    const isDeadLoop = detectDeadLoop('tool4', { arg: 'value4' });
+    expect(isDeadLoop).toBe(false);
+  });
+
+  test('间隔不同调用不会误判', () => {
+    detectDeadLoop('test_tool', { arg: 'value' });
+    detectDeadLoop('other_tool', { arg: 'value' });
+    detectDeadLoop('test_tool', { arg: 'value' });
+    
+    const isDeadLoop = detectDeadLoop('test_tool', { arg: 'value' });
+    expect(isDeadLoop).toBe(false);
+  });
+
+  test('连续 4 次相同调用第 4 次也检测为死循环', () => {
+    detectDeadLoop('test_tool', { arg: 'value' });
+    detectDeadLoop('test_tool', { arg: 'value' });
+    detectDeadLoop('test_tool', { arg: 'value' });
+    const isDeadLoop = detectDeadLoop('test_tool', { arg: 'value' });
+    
+    expect(isDeadLoop).toBe(true);
+  });
+});
+
+describe('executeToolWithRetry 函数', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test('首次成功不重试', async () => {
+    const mockExecutor = vi.fn().mockResolvedValue('success');
+    
+    const result = await executeToolWithRetry('test_tool', { arg: 'value' }, mockExecutor);
+    
+    expect(result).toBe('success');
+    expect(mockExecutor).toHaveBeenCalledTimes(1);
+  });
+
+  test('失败后自动重试', async () => {
+    const mockExecutor = vi.fn()
+      .mockRejectedValueOnce(new Error('第一次失败'))
+      .mockResolvedValue('success');
+    
+    const result = await executeToolWithRetry('test_tool', { arg: 'value' }, mockExecutor);
+    
+    expect(result).toBe('success');
+    expect(mockExecutor).toHaveBeenCalledTimes(2);
+  });
+
+  test('达到最大重试次数后返回错误信息', async () => {
+    const mockExecutor = vi.fn().mockRejectedValue(new Error('持续失败'));
+    
+    const result = await executeToolWithRetry('test_tool', { arg: 'value' }, mockExecutor);
+    
+    expect(result).toContain('执行失败');
+    expect(result).toContain('持续失败');
+    expect(result).toContain('已重试 2 次');
+    expect(mockExecutor).toHaveBeenCalledTimes(MAX_RETRIES + 1); // 初始 + 2 次重试
+  });
+
+  test('重试成功后立即返回', async () => {
+    const mockExecutor = vi.fn()
+      .mockRejectedValueOnce(new Error('失败1'))
+      .mockRejectedValueOnce(new Error('失败2'))
+      .mockResolvedValue('success');
+    
+    const result = await executeToolWithRetry('test_tool', { arg: 'value' }, mockExecutor);
+    
+    expect(result).toBe('success');
+    expect(mockExecutor).toHaveBeenCalledTimes(3);
+  });
+
+  test('错误对象没有 message 属性时也能处理', async () => {
+    const mockExecutor = vi.fn().mockRejectedValue('string error');
+    
+    const result = await executeToolWithRetry('test_tool', { arg: 'value' }, mockExecutor);
+    
+    expect(result).toContain('执行失败');
+    expect(mockExecutor).toHaveBeenCalledTimes(MAX_RETRIES + 1);
+  });
+});
+
+describe('工具调用历史记录集成测试', () => {
+  beforeEach(() => {
+    resetToolCallHistory();
+  });
+
+  test('工具调用被正确记录到历史', () => {
+    const toolName = 'get_page_structure';
+    const args = { query: 'header' };
+    
+    detectDeadLoop(toolName, args);
+    
+    // 验证历史记录被添加
+    const isDeadLoop = detectDeadLoop(toolName, args);
+    expect(isDeadLoop).toBe(false); // 第二次，不是死循环
+    
+    detectDeadLoop(toolName, args);
+    const isDeadLoopAgain = detectDeadLoop(toolName, args);
+    expect(isDeadLoopAgain).toBe(true); // 第三次，是死循环
+  });
+
+  test('重试逻辑和死循环检测协同工作', async () => {
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    
+    // 模拟工具执行失败
+    const mockExecutor = vi.fn().mockRejectedValue(new Error('Network error'));
+    
+    // 执行带重试的工具调用
+    const result = await executeToolWithRetry('failing_tool', { arg: 'test' }, mockExecutor);
+    
+    // 应该重试了 MAX_RETRIES 次
+    expect(mockExecutor).toHaveBeenCalledTimes(MAX_RETRIES + 1);
+    
+    // 结果应该包含错误信息
+    expect(result).toContain('执行失败');
+    
+    // 应该有重试日志
+    expect(consoleSpy).toHaveBeenCalled();
+    
+    consoleSpy.mockRestore();
   });
 });
