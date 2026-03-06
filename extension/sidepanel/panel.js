@@ -1,16 +1,17 @@
 /**
  * StyleSwift - Panel UI Module
  * 
- * Side Panel 用户界面控制器
- * 负责：引导页、主界面、设置页的视图管理和交互逻辑
+ * Side Panel UI controller
+ * Responsible for: onboarding, main view, settings view management and interactions
  * 
- * 本文件主要实现：
- * - 首次引导页（检测无 API Key 时展示）
- * - 视图切换逻辑
+ * This file implements:
+ * - First-run onboarding (shown when no API Key detected)
+ * - View switching logic
+ * - Skill chips area
  */
 
 // ============================================================================
-// 导入依赖
+// Imports
 // ============================================================================
 
 import { 
@@ -21,27 +22,29 @@ import {
   getSettings 
 } from './api.js';
 
+import { StyleSkillStore } from './style-skill.js';
+
 // ============================================================================
-// DOM 元素引用
+// DOM Element References
 // ============================================================================
 
 /**
- * DOM 元素缓存
- * 在 DOMContentLoaded 后初始化
+ * DOM element cache
+ * Initialized after DOMContentLoaded
  */
 const DOM = {
-  // 视图容器
+  // View containers
   onboardingView: null,
   mainView: null,
   settingsView: null,
   
-  // 引导页元素
+  // Onboarding elements
   apiKeyInput: null,
   apiBaseInput: null,
   startBtn: null,
   setupError: null,
   
-  // 主界面元素
+  // Main view elements
   statusDot: null,
   currentDomain: null,
   sessionTitle: null,
@@ -49,14 +52,19 @@ const DOM = {
   messageInput: null,
   sendBtn: null,
   
-  // 设置页元素
+  // Skill area elements
+  skillArea: null,
+  skillChips: null,
+  skillAreaToggle: null,
+  
+  // Settings elements
   settingsApiKey: null,
   settingsApiBase: null,
   settingsModel: null,
   verifyConnectionBtn: null,
   connectionStatus: null,
   
-  // 其他
+  // Other
   loadingOverlay: null,
   errorToast: null,
   errorMessage: null,
@@ -307,6 +315,11 @@ function initMainView() {
   DOM.messageInput = document.getElementById('message-input');
   DOM.sendBtn = document.getElementById('send-btn');
   
+  // 获取技能区 DOM 元素
+  DOM.skillArea = document.getElementById('skill-area');
+  DOM.skillChips = document.getElementById('skill-chips');
+  DOM.skillAreaToggle = document.getElementById('skill-area-toggle');
+  
   // 设置初始状态
   updateStatusIndicator('idle');
   updateTopBarDisplay('--', '新会话');
@@ -314,10 +327,207 @@ function initMainView() {
   // 绑定顶栏交互事件
   bindTopBarEvents();
   
+  // 初始化技能快捷区
+  initSkillArea();
+  
   // TODO: 后续任务实现完整主界面逻辑
   // - 获取当前 Tab 域名
   // - 加载/创建会话
   // - 绑定消息发送事件
+}
+
+// ============================================================================
+// 技能快捷区逻辑
+// ============================================================================
+
+/**
+ * Built-in skill definitions
+ * These are static skills bundled with the extension
+ */
+const BUILT_IN_SKILLS = [
+  { id: 'dark-mode-template', name: 'Dark Mode', icon: '🌙', prompt: 'Apply dark mode style' },
+  { id: 'minimal-template', name: 'Minimal', icon: '✨', prompt: 'Apply minimal style' },
+];
+
+/**
+ * Initialize skill chips area
+ */
+function initSkillArea() {
+  // Bind toggle event
+  if (DOM.skillAreaToggle) {
+    DOM.skillAreaToggle.addEventListener('click', toggleSkillArea);
+  }
+  
+  // Render skill chips
+  renderSkillChips();
+}
+
+/**
+ * Toggle skill area collapsed state
+ */
+function toggleSkillArea() {
+  if (DOM.skillArea) {
+    DOM.skillArea.classList.toggle('collapsed');
+  }
+}
+
+/**
+ * Render skill chips (built-in + user skills)
+ */
+async function renderSkillChips() {
+  if (!DOM.skillChips) return;
+  
+  // Clear existing chips
+  DOM.skillChips.innerHTML = '';
+  
+  // 1. Render built-in skills (filled chips)
+  for (const skill of BUILT_IN_SKILLS) {
+    const chip = createBuiltInChip(skill);
+    DOM.skillChips.appendChild(chip);
+  }
+  
+  // 2. Load and render user skills (outlined chips)
+  try {
+    const userSkills = await StyleSkillStore.list();
+    
+    for (const skill of userSkills) {
+      const chip = createUserSkillChip(skill);
+      DOM.skillChips.appendChild(chip);
+    }
+    
+    // 3. If no user skills, show "create from current" action
+    if (userSkills.length === 0) {
+      const emptyChip = createEmptyActionChip();
+      DOM.skillChips.appendChild(emptyChip);
+    }
+  } catch (err) {
+    console.warn('[Panel] Failed to load user skills:', err);
+    // Show empty action on error
+    const emptyChip = createEmptyActionChip();
+    DOM.skillChips.appendChild(emptyChip);
+  }
+}
+
+/**
+ * Create a built-in skill chip (filled style)
+ * @param {Object} skill - Skill object with id, name, icon, prompt
+ * @returns {HTMLElement}
+ */
+function createBuiltInChip(skill) {
+  const chip = document.createElement('div');
+  chip.className = 'skill-chip built-in';
+  chip.dataset.skillId = skill.id;
+  chip.dataset.skillType = 'built-in';
+  chip.dataset.prompt = skill.prompt;
+  
+  chip.innerHTML = `
+    <span class="skill-icon">${skill.icon}</span>
+    <span class="skill-name">${skill.name}</span>
+  `;
+  
+  chip.addEventListener('click', () => handleSkillChipClick(skill));
+  
+  return chip;
+}
+
+/**
+ * Create a user skill chip (outlined style with source domain)
+ * @param {Object} skill - Skill object from StyleSkillStore
+ * @returns {HTMLElement}
+ */
+function createUserSkillChip(skill) {
+  const chip = document.createElement('div');
+  chip.className = 'skill-chip user-skill';
+  chip.dataset.skillId = skill.id;
+  chip.dataset.skillType = 'user';
+  
+  // Generate prompt text
+  const prompt = `Apply my "${skill.name}" style`;
+  chip.dataset.prompt = prompt;
+  
+  // Truncate source domain if too long
+  const sourceDomain = skill.sourceDomain || 'unknown';
+  const displayDomain = sourceDomain.length > 15 
+    ? sourceDomain.substring(0, 12) + '...' 
+    : sourceDomain;
+  
+  chip.innerHTML = `
+    <span class="skill-name">${skill.name}</span>
+    <span class="skill-source">${displayDomain}</span>
+  `;
+  
+  chip.addEventListener('click', () => handleSkillChipClick({
+    id: skill.id,
+    name: skill.name,
+    type: 'user',
+    prompt
+  }));
+  
+  return chip;
+}
+
+/**
+ * Create empty state action chip (dashed style)
+ * @returns {HTMLElement}
+ */
+function createEmptyActionChip() {
+  const chip = document.createElement('div');
+  chip.className = 'skill-chip empty-action';
+  chip.dataset.skillType = 'empty-action';
+  
+  chip.innerHTML = `
+    <span class="skill-icon">+</span>
+    <span class="skill-name">Create from current style</span>
+  `;
+  
+  chip.addEventListener('click', handleEmptyActionClick);
+  
+  return chip;
+}
+
+/**
+ * Handle skill chip click
+ * Fills the input with skill prompt (user can edit before sending)
+ * @param {Object} skill - Skill object
+ */
+function handleSkillChipClick(skill) {
+  if (!DOM.messageInput) return;
+  
+  // Don't allow interaction when agent is running
+  if (AppState.agentStatus === 'running') {
+    return;
+  }
+  
+  // Fill input with skill prompt
+  DOM.messageInput.value = skill.prompt;
+  DOM.messageInput.focus();
+  
+  // Move cursor to end
+  DOM.messageInput.setSelectionRange(
+    DOM.messageInput.value.length,
+    DOM.messageInput.value.length
+  );
+  
+  console.log('[Panel] Skill chip clicked:', skill.name);
+}
+
+/**
+ * Handle empty action chip click
+ * Prompts user to save current style
+ */
+function handleEmptyActionClick() {
+  if (!DOM.messageInput) return;
+  
+  // Don't allow interaction when agent is running
+  if (AppState.agentStatus === 'running') {
+    return;
+  }
+  
+  // Fill input with save style prompt
+  DOM.messageInput.value = 'Save current style as a reusable skill';
+  DOM.messageInput.focus();
+  
+  console.log('[Panel] Empty action chip clicked');
 }
 
 /**
