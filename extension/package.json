@@ -5,9 +5,12 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:unit": "vitest run --exclude tests/integration/**",
+    "test:integration": "vitest run tests/integration"
   },
   "devDependencies": {
+    "puppeteer": "^22.0.0",
     "vitest": "^2.0.0"
   }
 }

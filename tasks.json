@@ -1323,19 +1323,19 @@
           "files": ["tests/agent-loop.test.js"]
         },
         {
-          "id": "T166",
-          "title": "搭建 Puppeteer 集成测试框架",
-          "description": "配置 Puppeteer 加载未打包扩展模式，编写基础 helper 函数（打开 Side Panel、等待元素、截图）",
-          "status": "pending",
-          "priority": "low",
-          "dependencies": [
-            "T160"
-          ],
-          "module": "testing",
-          "designRef": "§14.2 集成测试",
-          "testCriteria": "Puppeteer 能加载扩展并打开 Side Panel",
-          "estimatedHours": 3,
-          "files": ["tests/integration/setup.js", "tests/integration/helpers.js"]
+           "id": "T166",
+           "title": "搭建 Puppeteer 集成测试框架",
+           "description": "配置 Puppeteer 加载未打包扩展模式，编写基础 helper 函数（打开 Side Panel、等待元素、截图）",
+           "status": "completed",
+           "priority": "low",
+           "dependencies": [
+             "T160"
+           ],
+           "module": "testing",
+           "designRef": "§14.2 集成测试",
+           "testCriteria": "Puppeteer 能加载扩展并打开 Side Panel",
+           "estimatedHours": 3,
+           "files": ["tests/integration/setup.js", "tests/integration/helpers.js", "tests/integration/extension.test.js", "package.json", "vitest.config.js"]
         },
         {
           "id": "T167",
