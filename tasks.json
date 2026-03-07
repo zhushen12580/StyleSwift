@@ -1246,7 +1246,7 @@
           "id": "T161",
           "title": "编写 css-merge.js 单元测试",
           "description": "覆盖：同选择器同属性覆盖、不同选择器合并、@media 规则保留、嵌套花括号解析、空输入处理、serializeRules 格式正确",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T160",
