@@ -975,8 +975,14 @@ async function handleStartClick() {
 
 /**
  * 初始化主界面
+ * 
+ * 完整初始化流程（设计参考：§16.8 完整使用流程）：
+ * 1. 获取当前 Tab 域名（通过 Content Script）
+ * 2. 加载/创建会话
+ * 3. 加载技能 chip
+ * 4. 恢复会话历史（如果有）
  */
-function initMainView() {
+async function initMainView() {
   // 获取 DOM 元素
   DOM.statusDot = document.getElementById('status-dot');
   DOM.currentDomain = document.getElementById('current-domain');
@@ -1031,13 +1037,104 @@ function initMainView() {
   // 初始化技能快捷区
   initSkillArea();
   
-  // 显示空状态
+  // 显示空状态（默认）
   showEmptyState();
   
-  // TODO: 后续任务实现完整主界面逻辑
-  // - 获取当前 Tab 域名
-  // - 加载/创建会话
-  // - 绑定消息发送事件
+  // === Step 4: 获取域名 ===
+  try {
+    const { getTargetDomain, sendToContentScript } = await import('./tools.js');
+    
+    // 获取域名（同时检测页面是否受限）
+    let domain = null;
+    try {
+      // 尝试向 Content Script 发送消息获取域名
+      domain = await sendToContentScript({ tool: 'get_domain' });
+    } catch (contentScriptError) {
+      // Content Script 不可达，可能是受限页面
+      console.log('[Panel] Content Script not reachable:', contentScriptError.message);
+      stateManager.set('pageStatus', 'restricted');
+      stateManager.set('currentDomain', null);
+      applyGlobalState();
+      return;
+    }
+    
+    if (domain && domain !== 'unknown') {
+      console.log('[Panel] Current domain:', domain);
+      stateManager.set('currentDomain', domain);
+      
+      // 更新顶栏显示
+      updateTopBarDisplay(domain, '新会话');
+      
+      // === Step 5: 加载会话 ===
+      await loadSessionForDomain(domain);
+    } else {
+      console.warn('[Panel] Failed to get domain');
+      // 无法获取域名时，显示空状态
+      showEmptyState();
+    }
+  } catch (err) {
+    console.error('[Panel] Failed to get domain or load session:', err);
+    // 继续显示空状态
+    showEmptyState();
+  }
+}
+
+/**
+ * 为指定域名加载会话
+ * 设计参考：§8.2 会话生命周期
+ * 
+ * @param {string} domain - 域名
+ */
+async function loadSessionForDomain(domain) {
+  try {
+    // 动态导入依赖模块
+    const session = await import('./session.js');
+    
+    // 获取或创建会话
+    const sessionId = await session.getOrCreateSession(domain);
+    console.log('[Panel] Session loaded:', sessionId);
+    
+    // 创建 SessionContext 并设置为当前会话
+    const currentSession = new session.SessionContext(domain, sessionId);
+    session.setCurrentSession(currentSession);
+    
+    // 更新全局状态中的会话 ID
+    stateManager.set('currentSessionId', sessionId);
+    
+    // 加载会话元数据
+    const meta = await session.loadSessionMeta(domain, sessionId);
+    
+    // 更新顶栏显示（如果有标题）
+    if (meta.title) {
+      updateTopBarDisplay(domain, meta.title);
+    }
+    
+    // 加载会话历史
+    const history = await session.loadAndPrepareHistory(domain, sessionId);
+    
+    if (history && history.length > 0) {
+      // 渲染历史消息
+      renderHistoryMessages(history);
+      console.log(`[Panel] Loaded ${history.length} history messages`);
+    } else {
+      // 无历史，显示空状态
+      showEmptyState();
+    }
+    
+    // 检查是否有样式生效
+    const stylesKey = currentSession.stylesKey;
+    const { [stylesKey]: sessionStyles } = await chrome.storage.local.get(stylesKey);
+    
+    if (sessionStyles && sessionStyles.trim()) {
+      // 有样式生效
+      setHasActiveStyles(true);
+    }
+    
+  } catch (err) {
+    console.error('[Panel] Failed to load session for domain:', domain, err);
+    // 失败时显示空状态
+    showEmptyState();
+  }
 }
 
 // ============================================================================
@@ -2476,21 +2573,128 @@ function updateStatusIndicator(status) {
 // ============================================================================
 
 /**
- * 初始化设置页
+ * 初始化主界面
+ * 
+ * 宝始化流程：
+ * 1. 获取 DOM 元素
+    2. 初始化状态同步系统
+    3. 设置初始状态
+    4. 应用初始全局状态
+    5. 绑定顶栏交互事件
+    6. 初始化错误横幅事件
+    7. 初始化输入区
+    8. 初始化技能快捷区
+    9. 显示空状态
+    10. 获取域名并加载会话（异步）
+    11. 恢复会话历史消息并渲染到对话区
  */
-async function initSettingsView() {
+async function initMainView() {
   // 获取 DOM 元素
-  DOM.settingsApiKey = document.getElementById('settings-api-key');
-  DOM.settingsApiBase = document.getElementById('settings-api-base');
-  DOM.settingsModel = document.getElementById('settings-model');
-  DOM.verifyConnectionBtn = document.getElementById('verify-connection-btn');
-  DOM.connectionStatus = document.getElementById('connection-status');
+  DOM.statusDot = document.getElementById('status-dot');
+  DOM.currentDomain = document.getElementById('current-domain');
+  DOM.sessionTitle = document.getElementById('session-title');
+  DOM.messagesContainer = document.getElementById('messages-container');
+  DOM.messageInput = document.getElementById('message-input');
+  DOM.sendBtn = document.getElementById('send-btn');
+  DOM.stopBtn = document.getElementById('stop-btn');
+  DOM.inputArea = document.getElementById('input-area');
+  DOM.inputWrapper = document.getElementById('input-wrapper');
   
-  // 返回按钮
-  const backBtn = document.getElementById('settings-back-btn');
-  if (backBtn) {
-    backBtn.addEventListener('click', () => switchView('main'));
-  }
+  // 获取技能区 DOM 元素
+  DOM.skillArea = document.getElementById('skill-area');
+  DOM.skillChips = document.getElementById('skill-chips');
+  DOM.skillAreaToggle = document.getElementById('skill-area-toggle');
+  
+  // 获取错误横幅 DOM 元素
+  DOM.errorBanner = document.getElementById('error-banner');
+  DOM.errorBannerMessage = document.getElementById('error-banner-message');
+  DOM.errorBannerAction = document.getElementById('error-banner-action');
+  DOM.errorBannerClose = document.getElementById('error-banner-close');
+  
+  // 初始化状态同步系统
+  initStateSync();
+  
+    // 设置初始状态
+  stateManager.set('agentStatus', 'idle');
+    stateManager.set('apiKeyStatus', 'valid'); // 进入主界面说明已有有效 Key
+    stateManager.set('pageStatus', 'ready');
+    
+    // 应用初始全局状态
+    applyGlobalState();
+    
+    // 更新顶栏显示
+    updateTopBarDisplay('--', '新会话');
+    
+    // 绑定顶栏交互事件
+    bindTopBarEvents();
+    
+    // 初始化错误横幅事件
+    initErrorBanner();
+    
+    // 绑定新建会话按钮事件
+    const newSessionBtn = document.getElementById('new-session-btn');
+    if (newSessionBtn) {
+        newSessionBtn.addEventListener('click', handleNewSession);
+    }
+    
+    // 初始化输入区
+    initInputArea();
+    
+    // 初始化技能快捷区
+    initSkillArea();
+    
+    // 显示空状态
+    showEmptyState();
+    
+    // === 获取域名并加载会话（异步）===
+    try {
+        // 动态导入 tools.js 获取域名
+        const { getTargetDomain } = await import('./tools.js');
+        
+        if (domain) {
+            // 更新全局状态中的域名
+            stateManager.set('currentDomain', domain);
+            
+            // === 加载会话 ===
+            // 动态导入 session.js
+            const session = await import('./session.js');
+            
+            // 获取或创建当前域名的会话
+            const { sessionId, sessionMeta } = await session.getOrCreateSession(domain);
+            
+            // 更新全局状态中的会话 ID
+            stateManager.set('currentSessionId', sessionId);
+            
+            // 创建 SessionContext 并设置为当前会话
+            const currentSession = new session.SessionContext(domain, sessionId);
+            session.setCurrentSession(currentSession);
+            
+            // === 加载会话历史（如果有历史） ===
+            const history = await session.loadAndPrepareHistory(domain, sessionId);
+            
+            if (history && history.length > 0) {
+                // 渲染历史消息到对话区
+                renderHistoryMessages(history);
+                console.log(`[Panel] Loaded ${history.length} history messages`);
+            } else {
+                // 无历史，显示空状态
+                showEmptyState();
+            }
+            
+            // 更新顶栏显示
+            const meta = await session.loadSessionMeta(domain, sessionId);
+            updateTopBarDisplay(domain, meta.title || '新会话');
+            
+            console.log(`[Panel] Main view initialized for domain: ${domain}`);
+        } catch (err) {
+        console.error('[Panel] Failed to initialize main view:', err);
+        // 显示错误状态
+        showError('初始化失败');
+        
+        // 设置为受限页面状态
+        setRestrictedPageState(true);
+    }
+}
   
   // 验证连接按钮
   if (DOM.verifyConnectionBtn) {
@@ -2739,9 +2943,28 @@ async function handleModelChange(event) {
 
 /**
  * 应用初始化入口
+ * 
+ * 完整初始化流程（设计参考：§16.8 完整使用流程 / §7.5 清理触发时机）：
+ * 1. checkAndMigrateStorage - 存储 Schema 版本迁移
+ * 2. checkFirstRun - 检测 API Key
+ * 3. 无 Key 展示引导页 / 有 Key 进入主界面
+ * 4. 获取域名（通过 Content Script）
+ * 5. 加载会话
+ * 6. 加载技能 chip
+ * 7. 后台执行 cleanupStorage（不阻塞 UI）
  */
 async function init() {
   console.log('[Panel] Initializing...');
+  
+  // === Step 1: 存储 Schema 版本迁移 ===
+  try {
+    const session = await import('./session.js');
+    await session.checkAndMigrateStorage();
+    console.log('[Panel] Storage migration checked');
+  } catch (err) {
+    console.error('[Panel] Storage migration failed:', err);
+    // 继续执行，不中断初始化
+  }
   
   // 缓存 DOM 元素
   DOM.onboardingView = document.getElementById('onboarding-view');
@@ -2766,22 +2989,32 @@ async function init() {
     });
   }
   
-  // 检测是否需要显示引导页
+  // === Step 2: 检测 API Key ===
   try {
     const { needsSetup } = await checkFirstRun();
     
     if (needsSetup) {
-      // 首次使用，显示引导页
+      // === Step 3a: 首次使用，显示引导页 ===
       console.log('[Panel] First run detected, showing onboarding');
       initOnboarding();
       switchView('onboarding');
       AppState.apiKeyStatus = 'missing';
     } else {
-      // 已有配置，进入主界面
+      // === Step 3b: 已有配置，进入主界面 ===
       console.log('[Panel] Existing settings found, entering main view');
       AppState.apiKeyStatus = 'valid';
-      initMainView();
+      
+      // 初始化主界面（包含获取域名、加载会话、加载技能 chip）
+      await initMainView();
+      
       switchView('main');
+      
+      // === Step 7: 后台执行 cleanupStorage（不阻塞 UI）===
+      import('./session.js').then(session => {
+        session.cleanupStorage().catch(err => {
+          console.error('[Panel] Background cleanup failed:', err);
+        });
+      });
     }
   } catch (err) {
     console.error('[Panel] Init error:', err);

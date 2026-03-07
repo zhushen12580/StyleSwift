@@ -1182,7 +1182,7 @@
           "id": "T145",
           "title": "实现 Side Panel 初始化流程",
           "description": "Side Panel 打开 → checkAndMigrateStorage → 检测 API Key(checkFirstRun) → 无 Key 展示引导页 / 有 Key 进入主界面 → 获取域名 → 加载会话 → 加载技能 chip → 后台执行 cleanupStorage",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T024",
