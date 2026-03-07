@@ -1209,7 +1209,7 @@
           "id": "T150",
           "title": "编写 design-principles.md（设计原则）",
           "description": "对比度、层级、留白等视觉设计核心原则，LLM 可参考的领域知识",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T001"
@@ -1219,66 +1219,6 @@
           "testCriteria": "文件存在，内容涵盖核心设计原则，load_skill 可正确加载",
           "estimatedHours": 1,
           "files": ["extension/skills/design-principles.md"]
-        },
-        {
-          "id": "T151",
-          "title": "编写 color-theory.md（配色理论）",
-          "description": "色彩理论基础、常用配色方案、对比度标准、色彩心理学",
-          "status": "pending",
-          "priority": "medium",
-          "dependencies": [
-            "T001"
-          ],
-          "module": "skills",
-          "designRef": "§3.6 SKILL_PATHS — color-theory",
-          "testCriteria": "文件存在，内容涵盖实用配色知识",
-          "estimatedHours": 1,
-          "files": ["extension/skills/color-theory.md"]
-        },
-        {
-          "id": "T152",
-          "title": "编写 css-selectors-guide.md（CSS 选择器指南）",
-          "description": "选择器最佳实践、特异性规则、常见网站 DOM 结构模式",
-          "status": "pending",
-          "priority": "medium",
-          "dependencies": [
-            "T001"
-          ],
-          "module": "skills",
-          "designRef": "§3.6 SKILL_PATHS — css-selectors",
-          "testCriteria": "文件存在，内容实用，对 LLM 生成 CSS 有指导价值",
-          "estimatedHours": 1,
-          "files": ["extension/skills/css-selectors-guide.md"]
-        },
-        {
-          "id": "T153",
-          "title": "编写 dark-mode.md（深色模式模板）",
-          "description": "深色模式 CSS 模板：背景/文字/边框/阴影配色方案，关键选择器模式",
-          "status": "pending",
-          "priority": "medium",
-          "dependencies": [
-            "T001"
-          ],
-          "module": "skills",
-          "designRef": "§3.6 SKILL_PATHS — dark-mode-template",
-          "testCriteria": "文件存在，模板完整可用",
-          "estimatedHours": 1,
-          "files": ["extension/skills/style-templates/dark-mode.md"]
-        },
-        {
-          "id": "T154",
-          "title": "编写 minimal.md（极简风格模板）",
-          "description": "极简风格 CSS 模板：大留白、简洁排版、克制配色",
-          "status": "pending",
-          "priority": "medium",
-          "dependencies": [
-            "T001"
-          ],
-          "module": "skills",
-          "designRef": "§3.6 SKILL_PATHS — minimal-template",
-          "testCriteria": "文件存在，模板完整可用",
-          "estimatedHours": 1,
-          "files": ["extension/skills/style-templates/minimal.md"]
         }
       ]
     },
