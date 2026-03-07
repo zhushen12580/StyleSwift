@@ -1294,7 +1294,7 @@
           "id": "T164",
           "title": "编写 StyleSkillStore 单元测试",
           "description": "覆盖：save/list/load/remove CRUD 操作，mock chrome.storage.local",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T160",
