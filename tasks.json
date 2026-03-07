@@ -1133,7 +1133,7 @@
           "id": "T142",
           "title": "实现确认浮层交互集成",
           "description": "Agent 轮次结束后检测是否有 apply_styles(save) → 显示浮层 → 确认/撤销/超时处理 → 撤销时自动发送 rollback 消息",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T127",
@@ -1143,7 +1143,7 @@
           "designRef": "§16.3 ④ 操作确认浮层",
           "testCriteria": "浮层在正确时机出现，各交互按钮功能正常",
           "estimatedHours": 1.5,
-          "files": ["extension/sidepanel/panel.js"]
+          "files": ["extension/sidepanel/panel.js", "extension/tests/panel.test.js"]
         },
         {
           "id": "T143",
