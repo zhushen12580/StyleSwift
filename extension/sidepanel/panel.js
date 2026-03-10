@@ -1170,15 +1170,13 @@ async function loadSessionForDomain(domain) {
       updateTopBarDisplay(domain, meta.title);
     }
     
-    // 加载会话历史
-    const history = await session.loadAndPrepareHistory(domain, sessionId);
+    // 加载会话历史（新格式 { messages, snapshots }）
+    const historyData = await session.loadAndPrepareHistory(domain, sessionId);
     
-    if (history && history.length > 0) {
-      // 渲染历史消息
-      renderHistoryMessages(history);
-      console.log(`[Panel] Loaded ${history.length} history messages`);
+    if (historyData.messages && historyData.messages.length > 0) {
+      renderHistoryMessages(historyData.messages);
+      console.log(`[Panel] Loaded ${historyData.messages.length} history messages`);
     } else {
-      // 无历史，显示空状态
       showEmptyState();
     }
     
@@ -2254,8 +2252,8 @@ async function createSessionCard(sessionItem, domain, currentSessionId) {
   const meta = await session.loadSessionMeta(domain, id);
   
   // 加载首条用户消息（用于预览）
-  const history = await session.loadAndPrepareHistory(domain, id);
-  const firstUserMessage = history.find(msg => msg.role === 'user');
+  const historyData = await session.loadAndPrepareHistory(domain, id);
+  const firstUserMessage = historyData.messages.find(msg => msg.role === 'user');
   const preview = firstUserMessage?.content || '（无内容）';
   
   // 创建卡片元素
@@ -2376,15 +2374,14 @@ async function handleSessionClick(domain, sessionId) {
     // === 6. 清空当前对话区并加载历史消息 ===
     clearMessages();
     
-    // 加载会话历史
-    const history = await session.loadAndPrepareHistory(domain, sessionId);
+    // 加载会话历史（新格式 { messages, snapshots }）
+    const historyData = await session.loadAndPrepareHistory(domain, sessionId);
     
     // 渲染历史消息
-    if (history && history.length > 0) {
-      renderHistoryMessages(history);
-      console.log(`[Panel] Loaded ${history.length} history messages`);
+    if (historyData.messages && historyData.messages.length > 0) {
+      renderHistoryMessages(historyData.messages);
+      console.log(`[Panel] Loaded ${historyData.messages.length} history messages`);
     } else {
-      // 无历史，显示空状态
       showEmptyState();
     }
     
@@ -3105,9 +3102,12 @@ document.addEventListener('DOMContentLoaded', init);
 /**
  * 渲染用户消息气泡
  * @param {string} content - 消息内容
+ * @param {Object} [options] - 可选参数
+ * @param {number} [options.turn] - 轮次号（用于时间旅行回退）
+ * @param {boolean} [options.showRewind] - 是否显示回退按钮
  * @returns {HTMLElement} - 消息 DOM 元素
  */
-function renderUserMessage(content) {
+function renderUserMessage(content, options = {}) {
   const messageDiv = document.createElement('div');
   messageDiv.className = 'message message-user';
   
@@ -3115,6 +3115,22 @@ function renderUserMessage(content) {
   bubbleDiv.className = 'message-bubble';
   bubbleDiv.textContent = content;
   
+  if (options.turn != null) {
+    bubbleDiv.dataset.turn = options.turn;
+  }
+
+  if (options.showRewind && options.turn != null) {
+    const rewindBtn = document.createElement('button');
+    rewindBtn.className = 'rewind-btn';
+    rewindBtn.title = '回到这一轮';
+    rewindBtn.innerHTML = '↩';
+    rewindBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      handleRewindClick(options.turn);
+    });
+    bubbleDiv.appendChild(rewindBtn);
+  }
+
   messageDiv.appendChild(bubbleDiv);
   return messageDiv;
 }
@@ -3413,14 +3429,24 @@ function renderHistoryMessages(history) {
   // 清空当前对话区
   clearMessages();
   
-  // 如果没有历史，显示空状态
-  if (!history || history.length === 0) {
+  // 兼容新旧格式：可传入 messages 数组或 { messages, snapshots } 对象
+  const messages = Array.isArray(history) ? history : (history?.messages || []);
+  
+  if (!messages || messages.length === 0) {
     showEmptyState();
     return;
   }
   
+  // 统计总轮次数（用于决定是否显示回退按钮）
+  let totalTurns = 0;
+  for (const msg of messages) {
+    if (msg.role === 'user' && typeof msg.content === 'string') totalTurns++;
+  }
+  
+  let currentTurn = 0;
+  
   // 遍历历史消息并渲染
-  for (const message of history) {
+  for (const message of messages) {
     if (message.role === 'user') {
       // 渲染用户消息
       const userContent = typeof message.content === 'string' 
@@ -3428,7 +3454,15 @@ function renderHistoryMessages(history) {
         : message.content?.[0]?.text || '';
       
       if (userContent) {
-        const userMessageEl = renderUserMessage(userContent);
+        // 用户文本消息（非 tool_result）才计入轮次
+        if (typeof message.content === 'string') {
+          currentTurn++;
+        }
+        const showRewind = typeof message.content === 'string' && currentTurn < totalTurns;
+        const userMessageEl = renderUserMessage(userContent, {
+          turn: typeof message.content === 'string' ? currentTurn : undefined,
+          showRewind,
+        });
         addMessageToContainer(userMessageEl);
       }
     } else if (message.role === 'assistant') {
@@ -3462,8 +3496,6 @@ function renderHistoryMessages(history) {
           
           for (const toolCall of toolCalls) {
             toolCardManager.addToolCard(toolCall.id, toolCall.name);
-            // 对于历史消息，工具调用已完成，直接显示为完成状态
-            // 注意：历史消息中没有 tool_result，所以输出显示为 "(历史记录)"
             toolCardManager.completeToolCard(
               toolCall.id, 
               toolCall.name, 
@@ -3472,12 +3504,10 @@ function renderHistoryMessages(history) {
             );
           }
           
-          // 将卡片组添加到消息容器
           addMessageToContainer(cardGroup);
           toolCardManager.finalizeCardGroup();
         }
       } else if (typeof message.content === 'string') {
-        // 兼容旧格式
         const renderer = createStreamingRenderer(bubble, { showCursor: false });
         renderer.appendText(message.content);
         renderer.finish();
@@ -3490,12 +3520,63 @@ function renderHistoryMessages(history) {
   // 滚动到底部
   scrollToBottom();
   
-  console.log(`[Panel] Rendered ${history.length} history messages`);
+  console.log(`[Panel] Rendered ${messages.length} history messages`);
 }
 
 // ============================================================================
-// 导出供其他模块使用（可选）
+// 时间旅行：回退到指定轮次
 // ============================================================================
+
+/**
+ * 处理回退按钮点击
+ * 弹出确认对话框，确认后截断历史、恢复样式、重新渲染 UI
+ * 
+ * @param {number} targetTurn - 要回退到的轮次号
+ */
+async function handleRewindClick(targetTurn) {
+  if (AppState.agentStatus === 'running') {
+    console.warn('[Panel] Agent is running, cannot rewind');
+    return;
+  }
+
+  const confirmed = confirm('回到这一轮？之后的对话和样式修改将被丢弃。');
+  if (!confirmed) return;
+
+  try {
+    const session = await import('./session.js');
+    const { sendToContentScript } = await import('./tools.js');
+
+    const domain = stateManager.get('currentDomain');
+    const sessionId = stateManager.get('currentSessionId');
+    if (!domain || !sessionId) {
+      console.error('[Panel] Cannot rewind: no active session');
+      return;
+    }
+
+    const result = await session.rewindToTurn(domain, sessionId, targetTurn);
+
+    // 注入回退后的 CSS 到页面
+    try {
+      await sendToContentScript({ tool: 'load_session_css', args: { css: result.css || '' } });
+    } catch (err) {
+      console.warn('[Panel] Failed to load rewound CSS:', err.message);
+    }
+
+    setHasActiveStyles(!!result.css?.trim());
+
+    // 重新渲染对话区
+    renderHistoryMessages(result.messages);
+
+    // 隐藏确认浮层（如果有）
+    if (isConfirmationOverlayVisible()) {
+      hideConfirmationOverlay(false);
+    }
+
+    console.log(`[Panel] Rewound to turn ${targetTurn}`);
+  } catch (error) {
+    console.error('[Panel] Rewind failed:', error);
+  }
+}
 
 // ============================================================================
 // 工具调用卡片渲染

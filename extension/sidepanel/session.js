@@ -224,28 +224,23 @@ async function checkAndMigrateStorage() {
 /**
  * 保存对话历史到 IndexedDB
  * 
- * 将对话历史数组存储到 conversations Object Store 中，
+ * 将对话历史（含快照）存储到 conversations Object Store 中，
  * key 格式为 {domain}:{sessionId}。
  * 
  * @param {string} domain - 域名，如 'github.com'
  * @param {string} sessionId - 会话 ID
- * @param {Array} history - 对话历史数组，格式为 Anthropic Messages API 的 messages 数组
+ * @param {Object} data - 对话数据，包含 messages 和 snapshots
+ * @param {Array} data.messages - 对话历史数组
+ * @param {Object} data.snapshots - 每轮结束时的 CSS 快照 { [turn]: css }
  * @returns {Promise<void>}
  * @throws {Error} 当保存失败时抛出错误
- * 
- * @example
- * await saveHistory('github.com', 'abc123', [
- *   { role: 'user', content: '把背景改成深蓝色' },
- *   { role: 'assistant', content: [{ type: 'text', text: '好的...' }] }
- * ]);
  */
-async function saveHistory(domain, sessionId, history) {
+async function saveHistory(domain, sessionId, data) {
   const db = await openDB();
   const tx = db.transaction(STORE_NAME, 'readwrite');
   const store = tx.objectStore(STORE_NAME);
   
-  // 使用 {domain}:{sessionId} 作为 key
-  store.put(history, `${domain}:${sessionId}`);
+  store.put(data, `${domain}:${sessionId}`);
   
   return new Promise((resolve, reject) => {
     tx.oncomplete = () => resolve();
@@ -283,25 +278,22 @@ async function loadHistory(domain, sessionId) {
 /**
  * 加载并准备对话历史
  * 
- * 从 IndexedDB 加载对话历史，确保返回数组格式。
- * 这是 Agent Loop 中使用的辅助函数，对 loadHistory 进行了类型安全包装。
+ * 从 IndexedDB 加载对话历史，返回 { messages, snapshots } 格式。
+ * 兼容旧格式（纯 Array）和新格式（{ messages, snapshots }）。
  * 
  * @param {string} domain - 域名，如 'github.com'
  * @param {string} sessionId - 会话 ID
- * @returns {Promise<Array>} 对话历史数组，格式为 Anthropic Messages API 的 messages 数组
- * 
- * @example
- * // 加载已有历史
- * const history = await loadAndPrepareHistory('github.com', 'abc123');
- * // history: [{ role: 'user', content: '...' }, { role: 'assistant', content: [...] }]
- * 
- * // 无历史时返回空数组
- * const emptyHistory = await loadAndPrepareHistory('github.com', 'new-session');
- * // emptyHistory: []
+ * @returns {Promise<{messages: Array, snapshots: Object}>}
  */
 async function loadAndPrepareHistory(domain, sessionId) {
-  const history = await loadHistory(domain, sessionId);
-  return Array.isArray(history) ? history : [];
+  const data = await loadHistory(domain, sessionId);
+  if (Array.isArray(data)) {
+    return { messages: data, snapshots: {} };
+  }
+  if (data && typeof data === 'object' && Array.isArray(data.messages)) {
+    return { messages: data.messages, snapshots: data.snapshots || {} };
+  }
+  return { messages: [], snapshots: {} };
 }
 
 /**
@@ -888,6 +880,105 @@ async function updateStylesSummary() {
 }
 
 // ============================================================================
+// 时间旅行：逐轮快照辅助函数
+// ============================================================================
+
+/**
+ * 统计 messages 中用户文本消息的数量（即"轮次数"）
+ * 
+ * 一条 role === 'user' 且 content 为 string 的消息代表一轮的开始。
+ * tool_result 消息（content 为数组）不计入轮次。
+ * 
+ * @param {Array} messages - 对话历史数组
+ * @returns {number} 用户文本消息的数量
+ */
+function countUserTextMessages(messages) {
+  let count = 0;
+  for (const msg of messages) {
+    if (msg.role === 'user' && typeof msg.content === 'string') {
+      count++;
+    }
+  }
+  return count;
+}
+
+/**
+ * 找到第 N 轮用户文本消息在 messages 数组中的索引
+ * 
+ * @param {Array} messages - 对话历史数组
+ * @param {number} turn - 目标轮次（从 1 开始）
+ * @returns {number} 该轮用户消息在 messages 中的索引，未找到返回 -1
+ */
+function findTurnMessageIndex(messages, turn) {
+  let count = 0;
+  for (let i = 0; i < messages.length; i++) {
+    if (messages[i].role === 'user' && typeof messages[i].content === 'string') {
+      count++;
+      if (count === turn) return i;
+    }
+  }
+  return -1;
+}
+
+/**
+ * 回退到指定轮次（时间旅行）
+ * 
+ * 截断对话历史到目标轮次结束的位置，恢复该轮的 CSS 快照，
+ * 更新 chrome.storage 和 IndexedDB，并通过 loadSessionCSS 注入页面。
+ * 
+ * @param {string} domain - 域名
+ * @param {string} sessionId - 会话 ID
+ * @param {number} targetTurn - 目标轮次（从 1 开始）
+ * @returns {Promise<{messages: Array, snapshots: Object, css: string}>} 截断后的数据
+ */
+async function rewindToTurn(domain, sessionId, targetTurn) {
+  const { messages, snapshots } = await loadAndPrepareHistory(domain, sessionId);
+
+  // 找到 targetTurn+1 轮用户消息的索引作为截断点
+  const nextTurnIdx = findTurnMessageIndex(messages, targetTurn + 1);
+  const truncated = nextTurnIdx === -1 ? messages : messages.slice(0, nextTurnIdx);
+
+  // 查找目标轮次的 CSS 快照（向前取最近的）
+  let css = '';
+  for (let t = targetTurn; t >= 0; t--) {
+    if (snapshots[t] !== undefined) {
+      css = snapshots[t];
+      break;
+    }
+  }
+
+  // 裁剪快照：删除 key > targetTurn 的条目
+  const prunedSnapshots = {};
+  for (const [k, v] of Object.entries(snapshots)) {
+    if (Number(k) <= targetTurn) {
+      prunedSnapshots[k] = v;
+    }
+  }
+
+  // 写回 IndexedDB
+  await saveHistory(domain, sessionId, { messages: truncated, snapshots: prunedSnapshots });
+
+  // 更新 chrome.storage 中的 stylesKey 和 activeStylesKey
+  const session = new SessionContext(domain, sessionId);
+  if (css.trim()) {
+    await chrome.storage.local.set({
+      [session.stylesKey]: css,
+      [session.activeStylesKey]: css,
+    });
+  } else {
+    await chrome.storage.local.remove([session.stylesKey, session.activeStylesKey]);
+  }
+
+  // 更新样式摘要
+  const prevSession = currentSession;
+  currentSession = session;
+  await updateStylesSummary();
+  currentSession = prevSession;
+
+  return { messages: truncated, snapshots: prunedSnapshots, css };
+}
+
+// ============================================================================
 // 导出
 // ============================================================================
 
@@ -903,6 +994,7 @@ export { loadSessionMeta, saveSessionMeta };
 export { loadAndPrepareHistory };
 export { autoTitle };
 export { updateStylesSummary };
+export { countUserTextMessages, rewindToTurn };
 export { setCurrentSession, getCurrentSession };
 
 // 导出 SessionContext 类和当前会话变量

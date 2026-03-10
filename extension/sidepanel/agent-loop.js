@@ -21,35 +21,13 @@ import { BASE_TOOLS, ALL_TOOLS } from './tools.js';
  * 该常量作为 Layer 0 - System Prompt（恒定，约 200 tokens）
  * 在每次 Agent Loop 中作为 system 参数传给 API
  */
-const SYSTEM_BASE = `你是 StyleSwift，网页样式个性化智能体。
+const SYSTEM_BASE = `你是 StyleSwift，网页样式个性化智能体。使用工具帮用户修改网页样式，优先行动，完成后简要总结。
 
-任务：帮助用户用一句话个性化网页样式。
+CSS规则：具体选择器+!important，颜色用hex/rgba，不用CSS变量/*/@import，不用*或标签通配。
 
-工作方式：
-- 使用工具完成任务
-- 优先行动，而非长篇解释
-- 完成后简要总结
+收到[用户指定元素]时优先用其选择器定位，无需再调get_page_structure。
 
-可用工具：get_page_structure, grep, apply_styles, get_user_profile, update_user_profile, load_skill, save_style_skill, list_style_skills, delete_style_skill, Task, TodoWrite
-
-生成 CSS 时遵循：
-1. 使用具体选择器（如 .site-header, main#content），不用 * 或标签通配
-2. 所有声明加 !important，确保覆盖页面原有样式
-3. 避免使用 @import 或修改 <link> 标签
-4. 颜色使用 hex 或 rgba，不使用 CSS 变量（页面变量可能被覆盖）
-
-元素定位：
-- 用户消息中可能包含 [用户指定元素] 块，表示用户通过页面上的鼠标点击选取了一个具体元素
-- 该块包含元素的选择器路径、结构树和样式信息
-- 收到此信息时，优先针对该元素及其子元素生成样式，无需再调用 get_page_structure
-- 使用提供的选择器路径来精确定位元素
-
-风格技能（Style Skill）：
-- ⚠️ save_style_skill **只能**在用户明确要求时调用（如"保存这个风格"），禁止自动保存
-- 提取时关注抽象特征（色彩、排版、效果、设计意图），不是具体选择器
-- 应用用户风格技能时，先 load_skill 读取，再结合 get_page_structure 查看目标页面结构，生成适配当前页面的 CSS
-- 参考 CSS 中的选择器来自原始页面，不可直接使用
-- 同一风格在不同网站上应保持视觉一致性（色彩/氛围/效果），但选择器必须适配目标页面`;
+风格技能：仅用户明确要求时才save_style_skill；应用时先load_skill再结合页面结构适配选择器，保持视觉一致但选择器必须适配目标页面。`;
 
 // =============================================================================
 // §4.1 Agent Types 注册表
@@ -169,53 +147,65 @@ function buildSessionContext(domain, sessionMeta, profileHint) {
 const TOKEN_BUDGET = 50000;
 
 /**
- * 检查并压缩对话历史
+ * 找到第一轮对话的结束位置
+ * 
+ * 第一轮 = 第一条用户文本消息 + 后续所有工具交换 + 助手回复，
+ * 直到遇到第二条用户文本消息为止。
+ * 
+ * @param {Array} history - 对话历史数组
+ * @returns {number} 第一轮对话结束的索引（即第二条用户文本消息的索引）
+ */
+function findFirstTurnEnd(history) {
+  let foundFirst = false;
+  for (let i = 0; i < history.length; i++) {
+    if (history[i].role === 'user' && typeof history[i].content === 'string') {
+      if (!foundFirst) {
+        foundFirst = true;
+        continue;
+      }
+      return i;
+    }
+  }
+  return history.length;
+}
+
+/**
+ * 压缩对话历史（仅用于 LLM 视图，不影响持久化）
  * 
  * 基于 API 返回的 lastInputTokens 判断是否需要压缩。
- * 如果超过 TOKEN_BUDGET，则：
- * 1. 找到最近 10 轮对话的边界
- * 2. 对边界之前的旧对话生成摘要
- * 3. 用摘要替换旧对话
+ * 压缩策略：保留第一轮完整对话 + 最近 3 轮对话，中间部分生成 LLM 摘要。
+ * 完整对话历史和 CSS 快照始终完整保存在 IndexedDB 中。
  * 
  * @param {Array} history - 对话历史数组
  * @param {number} lastInputTokens - 上次 API 调用的 input_tokens
- * @returns {Promise<Array>} 压缩后的对话历史（可能不变）
- * 
- * @example
- * // 未超预算，不压缩
- * const compressed = await checkAndCompressHistory(history, 30000);
- * // compressed === history（同一引用）
- * 
- * @example
- * // 超预算，压缩
- * const compressed = await checkAndCompressHistory(history, 60000);
- * // compressed[0] = { role: 'user', content: '[之前的对话摘要]\n...' }
- * // compressed.slice(1) 包含最近 10 轮对话
+ * @returns {Promise<Array>} 压缩后的消息数组（可能不变）
  */
 async function checkAndCompressHistory(history, lastInputTokens) {
-  // 未超预算，不压缩
   if (lastInputTokens <= TOKEN_BUDGET) {
     return history;
   }
 
-  // 找到最近 10 轮对话的起始边界
-  const split = findTurnBoundary(history, 10);
-  
-  // 分割历史：旧对话和最近对话
-  const oldPart = history.slice(0, split);
-  const recentPart = history.slice(split);
+  const firstTurnEnd = findFirstTurnEnd(history);
+  const recentStart = findTurnBoundary(history, 3);
 
-  // 如果没有旧对话可压缩，直接返回
-  if (oldPart.length === 0) {
+  if (recentStart <= firstTurnEnd) {
     return history;
   }
 
-  // 异步生成摘要
-  const summary = await summarizeOldTurns(oldPart);
+  const firstTurn = history.slice(0, firstTurnEnd);
+  const middlePart = history.slice(firstTurnEnd, recentStart);
+  const recentPart = history.slice(recentStart);
 
-  // 用摘要替换旧对话
+  if (middlePart.length === 0) {
+    return history;
+  }
+
+  const summary = await summarizeOldTurns(middlePart);
+
   return [
-    { role: 'user', content: `[之前的对话摘要]\n${summary}` },
+    ...firstTurn,
+    { role: 'user', content: `[中间对话摘要]\n${summary}` },
+    { role: 'assistant', content: [{ type: 'text', text: '好的，我已了解之前的对话内容。' }] },
     ...recentPart
   ];
 }
@@ -355,6 +345,47 @@ async function summarizeOldTurns(oldHistory) {
     console.error('[History Compression] Failed:', err);
     return '(历史摘要生成失败)';
   }
+}
+
+// =============================================================================
+// §6.4 工具结果压缩（LLM 视图）
+// =============================================================================
+
+/**
+ * 压缩旧的工具结果以减少 context 占用
+ * 
+ * 创建消息数组的浅拷贝，将除最近一条外的所有 tool_result 内容
+ * 替换为 '[已处理]' 占位符。原始 history 不受影响。
+ * 
+ * @param {Array} messages - 对话历史数组
+ * @returns {Array} 压缩后的消息数组（浅拷贝）
+ */
+function compressToolResultsForLLM(messages) {
+  let lastToolResultIdx = -1;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === 'user' && Array.isArray(messages[i].content)) {
+      if (messages[i].content.some(c => c.type === 'tool_result')) {
+        lastToolResultIdx = i;
+        break;
+      }
+    }
+  }
+
+  if (lastToolResultIdx === -1) return messages;
+
+  return messages.map((msg, idx) => {
+    if (idx >= lastToolResultIdx) return msg;
+    if (msg.role !== 'user' || !Array.isArray(msg.content)) return msg;
+    if (!msg.content.some(c => c.type === 'tool_result')) return msg;
+
+    return {
+      ...msg,
+      content: msg.content.map(item => {
+        if (item.type !== 'tool_result') return item;
+        return { type: 'tool_result', tool_use_id: item.tool_use_id, content: '[已处理]' };
+      })
+    };
+  });
 }
 
 // =============================================================================
@@ -1082,7 +1113,8 @@ async function agentLoop(prompt, uiCallbacks) {
     saveSessionMeta,
     SessionContext,
     setCurrentSession,
-    currentSession
+    currentSession,
+    countUserTextMessages
   } = await import('./session.js');
   const { getProfileOneLiner } = await import('./profile.js');
 
@@ -1103,8 +1135,10 @@ async function agentLoop(prompt, uiCallbacks) {
     const session = new SessionContext(domain, sessionId);
     setCurrentSession(session);
 
-    // 1. 加载历史
-    let history = await loadAndPrepareHistory(domain, sessionId);
+    // 1. 加载历史（含快照）
+    const historyData = await loadAndPrepareHistory(domain, sessionId);
+    const fullHistory = historyData.messages;
+    const snapshots = historyData.snapshots;
 
     // 2. 构建 system prompt = L0 + L1
     const sessionMeta = await loadSessionMeta(domain, sessionId);
@@ -1112,7 +1146,29 @@ async function agentLoop(prompt, uiCallbacks) {
     const system = SYSTEM_BASE + buildSessionContext(domain, sessionMeta, profileHint);
 
     // 3. Agent Loop（流式 + 迭代上限 + 取消支持）
-    history.push({ role: 'user', content: prompt });
+    // 新会话自动附加页面结构概览，减少首轮工具调用
+    let enrichedPrompt = prompt;
+    if (fullHistory.length === 0) {
+      try {
+        const pageStructure = await new Promise((resolve, reject) => {
+          chrome.tabs.sendMessage(tabId, { tool: 'get_page_structure' }, (resp) => {
+            if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+            else resolve(resp);
+          });
+        });
+        if (pageStructure && typeof pageStructure === 'string') {
+          enrichedPrompt = prompt + `\n\n[页面结构概览]\n${pageStructure}`;
+        }
+      } catch (e) {
+        console.warn('[Agent] Failed to pre-fetch page structure:', e);
+      }
+    }
+
+    // fullHistory: 完整历史，持久化到 IndexedDB
+    // llmHistory: LLM 视图，可被压缩以节省 context
+    const userMsg = { role: 'user', content: enrichedPrompt };
+    fullHistory.push(userMsg);
+    let llmHistory = [...fullHistory];
     let lastInputTokens = 0;
     let response;
     let iterations = 0;
@@ -1123,8 +1179,11 @@ async function agentLoop(prompt, uiCallbacks) {
         throw new DOMException('Aborted', 'AbortError');
       }
 
+      // 压缩旧工具结果，减少 context 占用（不影响 llmHistory）
+      const messagesForLLM = compressToolResultsForLLM(llmHistory);
+
       // 调用流式 API（带安全重试）
-      response = await callLLMStreamSafe(system, history, ALL_TOOLS, {
+      response = await callLLMStreamSafe(system, messagesForLLM, ALL_TOOLS, {
         onText: (delta) => uiCallbacks.appendText?.(delta),
         onToolCall: (block) => uiCallbacks.showToolCall?.(block),
         onStatus: (msg) => uiCallbacks.appendText?.(msg),
@@ -1133,8 +1192,10 @@ async function agentLoop(prompt, uiCallbacks) {
       // 更新 token 统计
       lastInputTokens = response.usage?.input_tokens || 0;
       
-      // 追加助手消息到历史
-      history.push({ role: 'assistant', content: response.content });
+      // 追加助手消息到完整历史和 LLM 视图
+      const assistantMsg = { role: 'assistant', content: response.content };
+      fullHistory.push(assistantMsg);
+      llmHistory.push(assistantMsg);
 
       // 如果不是工具调用，跳出循环
       if (response.stop_reason !== 'tool_use') {
@@ -1150,17 +1211,14 @@ async function agentLoop(prompt, uiCallbacks) {
         }
 
         if (block.type === 'tool_use') {
-          // 检测死循环
+          // 检测死循环：连续相同工具+相同参数时，跳过执行并提示 LLM 改变策略
           if (detectDeadLoop(block.name, block.input)) {
-            // 检测到死循环，中断执行
-            const errorMsg = `\n⚠️ 检测到死循环：工具 "${block.name}" 连续调用了 ${DUPLICATE_CALL_THRESHOLD} 次。已自动中断。请尝试调整你的需求或重新开始对话。`;
-            uiCallbacks.appendText?.(errorMsg);
             results.push({ 
               type: 'tool_result', 
               tool_use_id: block.id, 
-              content: `死循环检测：工具 ${block.name} 连续调用了 ${DUPLICATE_CALL_THRESHOLD} 次，已强制中断。` 
+              content: `⚠️ 检测到重复调用：${block.name} 已连续 ${DUPLICATE_CALL_THRESHOLD} 次使用相同参数，结果不会改变。请换一种方式完成任务，例如使用不同的工具、调整参数或直接给出回复。` 
             });
-            // 继续处理其他工具调用，但跳过这个死循环的工具
+            resetToolCallHistory();
             continue;
           }
           
@@ -1174,12 +1232,14 @@ async function agentLoop(prompt, uiCallbacks) {
         }
       }
 
-      // 追加工具结果到历史
-      history.push({ role: 'user', content: results });
+      // 追加工具结果到完整历史和 LLM 视图
+      const toolResultMsg = { role: 'user', content: results };
+      fullHistory.push(toolResultMsg);
+      llmHistory.push(toolResultMsg);
 
-      // 检查是否需要压缩历史
+      // 超预算时仅压缩 LLM 视图，完整历史不受影响
       if (lastInputTokens > TOKEN_BUDGET) {
-        history = await checkAndCompressHistory(history, lastInputTokens);
+        llmHistory = await checkAndCompressHistory(llmHistory, lastInputTokens);
       }
     }
 
@@ -1188,8 +1248,11 @@ async function agentLoop(prompt, uiCallbacks) {
       uiCallbacks.appendText?.('\n(已达到最大处理轮次，自动停止)');
     }
 
-    // 4. 持久化历史
-    await saveHistory(domain, sessionId, history);
+    // 4. 捕获当前轮的 CSS 快照，完整历史和快照持久化到 IndexedDB
+    const turnNumber = countUserTextMessages(fullHistory);
+    const cssResult = await chrome.storage.local.get(session.stylesKey);
+    snapshots[turnNumber] = cssResult[session.stylesKey] || '';
+    await saveHistory(domain, sessionId, { messages: fullHistory, snapshots });
 
     // 5. 首轮自动标题
     if (!sessionMeta.title) {
@@ -1282,9 +1345,11 @@ export {
   AGENT_TYPES,
   buildSessionContext,
   TOKEN_BUDGET,
+  findFirstTurnEnd,
   checkAndCompressHistory,
   findTurnBoundary,
   summarizeOldTurns,
+  compressToolResultsForLLM,
   RESTRICTED_PATTERNS,
   isRestrictedPage,
   checkPageAccess,

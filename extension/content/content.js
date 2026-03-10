@@ -319,13 +319,15 @@ function pickStylesForDisplay(tag, pairs) {
 
 /**
  * 估算文本的 token 数量
- * 使用简单的字符数除以平均字符/token 比率估算
+ * 区分 CJK 字符（~1.5 token/字）和非 CJK 字符（~0.25 token/字符）
  * 
  * @param {string} text - 要估算的文本
  * @returns {number} 估算的 token 数量
  */
 function estimateTokens(text) {
-  return Math.ceil(text.length / 3.5);
+  const cjk = (text.match(/[\u4e00-\u9fff\u3000-\u303f\uff00-\uffef]/g) || []).length;
+  const rest = text.length - cjk;
+  return Math.ceil(cjk * 1.5 + rest / 4);
 }
 
 // === 格式化输出 ===

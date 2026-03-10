@@ -355,7 +355,23 @@ styleswift-active           ← 当前会话样式（content.js 接管，documen
 
 合并时机：每次 `apply_styles(save)` 执行时调用 `mergeCSS(已有CSS, 新CSS)` 后写入存储，同一选择器的同一属性始终只保留最新值，CSS 不会无限增长。
 
-#### 3.3.5 CSP 兼容性
+#### 3.3.5 逐轮样式快照与时间旅行
+
+**相关文件：** `extension/sidepanel/session.js`、`extension/sidepanel/agent-loop.js`、`extension/sidepanel/panel.js`
+
+用户在同一会话中可能经过多轮对话打磨样式。为支持"点击任意历史消息回退到该轮对话对应的样式状态"，采用逐轮 CSS 快照机制。
+
+**数据模型：** IndexedDB 中的对话数据从纯 `Array<message>` 变为 `{ messages: Array, snapshots: Object }` 结构。`snapshots` 是以轮次号为 key、该轮结束时合并后 CSS 为 value 的映射。向后兼容：`loadAndPrepareHistory` 检测到旧格式（纯数组）时自动转换为 `{ messages: data, snapshots: {} }`。
+
+**快照捕获：** `agentLoop()` 主循环结束后、持久化历史之前，读取当前会话 `stylesKey` 中的 CSS，以 `countUserTextMessages(history)` 计算的轮次号为 key 存入 `snapshots`。
+
+**回退（时间旅行）：** `rewindToTurn(domain, sessionId, targetTurn)` 函数从 IndexedDB 加载数据，计算目标轮次的消息边界并截断 messages，查找目标轮次的 CSS 快照（向前取最近的 `max(key <= targetTurn)`），裁剪后续快照，写回 IndexedDB，更新 `stylesKey` / `activeStylesKey`，通过 `loadSessionCSS` 注入页面。
+
+**UI 交互：** 历史用户消息气泡在鼠标悬停时左侧显示"↩"回退按钮（最后一轮不显示），点击后弹出确认提示，确认后执行回退并重新渲染对话区。
+
+**历史压缩兼容：** `checkAndCompressHistory` 压缩旧对话时，保留压缩边界处的 CSS 快照作为基准，删除更早的快照。
+
+#### 3.3.6 CSP 兼容性
 
 **文件位置：** `extension/content/content.js`
 
@@ -615,13 +631,13 @@ Layer 3 — Tool Results（临时，各工具自控 token）
 | 当前活动会话样式镜像 | <50KB/域名 | 每次页面加载 / 会话切换 | chrome.storage.local | `early-inject.js` 在 `document_start` 读取，页面刷新时可无闪烁恢复当前会话样式 |
 | 风格技能索引 | <2KB | 低 | chrome.storage.local | 列出可用技能时快速读取 |
 | 风格技能内容 | <5KB/个 | 低 | chrome.storage.local | 按需加载，单个技能文档不大 |
-| **对话历史** | **几十KB~几百KB** | 低 | **IndexedDB** | 可能很大，只在加载/保存时访问 |
+| **对话历史+快照** | **几十KB~几MB** | 低 | **IndexedDB** | `{ messages, snapshots }` 格式，含逐轮 CSS 快照 |
 
 ### 7.3 IndexedDB 封装
 
 **文件位置：** `extension/sidepanel/session.js`
 
-封装 IndexedDB 操作为 Promise 接口。`openDB()` 打开 `StyleSwiftDB` 数据库（版本 1），创建 `conversations` Object Store。`saveHistory(domain, sessionId, history)` 将 messages 数组以 `{domain}:{sessionId}` 为 key 写入。`loadHistory(domain, sessionId)` 读取并返回，不存在时返回空数组。
+封装 IndexedDB 操作为 Promise 接口。`openDB()` 打开 `StyleSwiftDB` 数据库（版本 1），创建 `conversations` Object Store。`saveHistory(domain, sessionId, data)` 将 `{ messages, snapshots }` 对象以 `{domain}:{sessionId}` 为 key 写入。`loadHistory(domain, sessionId)` 读取并返回原始值。`loadAndPrepareHistory` 兼容旧格式（纯 messages 数组）和新格式（`{ messages, snapshots }` 对象），始终返回 `{ messages: Array, snapshots: Object }`。
 
 ### 7.4 活动会话样式自动注入
 
@@ -945,7 +961,28 @@ Agent:
 └── 响应: "已撤回所有样式修改，页面恢复原样"
 ```
 
-### 12.3 风格迁移场景：保存风格
+### 12.3 时间旅行场景
+
+```
+（用户经过 3 轮对话：Turn 1 应用深色模式，Turn 2 调亮标题，Turn 3 修改侧栏）
+（此时 snapshots: { 1: css1, 2: css1+css2, 3: css1+css2+css3 }）
+
+用户: 点击 Turn 1 消息旁的"↩"回退按钮
+  → 确认对话框: "回到这一轮？之后的对话和样式修改将被丢弃。"
+  → 确认
+
+Panel:
+├── rewindToTurn(domain, sessionId, 1)
+│   ├── 截断 messages 到 Turn 1 结束位置
+│   ├── 加载 snapshots[1] = css1
+│   ├── 裁剪 snapshots: 删除 key > 1 的条目
+│   ├── 写回 IndexedDB + 更新 stylesKey/activeStylesKey
+│   └── loadSessionCSS(css1) → 页面恢复到 Turn 1 的样式
+├── renderHistoryMessages(truncatedMessages)
+└── 用户可从 Turn 1 继续发新消息（成为新的 Turn 2）
+```
+
+### 12.4 风格迁移场景：保存风格
 
 ```
 （在 github.com 上，用户经过多轮对话得到了满意的赛博朋克风格）
@@ -962,7 +999,7 @@ Agent:
 └── 响应: "已保存「赛博朋克」风格技能，你可以在任意网站说'用我的赛博朋克风格'来应用"
 ```
 
-### 12.4 风格迁移场景：应用风格到新网站
+### 12.5 风格迁移场景：应用风格到新网站
 
 ```
 （用户切换到 stackoverflow.com）
@@ -988,7 +1025,7 @@ Agent:
     深色背景(#0a0a1a)、霓虹强调色、发光边框效果已适配页面结构"
 ```
 
-### 12.5 风格技能管理
+### 12.6 风格技能管理
 
 ```
 用户: "我保存过哪些风格？"
@@ -1336,7 +1373,7 @@ Side Panel 从上到下分为 5 个区域：
 │   ├── header.site-header [...]       │
 │   ├── main#content [...]             │
 │   └── footer [...]                   │
-│                              (截断)   │
+│                                 │
 └──────────────────────────────────────┘
 ```
 
