@@ -810,7 +810,7 @@ const TOOL_HANDLERS = {
     if (!currentSession) return '(无活动会话)';
     const sKey = currentSession.stylesKey;
     const { [sKey]: css = '' } = await chrome.storage.local.get(sKey);
-    return css.trim() ? `当前已应用样式：\n\`\`\`css\n${css.trim()}\n\`\`\`` : '(当前无已应用样式)';
+    return css.trim() || '(当前无已应用样式)';
   },
 
   edit_css: async (args) =>
