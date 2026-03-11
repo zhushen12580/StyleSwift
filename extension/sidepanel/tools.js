@@ -221,6 +221,25 @@ const DELETE_STYLE_SKILL_TOOL = {
 };
 
 // =============================================================================
+// §3.10.1 get_current_styles - 获取当前已应用样式
+// =============================================================================
+
+const GET_CURRENT_STYLES_TOOL = {
+  name: 'get_current_styles',
+  description: `获取当前会话中已应用的全部CSS样式。
+
+典型用途：
+- 修改样式前先查看当前已有哪些规则
+- 为 edit_css 获取精确的 old_css 内容
+- 确认某条规则是否已经应用`,
+  input_schema: {
+    type: 'object',
+    properties: {},
+    required: []
+  }
+};
+
+// =============================================================================
 // §3.10 edit_css - 精准编辑已应用样式
 // =============================================================================
 
@@ -229,7 +248,8 @@ const EDIT_CSS_TOOL = {
   description: `精准编辑已应用的CSS样式。通过精确匹配替换CSS片段，支持修改和删除。
 
 使用方式：
-- old_css 必须从 [当前已应用样式] 中精确复制，包含空格和换行
+- 先调用 get_current_styles 查看当前样式
+- old_css 必须与 get_current_styles 返回内容精确匹配，包含空格和换行
 - new_css 为替换后的内容，空字符串表示删除该片段
 - 每次只替换第一处匹配
 
@@ -308,6 +328,7 @@ const BASE_TOOLS = [
   GET_PAGE_STRUCTURE_TOOL,
   GREP_TOOL,
   APPLY_STYLES_TOOL,
+  GET_CURRENT_STYLES_TOOL,
   EDIT_CSS_TOOL,
   GET_USER_PROFILE_TOOL,
   UPDATE_USER_PROFILE_TOOL,
@@ -784,6 +805,13 @@ const TOOL_HANDLERS = {
 
   apply_styles: async (args) =>
     await runApplyStyles(args.css || '', args.mode),
+
+  get_current_styles: async () => {
+    if (!currentSession) return '(无活动会话)';
+    const sKey = currentSession.stylesKey;
+    const { [sKey]: css = '' } = await chrome.storage.local.get(sKey);
+    return css.trim() ? `当前已应用样式：\n\`\`\`css\n${css.trim()}\n\`\`\`` : '(当前无已应用样式)';
+  },
 
   edit_css: async (args) =>
     await runEditCSS(args.old_css, args.new_css),

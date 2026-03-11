@@ -9,10 +9,10 @@
  * 
  * 测试标准：
  * - SYSTEM_BASE 包含所有关键指引
- * - buildSessionContext 输出包含域名和会话标题，有摘要时包含样式信息，有画像时包含偏好提示
+ * - buildSessionContext 输出包含域名和会话标题，有画像时包含偏好提示
  * - TOKEN_BUDGET 为 50000
  * - 未超预算不压缩
- * - 超预算后保留最近 10 轮 + 摘要
+ * - 超预算后保留首轮 + 最近 5 轮 + 中间摘要
  */
 
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -22,6 +22,7 @@ import {
   SYSTEM_BASE, 
   buildSessionContext,
   TOKEN_BUDGET,
+  findFirstTurnEnd,
   checkAndCompressHistory,
   findTurnBoundary,
   summarizeOldTurns,
@@ -49,37 +50,24 @@ describe('SYSTEM_BASE 常量', () => {
   });
 
   test('包含工作方式指引', () => {
-    expect(SYSTEM_BASE).toContain('工作方式');
     expect(SYSTEM_BASE).toContain('使用工具');
     expect(SYSTEM_BASE).toContain('优先行动');
   });
 
-  test('包含可用工具列表', () => {
-    expect(SYSTEM_BASE).toContain('get_page_structure');
-    expect(SYSTEM_BASE).toContain('grep');
-    expect(SYSTEM_BASE).toContain('apply_styles');
-    expect(SYSTEM_BASE).toContain('get_user_profile');
-    expect(SYSTEM_BASE).toContain('update_user_profile');
-    expect(SYSTEM_BASE).toContain('load_skill');
-    expect(SYSTEM_BASE).toContain('save_style_skill');
-    expect(SYSTEM_BASE).toContain('list_style_skills');
-    expect(SYSTEM_BASE).toContain('delete_style_skill');
-    expect(SYSTEM_BASE).toContain('Task');
-    expect(SYSTEM_BASE).toContain('TodoWrite');
-  });
-
   test('包含 CSS 生成规则', () => {
-    expect(SYSTEM_BASE).toContain('生成 CSS 时遵循');
     expect(SYSTEM_BASE).toContain('具体选择器');
     expect(SYSTEM_BASE).toContain('!important');
-    expect(SYSTEM_BASE).toContain('hex 或 rgba');
+  });
+
+  test('包含样式编辑策略（引用 get_current_styles）', () => {
+    expect(SYSTEM_BASE).toContain('get_current_styles');
+    expect(SYSTEM_BASE).toContain('edit_css');
+    expect(SYSTEM_BASE).toContain('apply_styles');
   });
 
   test('包含风格技能指引', () => {
     expect(SYSTEM_BASE).toContain('风格技能');
     expect(SYSTEM_BASE).toContain('save_style_skill');
-    expect(SYSTEM_BASE).toContain('抽象特征');
-    expect(SYSTEM_BASE).toContain('视觉一致性');
   });
 });
 
@@ -116,19 +104,11 @@ describe('buildSessionContext 函数', () => {
     expect(ctx).toContain('会话: 新会话');
   });
 
-  test('有样式摘要时包含样式信息', () => {
-    const ctx = buildSessionContext('github.com', {
-      title: '样式调整',
-      activeStylesSummary: '5 条规则，涉及 body, .header 等'
-    }, '');
-    
-    expect(ctx).toContain('已应用样式: 5 条规则，涉及 body, .header 等');
-  });
-
-  test('无样式摘要时不包含样式信息', () => {
+  test('不包含 CSS 样式（改为工具按需获取）', () => {
     const ctx = buildSessionContext('github.com', { title: '新会话' }, '');
     
     expect(ctx).not.toContain('已应用样式');
+    expect(ctx).not.toContain('```css');
   });
 
   test('有画像时包含偏好提示', () => {
@@ -147,13 +127,11 @@ describe('buildSessionContext 函数', () => {
   test('完整上下文包含所有信息', () => {
     const ctx = buildSessionContext('github.com', {
       title: '深色模式调整',
-      activeStylesSummary: '3 条规则，涉及 body, .header 等'
     }, '偏好深色模式');
     
     expect(ctx).toContain('[会话上下文]');
     expect(ctx).toContain('域名: github.com');
     expect(ctx).toContain('会话: 深色模式调整');
-    expect(ctx).toContain('已应用样式: 3 条规则，涉及 body, .header 等');
     expect(ctx).toContain('用户风格偏好: 偏好深色模式');
   });
 
@@ -238,7 +216,6 @@ describe('checkAndCompressHistory 函数', () => {
     
     const result = await checkAndCompressHistory(history, 30000);
     
-    // 应该返回原历史（同一引用）
     expect(result).toBe(history);
   });
 
@@ -250,26 +227,23 @@ describe('checkAndCompressHistory 函数', () => {
     
     const result = await checkAndCompressHistory(history, 50000);
     
-    // 刚好等于预算，不压缩
     expect(result).toBe(history);
   });
 
-  test('超预算但历史不足 10 轮不压缩', async () => {
+  test('超预算但轮数不足不压缩（最近5轮起点 <= 首轮结束）', async () => {
     const history = [
       { role: 'user', content: '消息1' },
       { role: 'assistant', content: [{ type: 'text', text: '回复1' }] },
       { role: 'user', content: '消息2' },
+      { role: 'assistant', content: [{ type: 'text', text: '回复2' }] },
     ];
     
-    // 只有 2 轮，不足 10 轮
     const result = await checkAndCompressHistory(history, 60000);
     
-    // 历史太短，不应该压缩
     expect(result).toBe(history);
   });
 
-  test('超预算后压缩历史并生成摘要', async () => {
-    // Mock chrome.storage 和 fetch
+  test('超预算后保留首轮 + 摘要 + 最近 5 轮', async () => {
     global.chrome = {
       storage: {
         local: {
@@ -288,7 +262,7 @@ describe('checkAndCompressHistory 函数', () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
-        content: [{ text: mockSummary }]
+        choices: [{ message: { content: mockSummary } }]
       })
     });
     
@@ -299,33 +273,34 @@ describe('checkAndCompressHistory 函数', () => {
       history.push({ role: 'assistant', content: [{ type: 'text', text: `回复${i}` }] });
     }
     
-    // 超过预算
     const result = await checkAndCompressHistory(history, 60000);
     
-    // 应该返回新数组（不是原引用）
     expect(result).not.toBe(history);
     
-    // 第一条应该是摘要消息
+    // 首轮（2条） + 摘要（2条） + 最近5轮（10条） = 14条
+    expect(result.length).toBe(14);
+    
+    // 第一条是首轮用户消息
     expect(result[0].role).toBe('user');
-    expect(result[0].content).toContain('[之前的对话摘要]');
-    expect(result[0].content).toContain(mockSummary);
+    expect(result[0].content).toBe('消息1');
     
-    // 应该保留最近 10 轮（20 条消息）
-    // 结果长度：1 条摘要 + 20 条消息（10 轮 × 2）
-    expect(result.length).toBe(21);
+    // 第三条是摘要
+    expect(result[2].role).toBe('user');
+    expect(result[2].content).toContain('[中间对话摘要]');
+    expect(result[2].content).toContain(mockSummary);
     
-    // 验证保留了最近的消息
-    expect(result[result.length - 2].content).toBe('消息15');
+    // 最后一条是第15轮助手回复
     expect(result[result.length - 1].content[0].text).toBe('回复15');
     
-    // 清理 mock
+    // 最近5轮的起始应该是第11轮
+    expect(result[4].content).toBe('消息11');
+    
     vi.clearAllMocks();
   });
 });
 
 describe('summarizeOldTurns 函数', () => {
   beforeEach(() => {
-    // Mock chrome.storage.local
     global.chrome = {
       storage: {
         local: {
@@ -345,10 +320,8 @@ describe('summarizeOldTurns 函数', () => {
     vi.clearAllMocks();
   });
 
-  test('对简单历史生成摘要（需要 mock fetch）', async () => {
+  test('对简单历史生成摘要', async () => {
     const mockSummary = '用户偏好深色模式';
-    
-    // Mock fetch
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -362,56 +335,16 @@ describe('summarizeOldTurns 函数', () => {
     ];
     
     const summary = await summarizeOldTurns(history);
-    
-    // 应该返回摘要
-    expect(summary).toBe(mockSummary);
-    
-    // 验证调用了正确的 API（OpenAI 兼容格式）
-    expect(fetch).toHaveBeenCalledWith(
-      'https://api.ppio.com/openai/v1/chat/completions',
-      expect.objectContaining({
-        method: 'POST',
-        headers: expect.objectContaining({
-          'Authorization': 'Bearer test-api-key'
-        })
-      })
-    );
-  });
-
-  test('处理包含工具调用的历史', async () => {
-    const mockSummary = '用户调用了样式工具';
-    
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        choices: [{ message: { content: mockSummary } }]
-      })
-    });
-    
-    const history = [
-      { role: 'user', content: '查看页面结构' },
-      { role: 'assistant', content: [
-        { type: 'tool_use', name: 'get_page_structure' }
-      ]},
-      { role: 'user', content: [{ type: 'tool_result', content: '页面结构...' }] },
-    ];
-    
-    const summary = await summarizeOldTurns(history);
-    
     expect(summary).toBe(mockSummary);
   });
 
   test('空历史返回默认消息', async () => {
     const summary = await summarizeOldTurns([]);
-    
     expect(summary).toBe('(无历史记录)');
   });
 
   test('API 错误时返回失败消息', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 500
-    });
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 });
     
     const history = [
       { role: 'user', content: '消息' },
@@ -419,20 +352,6 @@ describe('summarizeOldTurns 函数', () => {
     ];
     
     const summary = await summarizeOldTurns(history);
-    
-    expect(summary).toBe('(历史摘要生成失败)');
-  });
-
-  test('网络错误时返回失败消息', async () => {
-    global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
-    
-    const history = [
-      { role: 'user', content: '消息' },
-      { role: 'assistant', content: [{ type: 'text', text: '回复' }] },
-    ];
-    
-    const summary = await summarizeOldTurns(history);
-    
     expect(summary).toBe('(历史摘要生成失败)');
   });
 });

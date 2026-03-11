@@ -26,9 +26,9 @@ const SYSTEM_BASE = `你是 StyleSwift，网页样式个性化智能体。使用
 CSS规则：具体选择器+!important，颜色用hex/rgba，不用CSS变量/*/@import，不用*或标签通配。
 
 样式编辑策略：
-- 修改已有样式时优先用 edit_css（精准替换，省token）
+- 修改已有样式时先调 get_current_styles 查看当前样式，再用 edit_css 精准替换
 - 添加全新规则时用 apply_styles(mode:save)
-- edit_css 的 old_css 必须从 [当前已应用样式] 中精确复制
+- edit_css 的 old_css 必须与 get_current_styles 返回的内容精确匹配
 - 全部重来用 apply_styles(mode:rollback_all)
 
 收到[用户指定元素]时优先用其选择器定位，无需再调get_page_structure。
@@ -87,24 +87,18 @@ const AGENT_TYPES = {
 /**
  * 构建会话上下文块
  * 
- * 拼接 [会话上下文] 块，包含域名、会话标题、已应用样式摘要、用户偏好一行提示。
+ * 拼接 [会话上下文] 块，包含域名、会话标题、用户偏好一行提示。
  * 作为 Layer 1 注入到每次 Agent 会话的 system prompt 中。
+ * 当前样式不再注入 system prompt，改由 get_current_styles 工具按需获取。
  * 
  * @param {string} domain - 当前网站的域名，如 'github.com'
  * @param {Object} sessionMeta - 会话元数据对象
  * @param {string|null} [sessionMeta.title] - 会话标题，无标题时显示'新会话'
  * @param {string} profileHint - 用户画像的一行提示（来自 getProfileOneLiner），无画像时为空字符串
- * @param {string} currentCSS - 当前会话已应用的完整 CSS 文本，无样式时为空字符串
  * @returns {string} 格式化的会话上下文文本
  */
-function buildSessionContext(domain, sessionMeta, profileHint, currentCSS) {
+function buildSessionContext(domain, sessionMeta, profileHint) {
   let ctx = `\n[会话上下文]\n域名: ${domain}\n会话: ${sessionMeta.title || '新会话'}\n`;
-
-  if (currentCSS && currentCSS.trim()) {
-    ctx += `[当前已应用样式]\n\`\`\`css\n${currentCSS.trim()}\n\`\`\`\n`;
-  } else {
-    ctx += `[当前已应用样式] 无\n`;
-  }
 
   if (profileHint) {
     ctx += `用户风格偏好: ${profileHint} (详情可通过 get_user_profile 获取)\n`;
@@ -157,7 +151,7 @@ function findFirstTurnEnd(history) {
  * 压缩对话历史（仅用于 LLM 视图，不影响持久化）
  * 
  * 基于 API 返回的 lastInputTokens 判断是否需要压缩。
- * 压缩策略：保留第一轮完整对话 + 最近 3 轮对话，中间部分生成 LLM 摘要。
+ * 压缩策略：保留第一轮完整对话 + 最近 5 轮对话，中间部分生成 LLM 摘要。
  * 完整对话历史和 CSS 快照始终完整保存在 IndexedDB 中。
  * 
  * @param {Array} history - 对话历史数组
@@ -170,7 +164,7 @@ async function checkAndCompressHistory(history, lastInputTokens) {
   }
 
   const firstTurnEnd = findFirstTurnEnd(history);
-  const recentStart = findTurnBoundary(history, 3);
+  const recentStart = findTurnBoundary(history, 5);
 
   if (recentStart <= firstTurnEnd) {
     return history;
@@ -233,70 +227,38 @@ function findTurnBoundary(history, keepRecentTurns) {
  * 使用 LLM 对早期对话生成摘要
  * 
  * 将旧对话历史压缩成一段简洁的摘要文本。
- * 摘要重点保留：
- * - 用户的风格偏好
- * - 已应用的样式变更
- * - 未完成的请求
- * 
- * 注意：此函数会调用 LLM API，产生 API 费用。
+ * 摘要重点保留：用户的风格偏好、已应用的样式变更、未完成的请求。
  * 
  * @param {Array} oldHistory - 要压缩的旧对话历史
  * @returns {Promise<string>} 压缩后的摘要文本
- * 
- * @example
- * const summary = await summarizeOldTurns([
- *   { role: 'user', content: '改成深色模式' },
- *   { role: 'assistant', content: [{ type: 'text', text: '好的' }, ...] },
- *   ...
- * ]);
- * // summary 可能是: "用户偏好深色模式，已应用深蓝背景和白色文字..."
  */
 async function summarizeOldTurns(oldHistory) {
-  // 将历史压缩成简化的文本格式
   const condensed = oldHistory.map(msg => {
     if (msg.role === 'user') {
-      // 用户消息
-      if (typeof msg.content === 'string') {
-        return `用户: ${msg.content}`;
-      }
-      // tool_result 消息（通常是工具调用结果）
+      if (typeof msg.content === 'string') return `用户: ${msg.content}`;
       return '用户: [工具调用结果]';
     }
-    
     if (msg.role === 'assistant') {
-      // 助手消息：提取文本和工具调用
       const texts = (msg.content || [])
         .filter(b => b.type === 'text')
-        .map(b => b.text.slice(0, 200)); // 截断过长的文本
-      
+        .map(b => b.text.slice(0, 200));
       const tools = (msg.content || [])
         .filter(b => b.type === 'tool_use')
         .map(b => b.name);
-      
-      let summary = '';
-      if (texts.length) {
-        summary += `助手: ${texts.join(' ')}`;
-      }
-      if (tools.length) {
-        summary += ` [调用了: ${tools.join(', ')}]`;
-      }
-      return summary;
+      let s = '';
+      if (texts.length) s += `助手: ${texts.join(' ')}`;
+      if (tools.length) s += ` [调用了: ${tools.join(', ')}]`;
+      return s;
     }
-    
     return '';
   }).filter(Boolean).join('\n');
 
-  // 如果压缩后的文本为空，返回默认消息
-  if (!condensed.trim()) {
-    return '(无历史记录)';
-  }
+  if (!condensed.trim()) return '(无历史记录)';
 
   try {
-    // 动态导入 getSettings（避免循环依赖）
     const { getSettings } = await import('./api.js');
     const { apiKey, model, apiBase } = await getSettings();
 
-    // 调用 LLM 生成摘要（OpenAI 兼容格式）
     const resp = await fetch(`${apiBase}/v1/chat/completions`, {
       method: 'POST',
       headers: {
@@ -322,54 +284,11 @@ async function summarizeOldTurns(oldHistory) {
     }
 
     const data = await resp.json();
-    const text = data.choices?.[0]?.message?.content;
-    return text || '(历史摘要生成失败)';
-    
+    return data.choices?.[0]?.message?.content || '(历史摘要生成失败)';
   } catch (err) {
     console.error('[History Compression] Failed:', err);
     return '(历史摘要生成失败)';
   }
-}
-
-// =============================================================================
-// §6.4 工具结果压缩（LLM 视图）
-// =============================================================================
-
-/**
- * 压缩旧的工具结果以减少 context 占用
- * 
- * 创建消息数组的浅拷贝，将除最近一条外的所有 tool_result 内容
- * 替换为 '[已处理]' 占位符。原始 history 不受影响。
- * 
- * @param {Array} messages - 对话历史数组
- * @returns {Array} 压缩后的消息数组（浅拷贝）
- */
-function compressToolResultsForLLM(messages) {
-  let lastToolResultIdx = -1;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].role === 'user' && Array.isArray(messages[i].content)) {
-      if (messages[i].content.some(c => c.type === 'tool_result')) {
-        lastToolResultIdx = i;
-        break;
-      }
-    }
-  }
-
-  if (lastToolResultIdx === -1) return messages;
-
-  return messages.map((msg, idx) => {
-    if (idx >= lastToolResultIdx) return msg;
-    if (msg.role !== 'user' || !Array.isArray(msg.content)) return msg;
-    if (!msg.content.some(c => c.type === 'tool_result')) return msg;
-
-    return {
-      ...msg,
-      content: msg.content.map(item => {
-        if (item.type !== 'tool_result') return item;
-        return { type: 'tool_result', tool_use_id: item.tool_use_id, content: '[已处理]' };
-      })
-    };
-  });
 }
 
 // =============================================================================
@@ -1127,9 +1046,7 @@ async function agentLoop(prompt, uiCallbacks) {
     // 2. 构建 system prompt = L0 + L1
     const sessionMeta = await loadSessionMeta(domain, sessionId);
     const profileHint = await getProfileOneLiner();
-    const cssResult = await chrome.storage.local.get(session.stylesKey);
-    const currentCSS = cssResult[session.stylesKey] || '';
-    const system = SYSTEM_BASE + buildSessionContext(domain, sessionMeta, profileHint, currentCSS);
+    const system = SYSTEM_BASE + buildSessionContext(domain, sessionMeta, profileHint);
 
     // 3. Agent Loop（流式 + 迭代上限 + 取消支持）
     // 新会话自动附加页面结构概览，减少首轮工具调用
@@ -1165,11 +1082,8 @@ async function agentLoop(prompt, uiCallbacks) {
         throw new DOMException('Aborted', 'AbortError');
       }
 
-      // 压缩旧工具结果，减少 context 占用（不影响 llmHistory）
-      const messagesForLLM = compressToolResultsForLLM(llmHistory);
-
       // 调用流式 API（带安全重试）
-      response = await callLLMStreamSafe(system, messagesForLLM, ALL_TOOLS, {
+      response = await callLLMStreamSafe(system, llmHistory, ALL_TOOLS, {
         onText: (delta) => uiCallbacks.appendText?.(delta),
         onToolCall: (block) => uiCallbacks.showToolCall?.(block),
         onStatus: (msg) => uiCallbacks.appendText?.(msg),
@@ -1335,7 +1249,6 @@ export {
   checkAndCompressHistory,
   findTurnBoundary,
   summarizeOldTurns,
-  compressToolResultsForLLM,
   RESTRICTED_PATTERNS,
   isRestrictedPage,
   checkPageAccess,
