@@ -568,6 +568,11 @@ async function callLLMStream(system, messages, tools, callbacks, abortSignal) {
 
           const delta = choice.delta;
           
+          // 处理推理内容（DeepSeek-R1 等推理模型的 reasoning_content 字段）
+          if (delta.reasoning_content) {
+            callbacks.onReasoning?.(delta.reasoning_content);
+          }
+          
           // 处理文本内容
           if (delta.content) {
             currentText += delta.content;
@@ -1049,27 +1054,9 @@ async function agentLoop(prompt, uiCallbacks) {
     const system = SYSTEM_BASE + buildSessionContext(domain, sessionMeta, profileHint);
 
     // 3. Agent Loop（流式 + 迭代上限 + 取消支持）
-    // 新会话自动附加页面结构概览，减少首轮工具调用
-    let enrichedPrompt = prompt;
-    if (fullHistory.length === 0) {
-      try {
-        const pageStructure = await new Promise((resolve, reject) => {
-          chrome.tabs.sendMessage(tabId, { tool: 'get_page_structure' }, (resp) => {
-            if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
-            else resolve(resp);
-          });
-        });
-        if (pageStructure && typeof pageStructure === 'string') {
-          enrichedPrompt = prompt + `\n\n[页面结构概览]\n${pageStructure}`;
-        }
-      } catch (e) {
-        console.warn('[Agent] Failed to pre-fetch page structure:', e);
-      }
-    }
-
     // fullHistory: 完整历史，持久化到 IndexedDB
     // llmHistory: LLM 视图，可被压缩以节省 context
-    const userMsg = { role: 'user', content: enrichedPrompt };
+    const userMsg = { role: 'user', content: prompt };
     fullHistory.push(userMsg);
     let llmHistory = [...fullHistory];
     let lastInputTokens = 0;
@@ -1084,6 +1071,7 @@ async function agentLoop(prompt, uiCallbacks) {
 
       // 调用流式 API（带安全重试）
       response = await callLLMStreamSafe(system, llmHistory, ALL_TOOLS, {
+        onReasoning: (delta) => uiCallbacks.appendReasoning?.(delta),
         onText: (delta) => uiCallbacks.appendText?.(delta),
         onToolCall: (block) => uiCallbacks.showToolCall?.(block),
         onStatus: (msg) => uiCallbacks.appendText?.(msg),

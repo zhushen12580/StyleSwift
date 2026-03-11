@@ -1378,10 +1378,21 @@ async function handleSendClick() {
   // 创建助手消息容器（用于流式输出）
   const assistantMessageEl = renderAssistantMessageContainer();
   const assistantBubble = assistantMessageEl.querySelector('.message-bubble');
+  const reasoningBlock = assistantMessageEl.querySelector('.reasoning-block');
+  const reasoningContentEl = assistantMessageEl.querySelector('.reasoning-content');
+  const reasoningHeader = assistantMessageEl.querySelector('.reasoning-header');
+  const reasoningTitleEl = assistantMessageEl.querySelector('.reasoning-title');
   addMessageToContainer(assistantMessageEl);
   
   // 创建流式文本渲染器
   const streamingRenderer = createStreamingRenderer(assistantBubble);
+  
+  // 创建推理内容流式渲染器（无光标，无自动滚动打扰）
+  const reasoningRenderer = createStreamingRenderer(reasoningContentEl, {
+    showCursor: true,
+    autoScroll: true,
+  });
+  let reasoningCharCount = 0;
   
   // 样式应用计数器（用于确认浮层）
   let applyStylesCount = 0;
@@ -1392,6 +1403,20 @@ async function handleSendClick() {
     
     // UI 回调函数
     const uiCallbacks = {
+      /**
+       * 追加推理文本（reasoning_content 字段）
+       * @param {string} delta - 推理文本增量
+       */
+      appendReasoning: (delta) => {
+        if (!delta) return;
+        // 首次收到推理内容时显示推理块
+        if (reasoningCharCount === 0) {
+          reasoningBlock.classList.add('visible');
+        }
+        reasoningCharCount += delta.length;
+        reasoningRenderer.appendText(delta);
+      },
+
       /**
        * 追加流式文本
        * @param {string} delta - 文本增量
@@ -1437,6 +1462,17 @@ async function handleSendClick() {
     // 调用 Agent Loop
     const response = await agentLoop(finalMessage, uiCallbacks);
     
+    // 完成推理流式输出：收起推理块，更新标题
+    if (reasoningCharCount > 0) {
+      reasoningRenderer.finish();
+      reasoningBlock.classList.add('finished');
+      reasoningBlock.classList.add('collapsed');
+      reasoningHeader.setAttribute('aria-expanded', 'false');
+      if (reasoningTitleEl) {
+        reasoningTitleEl.textContent = `思考过程（${reasoningCharCount} 字）`;
+      }
+    }
+
     // 完成流式输出
     streamingRenderer.finish();
     
@@ -3137,15 +3173,40 @@ function renderUserMessage(content, options = {}) {
 
 /**
  * 渲染助手消息容器（用于流式输出）
- * @returns {HTMLElement} - 消息 DOM 元素（包含气泡容器）
+ * @returns {HTMLElement} - 消息 DOM 元素（包含推理块和气泡容器）
  */
 function renderAssistantMessageContainer() {
   const messageDiv = document.createElement('div');
   messageDiv.className = 'message message-assistant';
-  
+
+  // 推理思考块（初始隐藏，有 reasoning_content 时才显示）
+  const reasoningBlock = document.createElement('div');
+  reasoningBlock.className = 'reasoning-block';
+
+  const reasoningHeader = document.createElement('button');
+  reasoningHeader.className = 'reasoning-header';
+  reasoningHeader.setAttribute('aria-expanded', 'true');
+  reasoningHeader.innerHTML =
+    '<span class="reasoning-spinner"></span>' +
+    '<span class="reasoning-title">思考中…</span>' +
+    '<span class="reasoning-chevron"></span>';
+
+  const reasoningContent = document.createElement('div');
+  reasoningContent.className = 'reasoning-content';
+
+  reasoningHeader.addEventListener('click', () => {
+    const expanded = reasoningHeader.getAttribute('aria-expanded') === 'true';
+    reasoningHeader.setAttribute('aria-expanded', String(!expanded));
+    reasoningBlock.classList.toggle('collapsed', expanded);
+  });
+
+  reasoningBlock.appendChild(reasoningHeader);
+  reasoningBlock.appendChild(reasoningContent);
+
   const bubbleDiv = document.createElement('div');
   bubbleDiv.className = 'message-bubble streaming-text';
-  
+
+  messageDiv.appendChild(reasoningBlock);
   messageDiv.appendChild(bubbleDiv);
   return messageDiv;
 }
