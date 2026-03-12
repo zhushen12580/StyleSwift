@@ -48,14 +48,21 @@ class SkillLoader {
         try {
           const content = await this._fetchFile(path);
           const { meta, body } = this._parseFrontmatter(content);
-          const name = meta.name || this._extractNameFromPath(path);
-          this.skills.set(name, { meta, body, path });
+          // For reference skills, use path-based name (e.g., "reference/typography")
+          const isReference = path.includes("/reference/");
+          const name = isReference
+            ? "reference/" + this._extractNameFromPath(path)
+            : meta.name || this._extractNameFromPath(path);
+          this.skills.set(name, { meta, body, path, hidden: isReference });
+          console.log(`[SkillLoader] Loaded skill: ${name} from ${path}`);
         } catch (err) {
-          console.warn(`[SkillLoader] Failed to load ${path}:`, err);
+          console.error(`[SkillLoader] Failed to load ${path}:`, err);
         }
       }),
     );
 
+    console.log(`[SkillLoader] Total skills loaded: ${this.skills.size}`);
+    console.log(`[SkillLoader] Skill names:`, Array.from(this.skills.keys()));
     this.initialized = true;
   }
 
@@ -74,33 +81,30 @@ class SkillLoader {
       "skills/frontend-design.md",
       "skills/audit.md",
       "skills/colorize.md",
-      "skills/optimize.md",
       "skills/polish.md",
       "skills/normalize.md",
-      // Original skills
-      "skills/design-principles.md",
-      "skills/color-theory.md",
-      "skills/css-selectors-guide.md",
+      "skills/distill.md",
+      "skills/delight.md",
+      "skills/critique.md",
+      "skills/animate.md",
+      "skills/adapt.md",
+      "skills/bolder.md",
+      // Reference skills
+      "skills/reference/color-and-contrast.md",
+      "skills/reference/interaction-design.md",
+      "skills/reference/motion-design.md",
+      "skills/reference/responsive-design.md",
+      "skills/reference/spatial-design.md",
+      "skills/reference/typography.md",
+      "skills/reference/ux-writing.md",
       // Style templates
       "skills/style-templates/dark-mode.md",
       "skills/style-templates/minimal.md",
     ];
 
-    // Verify files exist by trying to fetch them
-    const existingFiles = [];
-    for (const file of knownFiles) {
-      try {
-        const url = `${this.skillsDir}/${file}`;
-        const resp = await fetch(url, { method: "HEAD" });
-        if (resp.ok) {
-          existingFiles.push(file);
-        }
-      } catch {
-        // File doesn't exist, skip
-      }
-    }
-
-    return existingFiles;
+    // Skip HEAD verification - Chrome extension resources don't support HEAD method
+    // Just return the known files directly
+    return knownFiles;
   }
 
   /**
@@ -133,14 +137,17 @@ class SkillLoader {
    * @private
    */
   _parseFrontmatter(text) {
+    // Normalize line endings (CRLF -> LF) to handle Windows files
+    const normalized = text.replace(/\r\n/g, "\n");
+
     // Match frontmatter between --- delimiters
-    const match = text.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+    const match = normalized.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
 
     if (!match) {
       // No frontmatter, try to extract from first heading
-      const headingMatch = text.match(/^#\s+(.+)(?:\n|$)/);
+      const headingMatch = normalized.match(/^#\s+(.+)(?:\n|$)/);
       const name = headingMatch ? headingMatch[1].trim() : "Unnamed";
-      const descMatch = text.match(/^>\s*(.+)$/m);
+      const descMatch = normalized.match(/^>\s*(.+)$/m);
       const description = descMatch ? descMatch[1].trim() : "";
 
       return {
@@ -199,8 +206,8 @@ class SkillLoader {
 
     const lines = [];
     for (const [name, skill] of this.skills) {
-      // Skip disabled skills
-      if (disabledSkills.includes(name)) continue;
+      // Skip disabled skills and hidden reference skills
+      if (disabledSkills.includes(name) || skill.hidden) continue;
 
       const desc = skill.meta.description || "No description";
       const tags = skill.meta.tags ? ` [${skill.meta.tags}]` : "";
@@ -231,11 +238,13 @@ class SkillLoader {
   }
 
   /**
-   * Get list of all available skill names
+   * Get list of all available skill names (excluding hidden reference skills)
    * @returns {string[]} Array of skill names
    */
   getNames() {
-    return Array.from(this.skills.keys());
+    return Array.from(this.skills.entries())
+      .filter(([_, skill]) => !skill.hidden)
+      .map(([name]) => name);
   }
 
   /**
@@ -258,13 +267,15 @@ class SkillLoader {
   }
 
   /**
-   * Get all skills as an array of {name, meta}
-   * Useful for listing available skills
+   * Get all skills as an array of {name, meta} (excluding hidden reference skills)
+   * Useful for listing available skills in settings UI
    * @returns {Array<{name: string, description: string, tags?: string}>}
    */
   list() {
     const result = [];
     for (const [name, skill] of this.skills) {
+      // Skip hidden reference skills in settings UI
+      if (skill.hidden) continue;
       result.push({
         name,
         description: skill.meta.description || "",

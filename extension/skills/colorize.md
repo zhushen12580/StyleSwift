@@ -1,5 +1,5 @@
 ---
-name: colorize
+name: 着色
 description: Add strategic color to features that are too monochromatic or lack visual interest. Makes interfaces more engaging and expressive.
 tags: color, design, palette
 ---

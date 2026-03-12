@@ -1,5 +1,5 @@
 ---
-name: audit
+name: 审计
 description: Perform comprehensive audit of interface quality across accessibility, performance, theming, and responsive design. Generates detailed report with severity ratings.
 tags: audit, accessibility, performance, quality
 ---

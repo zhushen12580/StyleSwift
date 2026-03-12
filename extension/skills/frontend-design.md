@@ -1,5 +1,5 @@
 ---
-name: frontend-design
+name: 前端设计
 description: Create distinctive, production-grade frontend interfaces with high design quality. Core design principles with DO/DON'T guidelines and AI Slop Test.
 tags: design, typography, color, layout, motion
 ---
@@ -25,7 +25,7 @@ Then implement working code that is:
 ## Frontend Aesthetics Guidelines
 
 ### Typography
-> *Consult typography reference for scales, pairing, and loading strategies.*
+→ *Use `load_skill('reference/typography')` for scales, pairing, and loading strategies.*
 
 Choose fonts that are beautiful, unique, and interesting. Pair a distinctive display font with a refined body font.
 
@@ -36,7 +36,7 @@ Choose fonts that are beautiful, unique, and interesting. Pair a distinctive dis
 **DON'T**: Put large icons with rounded corners above every heading—they rarely add value and make sites look templated
 
 ### Color & Theme
-> *Consult color-and-contrast reference for OKLCH, palettes, and dark mode.*
+→ *Use `load_skill('reference/color-and-contrast')` for OKLCH, palettes, and dark mode.*
 
 Commit to a cohesive palette. Dominant colors with sharp accents outperform timid, evenly-distributed palettes.
 
@@ -49,7 +49,7 @@ Commit to a cohesive palette. Dominant colors with sharp accents outperform timi
 **DON'T**: Default to dark mode with glowing accents—it looks "cool" without requiring actual design decisions
 
 ### Layout & Space
-> *Consult spatial reference for grids, rhythm, and container queries.*
+→ *Use `load_skill('reference/spatial-design')` for grids, rhythm, and container queries.*
 
 Create visual rhythm through varied spacing—not the same padding everywhere. Embrace asymmetry and unexpected compositions. Break the grid intentionally for emphasis.
 
@@ -72,7 +72,7 @@ Create visual rhythm through varied spacing—not the same padding everywhere. E
 **DON'T**: Use modals unless there's truly no better alternative—modals are lazy
 
 ### Motion
-> *Consult motion-design reference for timing, easing, and reduced motion.*
+→ *Use `load_skill('reference/motion-design')` for timing, easing, and reduced motion.*
 
 Focus on high-impact moments: one well-orchestrated page load with staggered reveals creates more delight than scattered micro-interactions.
 
@@ -83,7 +83,7 @@ Focus on high-impact moments: one well-orchestrated page load with staggered rev
 **DON'T**: Use bounce or elastic easing—they feel dated and tacky; real objects decelerate smoothly
 
 ### Interaction
-> *Consult interaction reference for forms, focus, and loading patterns.*
+→ *Use `load_skill('reference/interaction-design')` for forms, focus, and loading patterns.*
 
 Make interactions feel fast. Use optimistic UI—update immediately, sync later.
 
@@ -94,14 +94,14 @@ Make interactions feel fast. Use optimistic UI—update immediately, sync later.
 **DON'T**: Make every button primary—use ghost buttons, text links, secondary styles; hierarchy matters
 
 ### Responsive
-> *Consult responsive reference for mobile-first, fluid design, and container queries.*
+→ *Use `load_skill('reference/responsive-design')` for mobile-first, fluid design, and container queries.*
 
 **DO**: Use container queries (@container) for component-level responsiveness
 **DO**: Adapt the interface for different contexts—don't just shrink it
 **DON'T**: Hide critical functionality on mobile—adapt the interface, don't amputate it
 
 ### UX Writing
-> *Consult ux-writing reference for labels, errors, and empty states.*
+→ *Use `load_skill('reference/ux-writing')` for labels, errors, and empty states.*
 
 **DO**: Make every word earn its place
 **DON'T**: Repeat information users can already see
@@ -124,4 +124,4 @@ Match implementation complexity to the aesthetic vision. Maximalist designs need
 
 Interpret creatively and make unexpected choices that feel genuinely designed for the context. No design should be the same. Vary between light and dark themes, different fonts, different aesthetics. NEVER converge on common choices across generations.
 
-Remember: Claude is capable of extraordinary creative work. Don't hold back—show what can truly be created when thinking outside the box and committing fully to a distinctive vision.
+Remember: {{model}} is capable of extraordinary creative work. Don't hold back—show what can truly be created when thinking outside the box and committing fully to a distinctive vision.
