@@ -122,7 +122,15 @@ async function buildSkillDescriptions() {
     if (!manager) {
       return "";
     }
-    const descriptions = await manager.getDescriptions();
+
+    // 获取禁用的技能列表
+    const disabledSkills = await getDisabledSkills();
+    const disabledUserSkills = await getDisabledUserSkills();
+
+    const descriptions = await manager.getDescriptions(
+      disabledSkills,
+      disabledUserSkills,
+    );
     if (!descriptions || descriptions === "(no skills available)") {
       return "";
     }
@@ -131,6 +139,28 @@ async function buildSkillDescriptions() {
     console.warn("[Skill Descriptions] Failed to build:", err);
     return "";
   }
+}
+
+/**
+ * 获取禁用的技能列表
+ * @returns {Promise<string[]>}
+ */
+async function getDisabledSkills() {
+  const DISABLED_SKILLS_KEY = "settings:disabledSkills";
+  const { [DISABLED_SKILLS_KEY]: disabled = [] } =
+    await chrome.storage.local.get(DISABLED_SKILLS_KEY);
+  return disabled;
+}
+
+/**
+ * 获取禁用的用户技能列表
+ * @returns {Promise<string[]>}
+ */
+async function getDisabledUserSkills() {
+  const DISABLED_USER_SKILLS_KEY = "settings:disabledUserSkills";
+  const { [DISABLED_USER_SKILLS_KEY]: disabled = [] } =
+    await chrome.storage.local.get(DISABLED_USER_SKILLS_KEY);
+  return disabled;
 }
 
 // =============================================================================

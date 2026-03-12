@@ -26,6 +26,8 @@ import {
 
 import { StyleSkillStore } from "./style-skill.js";
 
+import { SkillLoader } from "./skill-loader.js";
+
 import { runGetUserProfile, runUpdateUserProfile } from "./profile.js";
 
 // ============================================================================
@@ -1822,7 +1824,78 @@ function toggleSkillArea() {
 }
 
 /**
+ * Storage key for disabled static skills
+ */
+const DISABLED_SKILLS_KEY = "settings:disabledSkills";
+
+/**
+ * Storage key for disabled user skills
+ */
+const DISABLED_USER_SKILLS_KEY = "settings:disabledUserSkills";
+
+/**
+ * Get list of disabled static skill IDs
+ * @returns {Promise<string[]>}
+ */
+async function getDisabledSkills() {
+  const { [DISABLED_SKILLS_KEY]: disabled = [] } =
+    await chrome.storage.local.get(DISABLED_SKILLS_KEY);
+  return disabled;
+}
+
+/**
+ * Get list of disabled user skill IDs
+ * @returns {Promise<string[]>}
+ */
+async function getDisabledUserSkills() {
+  const { [DISABLED_USER_SKILLS_KEY]: disabled = [] } =
+    await chrome.storage.local.get(DISABLED_USER_SKILLS_KEY);
+  return disabled;
+}
+
+/**
+ * Toggle a static skill's enabled state
+ * @param {string} skillId - Skill ID to toggle
+ * @param {boolean} enabled - Whether to enable the skill
+ */
+async function setSkillEnabled(skillId, enabled) {
+  const disabled = await getDisabledSkills();
+  if (enabled) {
+    // Remove from disabled list
+    const filtered = disabled.filter((id) => id !== skillId);
+    await chrome.storage.local.set({ [DISABLED_SKILLS_KEY]: filtered });
+  } else {
+    // Add to disabled list
+    if (!disabled.includes(skillId)) {
+      disabled.push(skillId);
+      await chrome.storage.local.set({ [DISABLED_SKILLS_KEY]: disabled });
+    }
+  }
+}
+
+/**
+ * Toggle a user skill's enabled state
+ * @param {string} skillId - User skill ID to toggle
+ * @param {boolean} enabled - Whether to enable the skill
+ */
+async function setUserSkillEnabled(skillId, enabled) {
+  const disabled = await getDisabledUserSkills();
+  if (enabled) {
+    // Remove from disabled list
+    const filtered = disabled.filter((id) => id !== skillId);
+    await chrome.storage.local.set({ [DISABLED_USER_SKILLS_KEY]: filtered });
+  } else {
+    // Add to disabled list
+    if (!disabled.includes(skillId)) {
+      disabled.push(skillId);
+      await chrome.storage.local.set({ [DISABLED_USER_SKILLS_KEY]: disabled });
+    }
+  }
+}
+
+/**
  * Render skill chips (built-in + user skills)
+ * Respects disabled skills setting
  */
 async function renderSkillChips() {
   if (!DOM.skillChips) return;
@@ -1830,23 +1903,34 @@ async function renderSkillChips() {
   // Clear existing chips
   DOM.skillChips.innerHTML = "";
 
-  // 1. Render built-in skills (filled chips)
+  // Get disabled skills
+  const disabledSkills = await getDisabledSkills();
+  const disabledUserSkills = await getDisabledUserSkills();
+
+  // 1. Render built-in skills (filled chips) - filter out disabled
+  // BUILT_IN_SKILLS 是快捷风格按钮，如果对应的技能被禁用则隐藏
   for (const skill of BUILT_IN_SKILLS) {
+    // 检查对应的静态技能是否被禁用
+    if (disabledSkills.includes(skill.id)) continue;
     const chip = createBuiltInChip(skill);
     DOM.skillChips.appendChild(chip);
   }
 
-  // 2. Load and render user skills (outlined chips)
+  // 2. Load and render user skills (outlined chips) - filter out disabled
   try {
     const userSkills = await StyleSkillStore.list();
 
     for (const skill of userSkills) {
+      // 检查用户技能是否被禁用
+      if (disabledUserSkills.includes(skill.id)) continue;
       const chip = createUserSkillChip(skill);
       DOM.skillChips.appendChild(chip);
     }
 
-    // 3. If no user skills, show "create from current" action
-    if (userSkills.length === 0) {
+    // 3. If no chips at all, show "create from current" action
+    const hasAnySkills =
+      DOM.skillChips.children.length > 0 || userSkills.length > 0;
+    if (!hasAnySkills) {
       const emptyChip = createEmptyActionChip();
       DOM.skillChips.appendChild(emptyChip);
     }
@@ -2149,7 +2233,6 @@ async function viewSkillDetails(skill) {
     const modal = document.createElement("div");
     modal.className = "skill-detail-modal";
     modal.innerHTML = `
-      <div class="modal-overlay"></div>
       <div class="modal-content">
         <div class="modal-header">
           <h3>${escapeHtml(skill.name)}</h3>
@@ -2170,14 +2253,15 @@ async function viewSkillDetails(skill) {
 
     // Add event listeners
     const closeBtn = modal.querySelector(".modal-close-btn");
-    const overlay = modal.querySelector(".modal-overlay");
 
     const closeModal = () => {
       modal.remove();
     };
 
     closeBtn.addEventListener("click", closeModal);
-    overlay.addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeModal();
+    });
 
     // Append to body
     document.body.appendChild(modal);
@@ -2196,7 +2280,6 @@ async function deleteSkillWithConfirmation(skill) {
   const modal = document.createElement("div");
   modal.className = "skill-delete-modal";
   modal.innerHTML = `
-    <div class="modal-overlay"></div>
     <div class="modal-content">
       <div class="modal-header">
         <h3>确认删除</h3>
@@ -2215,14 +2298,15 @@ async function deleteSkillWithConfirmation(skill) {
   // Add event listeners
   const cancelBtn = modal.querySelector(".btn-cancel");
   const deleteBtn = modal.querySelector(".btn-danger");
-  const overlay = modal.querySelector(".modal-overlay");
 
   const closeModal = () => {
     modal.remove();
   };
 
   cancelBtn.addEventListener("click", closeModal);
-  overlay.addEventListener("click", closeModal);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeModal();
+  });
 
   deleteBtn.addEventListener("click", async () => {
     try {
@@ -2918,6 +3002,12 @@ async function initSettingsView() {
 
   // 加载存储用量
   await loadStorageUsage();
+
+  // 渲染静态技能列表
+  await renderStaticSkillList();
+
+  // 渲染用户风格技能列表
+  await renderUserSkillList();
 }
 
 /**
@@ -3023,6 +3113,289 @@ async function loadUserProfile() {
   } catch (err) {
     console.warn("[Panel] Failed to load user profile:", err);
   }
+}
+
+// ============================================================================
+// 静态技能列表渲染
+// ============================================================================
+
+/**
+ * 全局 SkillLoader 实例（延迟初始化）
+ * @type {SkillLoader|null}
+ */
+let staticSkillLoader = null;
+
+/**
+ * 获取或初始化 SkillLoader
+ * @returns {Promise<SkillLoader>}
+ */
+async function getStaticSkillLoader() {
+  if (!staticSkillLoader) {
+    const baseUrl = `chrome-extension://${chrome.runtime.id}`;
+    staticSkillLoader = new SkillLoader(baseUrl);
+    await staticSkillLoader.init();
+  }
+  return staticSkillLoader;
+}
+
+/**
+ * 渲染静态技能列表（带启用/禁用开关）
+ * 从 SkillLoader 获取所有静态技能
+ */
+async function renderStaticSkillList() {
+  const container = document.getElementById("static-skill-list");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  try {
+    // 从 SkillLoader 获取所有静态技能
+    const loader = await getStaticSkillLoader();
+    const allSkills = loader.list();
+
+    // 获取禁用的技能列表
+    const disabledSkills = await getDisabledSkills();
+
+    if (allSkills.length === 0) {
+      container.innerHTML = '<p class="hint">暂无内置技能</p>';
+      return;
+    }
+
+    for (const skill of allSkills) {
+      const isEnabled = !disabledSkills.includes(skill.name);
+      const item = createStaticSkillItem(skill, isEnabled);
+      container.appendChild(item);
+    }
+  } catch (err) {
+    console.error("[Panel] Failed to load static skills:", err);
+    container.innerHTML = '<p class="hint error">加载技能失败</p>';
+  }
+}
+
+/**
+ * 创建静态技能列表项
+ * @param {Object} skill - 技能对象 {name, description, tags}
+ * @param {boolean} isEnabled - 是否启用
+ * @returns {HTMLElement}
+ */
+function createStaticSkillItem(skill, isEnabled) {
+  const item = document.createElement("div");
+  item.className = "static-skill-item";
+  item.dataset.skillId = skill.name;
+
+  item.innerHTML = `
+    <div class="static-skill-info">
+      <span class="static-skill-icon">📄</span>
+      <div class="static-skill-text">
+        <span class="static-skill-name">${escapeHtml(skill.name)}</span>
+        <span class="static-skill-desc">${escapeHtml(skill.description || "No description")}</span>
+      </div>
+    </div>
+    <label class="toggle-switch">
+      <input type="checkbox" ${isEnabled ? "checked" : ""}>
+      <span class="toggle-slider"></span>
+    </label>
+  `;
+
+  // 绑定开关事件
+  const toggle = item.querySelector('input[type="checkbox"]');
+  toggle.addEventListener("change", async (e) => {
+    const enabled = e.target.checked;
+    await setSkillEnabled(skill.name, enabled);
+    // 刷新主界面的技能 chips
+    await renderSkillChips();
+    console.log(
+      `[Panel] Static skill ${skill.name} ${enabled ? "enabled" : "disabled"}`,
+    );
+  });
+
+  return item;
+}
+
+// ============================================================================
+// 用户风格技能列表渲染
+// ============================================================================
+
+/**
+ * 渲染用户风格技能列表
+ */
+async function renderUserSkillList() {
+  const container = document.getElementById("skill-list");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  try {
+    const userSkills = await StyleSkillStore.list();
+    const disabledUserSkills = await getDisabledUserSkills();
+
+    if (userSkills.length === 0) {
+      container.innerHTML = '<p class="hint">暂无保存的风格技能</p>';
+      return;
+    }
+
+    for (const skill of userSkills) {
+      const isEnabled = !disabledUserSkills.includes(skill.id);
+      const item = createUserSkillItem(skill, isEnabled);
+      container.appendChild(item);
+    }
+  } catch (err) {
+    console.error("[Panel] Failed to render user skill list:", err);
+    container.innerHTML = '<p class="hint error">加载失败</p>';
+  }
+}
+
+/**
+ * 创建用户风格技能列表项
+ * @param {Object} skill - 技能对象
+ * @param {boolean} isEnabled - 是否启用
+ * @returns {HTMLElement}
+ */
+function createUserSkillItem(skill, isEnabled) {
+  const item = document.createElement("div");
+  item.className = "user-skill-item";
+  item.dataset.skillId = skill.id;
+
+  const createdDate = new Date(skill.createdAt).toLocaleDateString("zh-CN");
+
+  item.innerHTML = `
+    <div class="user-skill-info">
+      <span class="user-skill-name">${escapeHtml(skill.name)}</span>
+      <span class="user-skill-mood">${escapeHtml(skill.mood || "无描述")}</span>
+      <div class="user-skill-meta">
+        <span class="user-skill-domain">${escapeHtml(skill.sourceDomain || "unknown")}</span>
+        <span class="user-skill-date">${createdDate}</span>
+      </div>
+    </div>
+    <div class="user-skill-actions">
+      <label class="toggle-switch toggle-switch-small" title="${isEnabled ? "已启用" : "已禁用"}">
+        <input type="checkbox" ${isEnabled ? "checked" : ""}>
+        <span class="toggle-slider"></span>
+      </label>
+      <button class="btn-icon-small" data-action="edit" title="编辑">✏️</button>
+      <button class="btn-icon-small" data-action="delete" title="删除">🗑️</button>
+    </div>
+  `;
+
+  // 绑定开关事件
+  const toggle = item.querySelector('input[type="checkbox"]');
+  toggle.addEventListener("change", async (e) => {
+    const enabled = e.target.checked;
+    await setUserSkillEnabled(skill.id, enabled);
+    // 更新 tooltip
+    toggle.parentElement.title = enabled ? "已启用" : "已禁用";
+    // 刷新主界面的技能 chips
+    await renderSkillChips();
+    console.log(
+      `[Panel] User skill ${skill.id} ${enabled ? "enabled" : "disabled"}`,
+    );
+  });
+
+  // 绑定按钮事件
+  const editBtn = item.querySelector('[data-action="edit"]');
+  const deleteBtn = item.querySelector('[data-action="delete"]');
+
+  editBtn.addEventListener("click", () => openSkillEditor(skill));
+  deleteBtn.addEventListener("click", () => deleteSkillWithConfirmation(skill));
+
+  // 点击整个项目也可以编辑
+  item
+    .querySelector(".user-skill-info")
+    .addEventListener("click", () => openSkillEditor(skill));
+
+  return item;
+}
+
+/**
+ * 打开技能编辑器模态框
+ * @param {Object} skill - 技能对象
+ */
+async function openSkillEditor(skill) {
+  // 加载技能内容
+  const content = await StyleSkillStore.load(skill.id);
+
+  // 创建模态框
+  const modal = document.createElement("div");
+  modal.className = "skill-editor-modal";
+  modal.innerHTML = `
+    <div class="modal-content skill-editor-content">
+      <div class="modal-header">
+        <h3>编辑风格技能</h3>
+        <button class="modal-close-btn" title="关闭">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="edit-skill-name">名称</label>
+          <input type="text" id="edit-skill-name" value="${escapeHtml(skill.name)}" placeholder="风格名称">
+        </div>
+        <div class="form-group">
+          <label for="edit-skill-mood">描述</label>
+          <input type="text" id="edit-skill-mood" value="${escapeHtml(skill.mood || "")}" placeholder="一句话风格描述">
+        </div>
+        <div class="form-group">
+          <label for="edit-skill-content">内容</label>
+          <textarea id="edit-skill-content" class="settings-textarea skill-editor-textarea" placeholder="技能内容（Markdown 格式）">${escapeHtml(content || "")}</textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-cancel">取消</button>
+        <button class="btn btn-primary">保存</button>
+      </div>
+    </div>
+  `;
+
+  // 绑定事件
+  const closeBtn = modal.querySelector(".modal-close-btn");
+  const cancelBtn = modal.querySelector(".btn-cancel");
+  const saveBtn = modal.querySelector(".btn-primary");
+
+  const closeModal = () => modal.remove();
+
+  closeBtn.addEventListener("click", closeModal);
+  cancelBtn.addEventListener("click", closeModal);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  saveBtn.addEventListener("click", async () => {
+    const nameInput = modal.querySelector("#edit-skill-name");
+    const moodInput = modal.querySelector("#edit-skill-mood");
+    const contentInput = modal.querySelector("#edit-skill-content");
+
+    const name = nameInput.value.trim();
+    const mood = moodInput.value.trim();
+    const newContent = contentInput.value.trim();
+
+    if (!name) {
+      nameInput.focus();
+      return;
+    }
+
+    try {
+      saveBtn.disabled = true;
+      saveBtn.textContent = "保存中...";
+
+      await StyleSkillStore.save(
+        skill.id,
+        name,
+        mood,
+        skill.sourceDomain,
+        newContent,
+      );
+
+      closeModal();
+      await renderUserSkillList();
+      await renderSkillChips();
+      console.log("[Panel] Skill updated:", name);
+    } catch (err) {
+      console.error("[Panel] Failed to save skill:", err);
+      saveBtn.disabled = false;
+      saveBtn.textContent = "保存";
+      alert("保存失败: " + err.message);
+    }
+  });
+
+  document.body.appendChild(modal);
 }
 
 /**

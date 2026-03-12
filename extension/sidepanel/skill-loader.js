@@ -183,6 +183,7 @@ class SkillLoader {
    * Returns a formatted list of all available skills with their descriptions.
    * Used to inform the LLM about available skills without loading full content.
    *
+   * @param {string[]} [disabledSkills=[]] - Array of skill names to exclude
    * @returns {string} Formatted skill descriptions
    *
    * @example
@@ -191,19 +192,22 @@ class SkillLoader {
    * const descriptions = loader.getDescriptions();
    * // "- design-principles: 设计原则 (视觉设计的核心原则与最佳实践) [design, contrast]"
    */
-  getDescriptions() {
+  getDescriptions(disabledSkills = []) {
     if (this.skills.size === 0) {
       return "(no skills available)";
     }
 
     const lines = [];
     for (const [name, skill] of this.skills) {
+      // Skip disabled skills
+      if (disabledSkills.includes(name)) continue;
+
       const desc = skill.meta.description || "No description";
       const tags = skill.meta.tags ? ` [${skill.meta.tags}]` : "";
       lines.push(`  - ${name}: ${desc}${tags}`);
     }
 
-    return lines.join("\n");
+    return lines.length > 0 ? lines.join("\n") : "(no skills available)";
   }
 
   /**
@@ -304,16 +308,22 @@ class UnifiedSkillManager {
    *
    * Layer 1 output for system prompt injection.
    *
+   * @param {string[]} [disabledSkills=[]] - Array of skill names to exclude from static skills
+   * @param {string[]} [disabledUserSkills=[]] - Array of user skill IDs to exclude
    * @returns {Promise<string>} Formatted skill descriptions
    */
-  async getDescriptions() {
-    const staticDescs = this.staticLoader.getDescriptions();
+  async getDescriptions(disabledSkills = [], disabledUserSkills = []) {
+    const staticDescs = this.staticLoader.getDescriptions(disabledSkills);
 
-    // Get user skills
+    // Get user skills, filter out disabled ones
     const userSkills = await this.userStore.list();
+    const enabledUserSkills = userSkills.filter(
+      (s) => !disabledUserSkills.includes(s.id),
+    );
+
     let userDescs = "(no user skills)";
-    if (userSkills.length > 0) {
-      userDescs = userSkills
+    if (enabledUserSkills.length > 0) {
+      userDescs = enabledUserSkills
         .map((s) => `  - skill:${s.id}: ${s.name} — ${s.mood || ""} (user)`)
         .join("\n");
     }
