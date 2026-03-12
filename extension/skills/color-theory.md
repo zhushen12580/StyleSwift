@@ -1,3 +1,9 @@
+---
+name: color-theory
+description: 配色理论 - 色彩基础与网页配色最佳实践
+tags: color, design, palette
+---
+
 # 配色理论
 
 > 内置知识：色彩基础与网页配色最佳实践

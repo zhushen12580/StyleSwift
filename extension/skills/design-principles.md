@@ -1,3 +1,9 @@
+---
+name: design-principles
+description: 设计原则 - 视觉设计的核心原则与最佳实践
+tags: design, contrast, hierarchy, whitespace
+---
+
 # 设计原则
 
 > 内置知识：视觉设计的核心原则与最佳实践

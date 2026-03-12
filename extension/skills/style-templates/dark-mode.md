@@ -1,3 +1,9 @@
+---
+name: dark-mode-template
+description: 深色模式模板 - 深色背景+高对比度文字的护眼风格
+tags: template, dark-mode, eye-care
+---
+
 # 深色模式模板
 
 > 内置知识：深色背景 + 高对比度文字的护眼风格

@@ -1,3 +1,9 @@
+---
+name: css-selectors
+description: CSS选择器最佳实践 - 高效、可维护的选择器编写指南
+tags: css, selectors, best-practices
+---
+
 # CSS 选择器最佳实践
 
 > 内置知识：高效、可维护的选择器编写指南

@@ -1,9 +1,9 @@
 /**
  * Tools 单元测试
- * 
+ *
  * 测试 Tab 锁定机制（getTargetTabId / lockTab / unlockTab / getTargetDomain / sendToContentScript）
  * 测试 runApplyStyles（save / rollback_last / rollback_all 模式）
- * 
+ *
  * 测试标准：
  * - 锁定后切换 Tab 不影响通信目标
  * - 解锁后获取新的活跃 Tab
@@ -12,47 +12,47 @@
  * - rollback_all 清空
  */
 
-import { describe, test, expect, beforeEach, vi } from 'vitest';
+import { describe, test, expect, beforeEach, afterEach, vi } from "vitest";
 
 // Mock chrome.tabs API
 const mockTabs = {
-  currentActiveTab: { id: 123, url: 'https://example.com' },
-  
+  currentActiveTab: { id: 123, url: "https://example.com" },
+
   async query(queryInfo) {
     if (queryInfo.active && queryInfo.currentWindow) {
       return [this.currentActiveTab];
     }
     return [];
   },
-  
+
   sendMessage(tabId, message, callback) {
     if (tabId === this.currentActiveTab.id) {
       // Mock domain response
-      if (message.tool === 'get_domain') {
-        callback('example.com');
-      } else if (message.tool === 'get_page_structure') {
+      if (message.tool === "get_domain") {
+        callback("example.com");
+      } else if (message.tool === "get_page_structure") {
         callback({ success: true });
       } else {
         callback({ success: true });
       }
     } else {
       // Tab doesn't exist
-      chrome.runtime.lastError = { message: 'Tab not found' };
+      chrome.runtime.lastError = { message: "Tab not found" };
       callback(undefined);
       chrome.runtime.lastError = undefined;
     }
-  }
+  },
 };
 
 // Mock chrome.runtime
 const mockRuntime = {
-  lastError: undefined
+  lastError: undefined,
 };
 
 // Setup global mocks
 global.chrome = {
   tabs: mockTabs,
-  runtime: mockRuntime
+  runtime: mockRuntime,
 };
 
 // Import functions to test
@@ -78,12 +78,15 @@ function unlockTab() {
 async function getTargetDomain() {
   const tabId = await getTargetTabId();
   return new Promise((resolve) => {
-    chrome.tabs.sendMessage(tabId, { tool: 'get_domain' }, (response) => {
+    chrome.tabs.sendMessage(tabId, { tool: "get_domain" }, (response) => {
       if (chrome.runtime.lastError) {
-        console.warn('getTargetDomain failed:', chrome.runtime.lastError.message);
-        resolve('unknown');
+        console.warn(
+          "getTargetDomain failed:",
+          chrome.runtime.lastError.message,
+        );
+        resolve("unknown");
       } else {
-        resolve(response || 'unknown');
+        resolve(response || "unknown");
       }
     });
   });
@@ -94,7 +97,11 @@ async function sendToContentScript(message) {
   return new Promise((resolve, reject) => {
     chrome.tabs.sendMessage(tabId, message, (response) => {
       if (chrome.runtime.lastError) {
-        reject(new Error(`Content Script 不可用: ${chrome.runtime.lastError.message}`));
+        reject(
+          new Error(
+            `Content Script 不可用: ${chrome.runtime.lastError.message}`,
+          ),
+        );
       } else {
         resolve(response);
       }
@@ -102,181 +109,185 @@ async function sendToContentScript(message) {
   });
 }
 
-describe('Tab 锁定机制', () => {
+describe("Tab 锁定机制", () => {
   beforeEach(() => {
     // Reset state before each test
     lockedTabId = null;
-    mockTabs.currentActiveTab = { id: 123, url: 'https://example.com' };
+    mockTabs.currentActiveTab = { id: 123, url: "https://example.com" };
     mockRuntime.lastError = undefined;
-    
+
     // Reset sendMessage mock to default behavior
     mockTabs.sendMessage = (tabId, message, callback) => {
       if (tabId === mockTabs.currentActiveTab.id) {
         // Mock domain response
-        if (message.tool === 'get_domain') {
-          callback('example.com');
-        } else if (message.tool === 'get_page_structure') {
+        if (message.tool === "get_domain") {
+          callback("example.com");
+        } else if (message.tool === "get_page_structure") {
           callback({ success: true });
         } else {
           callback({ success: true });
         }
       } else {
         // Tab doesn't exist
-        chrome.runtime.lastError = { message: 'Tab not found' };
+        chrome.runtime.lastError = { message: "Tab not found" };
         callback(undefined);
         chrome.runtime.lastError = undefined;
       }
     };
   });
 
-  describe('getTargetTabId', () => {
-    test('初始状态返回当前活跃 Tab', async () => {
+  describe("getTargetTabId", () => {
+    test("初始状态返回当前活跃 Tab", async () => {
       const tabId = await getTargetTabId();
       expect(tabId).toBe(123);
     });
 
-    test('锁定后返回锁定的 Tab ID', async () => {
+    test("锁定后返回锁定的 Tab ID", async () => {
       lockTab(456);
       const tabId = await getTargetTabId();
       expect(tabId).toBe(456);
     });
 
-    test('解锁后返回新的活跃 Tab', async () => {
+    test("解锁后返回新的活跃 Tab", async () => {
       lockTab(456);
       let tabId = await getTargetTabId();
       expect(tabId).toBe(456);
-      
+
       unlockTab();
-      mockTabs.currentActiveTab = { id: 789, url: 'https://another.com' };
+      mockTabs.currentActiveTab = { id: 789, url: "https://another.com" };
       tabId = await getTargetTabId();
       expect(tabId).toBe(789);
     });
   });
 
-  describe('lockTab / unlockTab', () => {
-    test('lockTab 设置正确的 Tab ID', () => {
+  describe("lockTab / unlockTab", () => {
+    test("lockTab 设置正确的 Tab ID", () => {
       lockTab(999);
       expect(lockedTabId).toBe(999);
     });
 
-    test('unlockTab 清除锁定', () => {
+    test("unlockTab 清除锁定", () => {
       lockTab(999);
       expect(lockedTabId).toBe(999);
-      
+
       unlockTab();
       expect(lockedTabId).toBe(null);
     });
 
-    test('多次 lockTab 覆盖之前的锁定', () => {
+    test("多次 lockTab 覆盖之前的锁定", () => {
       lockTab(111);
       expect(lockedTabId).toBe(111);
-      
+
       lockTab(222);
       expect(lockedTabId).toBe(222);
     });
   });
 
-  describe('getTargetDomain', () => {
-    test('成功获取域名', async () => {
+  describe("getTargetDomain", () => {
+    test("成功获取域名", async () => {
       const domain = await getTargetDomain();
-      expect(domain).toBe('example.com');
+      expect(domain).toBe("example.com");
     });
 
-    test('锁定 Tab 后从锁定的 Tab 获取域名', async () => {
+    test("锁定 Tab 后从锁定的 Tab 获取域名", async () => {
       // 锁定 Tab 456，即使当前活跃 Tab 是 123
       lockTab(456);
-      
+
       // 修改 sendMessage mock 以处理 Tab 456
       mockTabs.sendMessage = (tabId, message, callback) => {
-        if (tabId === 456 && message.tool === 'get_domain') {
-          callback('locked-tab.com');
+        if (tabId === 456 && message.tool === "get_domain") {
+          callback("locked-tab.com");
         } else if (tabId === 123) {
-          callback('example.com');
+          callback("example.com");
         }
       };
-      
+
       const domain = await getTargetDomain();
-      expect(domain).toBe('locked-tab.com');
+      expect(domain).toBe("locked-tab.com");
     });
 
-    test('Content Script 不可用时返回 unknown', async () => {
+    test("Content Script 不可用时返回 unknown", async () => {
       const originalSendMessage = mockTabs.sendMessage;
       mockTabs.sendMessage = (tabId, message, callback) => {
-        chrome.runtime.lastError = { message: 'Cannot access tab' };
+        chrome.runtime.lastError = { message: "Cannot access tab" };
         callback(undefined);
         chrome.runtime.lastError = undefined;
       };
-      
+
       const domain = await getTargetDomain();
-      expect(domain).toBe('unknown');
-      
+      expect(domain).toBe("unknown");
+
       mockTabs.sendMessage = originalSendMessage;
     });
 
-    test('响应为空时返回 unknown', async () => {
+    test("响应为空时返回 unknown", async () => {
       const originalSendMessage = mockTabs.sendMessage;
       mockTabs.sendMessage = (tabId, message, callback) => {
         callback(null);
       };
-      
+
       const domain = await getTargetDomain();
-      expect(domain).toBe('unknown');
-      
+      expect(domain).toBe("unknown");
+
       mockTabs.sendMessage = originalSendMessage;
     });
   });
 
-  describe('sendToContentScript', () => {
-    test('成功发送消息到当前 Tab', async () => {
-      const message = { tool: 'get_page_structure' };
+  describe("sendToContentScript", () => {
+    test("成功发送消息到当前 Tab", async () => {
+      const message = { tool: "get_page_structure" };
       const response = await sendToContentScript(message);
       expect(response).toEqual({ success: true });
     });
 
-    test('锁定后发送到锁定的 Tab', async () => {
+    test("锁定后发送到锁定的 Tab", async () => {
       lockTab(456);
-      
+
       mockTabs.sendMessage = (tabId, message, callback) => {
         if (tabId === 456) {
-          callback({ data: 'from locked tab' });
+          callback({ data: "from locked tab" });
         }
       };
-      
-      const message = { tool: 'inject_css', args: { css: 'body { color: red; }' } };
+
+      const message = {
+        tool: "inject_css",
+        args: { css: "body { color: red; }" },
+      };
       const response = await sendToContentScript(message);
-      expect(response).toEqual({ data: 'from locked tab' });
+      expect(response).toEqual({ data: "from locked tab" });
     });
 
-    test('Content Script 不可用时抛出错误', async () => {
+    test("Content Script 不可用时抛出错误", async () => {
       const originalSendMessage = mockTabs.sendMessage;
       mockTabs.sendMessage = (tabId, message, callback) => {
-        chrome.runtime.lastError = { message: 'Content script not loaded' };
+        chrome.runtime.lastError = { message: "Content script not loaded" };
         callback(undefined);
       };
-      
-      await expect(sendToContentScript({ tool: 'test' }))
-        .rejects.toThrow('Content Script 不可用: Content script not loaded');
-      
+
+      await expect(sendToContentScript({ tool: "test" })).rejects.toThrow(
+        "Content Script 不可用: Content script not loaded",
+      );
+
       mockTabs.sendMessage = originalSendMessage;
     });
   });
 
-  describe('集成测试 - 锁定后切换 Tab 不影响通信目标', () => {
-    test('完整场景：锁定、切换、解锁', async () => {
+  describe("集成测试 - 锁定后切换 Tab 不影响通信目标", () => {
+    test("完整场景：锁定、切换、解锁", async () => {
       // 步骤 1: 初始状态，Tab 123 是活跃的
       let tabId = await getTargetTabId();
       expect(tabId).toBe(123);
-      
+
       // 步骤 2: 锁定 Tab 123
       lockTab(123);
-      
+
       // 步骤 3: 用户切换到 Tab 456（模拟 currentActiveTab 改变）
-      mockTabs.currentActiveTab = { id: 456, url: 'https://another.com' };
-      
+      mockTabs.currentActiveTab = { id: 456, url: "https://another.com" };
+
       // 步骤 4: 即使当前活跃 Tab 已切换，getTargetTabId 仍返回锁定的 Tab
       tabId = await getTargetTabId();
       expect(tabId).toBe(123); // 仍然是 123，不是 456
-      
+
       // 步骤 5: 发送消息仍到锁定的 Tab 123
       const originalSendMessage = mockTabs.sendMessage;
       let messageSentTo = null;
@@ -284,15 +295,15 @@ describe('Tab 锁定机制', () => {
         messageSentTo = tabId;
         callback({ success: true });
       };
-      
-      await sendToContentScript({ tool: 'test' });
+
+      await sendToContentScript({ tool: "test" });
       expect(messageSentTo).toBe(123); // 消息发送到锁定的 Tab
-      
+
       mockTabs.sendMessage = originalSendMessage;
-      
+
       // 步骤 6: 解锁
       unlockTab();
-      
+
       // 步骤 7: 现在应该获取新的活跃 Tab 456
       tabId = await getTargetTabId();
       expect(tabId).toBe(456);
@@ -304,18 +315,18 @@ describe('Tab 锁定机制', () => {
 // runApplyStyles 测试
 // =============================================================================
 
-describe('runApplyStyles', () => {
+describe("runApplyStyles", () => {
   // Mock chrome.storage.local
   const mockStorage = {
     data: {},
-    
+
     async get(keys) {
-      if (typeof keys === 'string') {
+      if (typeof keys === "string") {
         return { [keys]: this.data[keys] };
       }
       if (Array.isArray(keys)) {
         const result = {};
-        keys.forEach(key => {
+        keys.forEach((key) => {
           if (this.data[key] !== undefined) {
             result[key] = this.data[key];
           }
@@ -324,344 +335,364 @@ describe('runApplyStyles', () => {
       }
       return this.data;
     },
-    
+
     async set(items) {
       Object.assign(this.data, items);
     },
-    
+
     async remove(keys) {
       const keysArray = Array.isArray(keys) ? keys : [keys];
-      keysArray.forEach(key => {
+      keysArray.forEach((key) => {
         delete this.data[key];
       });
     },
-    
+
     clear() {
       this.data = {};
-    }
+    },
   };
-  
+
   // Mock currentSession
   const mockCurrentSession = {
-    domain: 'example.com',
-    sessionId: 'test-session-123',
-    stylesKey: 'sessions:example.com:test-session-123:styles',
-    metaKey: 'sessions:example.com:test-session-123:meta',
-    persistKey: 'persistent:example.com'
+    domain: "example.com",
+    sessionId: "test-session-123",
+    stylesKey: "sessions:example.com:test-session-123:styles",
+    metaKey: "sessions:example.com:test-session-123:meta",
+    persistKey: "persistent:example.com",
   };
-  
+
   // Mock CSS stack for Content Script
   let mockCSSStack = [];
   let mockActiveStyleEl = null;
-  
+
   beforeEach(() => {
     // Reset all mocks
     mockStorage.clear();
     mockCSSStack = [];
     mockActiveStyleEl = null;
-    
+
     // Setup chrome.storage.local mock
     global.chrome.storage = { local: mockStorage };
-    
+
     // Setup Content Script message handler mock
     mockTabs.sendMessage = (tabId, message, callback) => {
       const { tool, args = {} } = message;
-      
+
       switch (tool) {
-        case 'inject_css':
+        case "inject_css":
           if (!mockActiveStyleEl) {
-            mockActiveStyleEl = { textContent: '' };
+            mockActiveStyleEl = { textContent: "" };
           }
           mockCSSStack.push(args.css);
-          mockActiveStyleEl.textContent = mockCSSStack.join('\n');
+          mockActiveStyleEl.textContent = mockCSSStack.join("\n");
           callback({ success: true });
           break;
-          
-        case 'rollback_css':
-          if (args.scope === 'all') {
+
+        case "rollback_css":
+          if (args.scope === "all") {
             mockCSSStack = [];
           } else {
             mockCSSStack.pop();
           }
           if (mockActiveStyleEl) {
-            mockActiveStyleEl.textContent = mockCSSStack.join('\n');
+            mockActiveStyleEl.textContent = mockCSSStack.join("\n");
           }
           callback({ success: true });
           break;
-          
-        case 'get_active_css':
-          const css = mockCSSStack.join('\n');
+
+        case "get_active_css":
+          const css = mockCSSStack.join("\n");
           callback(css || null);
           break;
-          
+
         default:
           callback({ success: true });
       }
     };
   });
-  
+
   // === Helper: Import mergeCSS from css-merge.js ===
   function mergeCSS(existingCSS, newCSS) {
     // Simplified merge for testing
-    if (!existingCSS || !existingCSS.trim()) return newCSS || '';
-    if (!newCSS || !newCSS.trim()) return existingCSS || '';
-    return existingCSS + '\n' + newCSS;
+    if (!existingCSS || !existingCSS.trim()) return newCSS || "";
+    if (!newCSS || !newCSS.trim()) return existingCSS || "";
+    return existingCSS + "\n" + newCSS;
   }
-  
+
   // === Helper: Mock updateStylesSummary ===
   async function updateStylesSummary() {
     // Simplified implementation for testing
     const key = mockCurrentSession.stylesKey;
-    const css = mockStorage.data[key] || '';
+    const css = mockStorage.data[key] || "";
     const ruleCount = (css.match(/\{/g) || []).length;
     const summary = `${ruleCount} 条规则`;
-    
+
     const metaKey = mockCurrentSession.metaKey;
     const meta = mockStorage.data[metaKey] || {};
     meta.activeStylesSummary = summary;
     mockStorage.data[metaKey] = meta;
   }
-  
+
   // === runApplyStyles implementation (same as tools.js) ===
   async function runApplyStyles(css, mode) {
-    if (mode === 'rollback_all') {
-      await mockTabs.sendMessage(null, { tool: 'rollback_css', args: { scope: 'all' } }, () => {});
+    if (mode === "rollback_all") {
+      await mockTabs.sendMessage(
+        null,
+        { tool: "rollback_css", args: { scope: "all" } },
+        () => {},
+      );
       const sKey = mockCurrentSession.stylesKey;
       const pKey = mockCurrentSession.persistKey;
       await mockStorage.remove([sKey, pKey]);
       await updateStylesSummary();
-      return '已回滚所有样式';
+      return "已回滚所有样式";
     }
-    
-    if (mode === 'rollback_last') {
-      await mockTabs.sendMessage(null, { tool: 'rollback_css', args: { scope: 'last' } }, () => {});
-      
-      const remainingCSS = await new Promise(resolve => {
-        mockTabs.sendMessage(null, { tool: 'get_active_css' }, resolve);
+
+    if (mode === "rollback_last") {
+      await mockTabs.sendMessage(
+        null,
+        { tool: "rollback_css", args: { scope: "last" } },
+        () => {},
+      );
+
+      const remainingCSS = await new Promise((resolve) => {
+        mockTabs.sendMessage(null, { tool: "get_active_css" }, resolve);
       });
-      
+
       const sKey = mockCurrentSession.stylesKey;
       const pKey = mockCurrentSession.persistKey;
-      
+
       if (remainingCSS && remainingCSS.trim()) {
-        await mockStorage.set({ 
-          [sKey]: remainingCSS, 
-          [pKey]: remainingCSS 
+        await mockStorage.set({
+          [sKey]: remainingCSS,
+          [pKey]: remainingCSS,
         });
       } else {
         await mockStorage.remove([sKey, pKey]);
       }
-      
+
       await updateStylesSummary();
-      return '已撤销最后一次样式修改';
+      return "已撤销最后一次样式修改";
     }
-    
-    if (mode === 'save') {
+
+    if (mode === "save") {
       if (!css || !css.trim()) {
-        throw new Error('[runApplyStyles] save 模式需要提供 CSS 代码');
+        throw new Error("[runApplyStyles] save 模式需要提供 CSS 代码");
       }
-      
-      await mockTabs.sendMessage(null, { tool: 'inject_css', args: { css } }, () => {});
-      
+
+      await mockTabs.sendMessage(
+        null,
+        { tool: "inject_css", args: { css } },
+        () => {},
+      );
+
       const sKey = mockCurrentSession.stylesKey;
-      const { [sKey]: existing = '' } = await mockStorage.get(sKey);
+      const { [sKey]: existing = "" } = await mockStorage.get(sKey);
       const merged = mergeCSS(existing, css);
       await mockStorage.set({ [sKey]: merged });
-      
+
       const pKey = mockCurrentSession.persistKey;
-      const { [pKey]: existingP = '' } = await mockStorage.get(pKey);
+      const { [pKey]: existingP = "" } = await mockStorage.get(pKey);
       const mergedP = mergeCSS(existingP, css);
       await mockStorage.set({ [pKey]: mergedP });
-      
+
       await updateStylesSummary();
       return `已保存，下次访问 ${mockCurrentSession.domain} 自动应用`;
     }
-    
+
     throw new Error(`[runApplyStyles] 未知模式: ${mode}`);
   }
-  
-  describe('save 模式', () => {
-    test('首次保存 CSS', async () => {
-      const css = 'body { background: #000 !important; }';
-      const result = await runApplyStyles(css, 'save');
-      
+
+  describe("save 模式", () => {
+    test("首次保存 CSS", async () => {
+      const css = "body { background: #000 !important; }";
+      const result = await runApplyStyles(css, "save");
+
       // 验证返回消息
-      expect(result).toContain('已保存');
-      expect(result).toContain('example.com');
-      
+      expect(result).toContain("已保存");
+      expect(result).toContain("example.com");
+
       // 测试标准：save 后 storage 有合并后 CSS
       const sKey = mockCurrentSession.stylesKey;
       const pKey = mockCurrentSession.persistKey;
-      
-      expect(mockStorage.data[sKey]).toContain('body { background: #000 !important; }');
-      expect(mockStorage.data[pKey]).toContain('body { background: #000 !important; }');
+
+      expect(mockStorage.data[sKey]).toContain(
+        "body { background: #000 !important; }",
+      );
+      expect(mockStorage.data[pKey]).toContain(
+        "body { background: #000 !important; }",
+      );
     });
-    
-    test('多次保存会合并 CSS', async () => {
-      const css1 = 'body { background: #000 !important; }';
-      const css2 = '.header { color: #fff !important; }';
-      
-      await runApplyStyles(css1, 'save');
-      await runApplyStyles(css2, 'save');
-      
+
+    test("多次保存会合并 CSS", async () => {
+      const css1 = "body { background: #000 !important; }";
+      const css2 = ".header { color: #fff !important; }";
+
+      await runApplyStyles(css1, "save");
+      await runApplyStyles(css2, "save");
+
       const sKey = mockCurrentSession.stylesKey;
       const stored = mockStorage.data[sKey];
-      
+
       // 两次保存的 CSS 都应该在存储中
-      expect(stored).toContain('body { background: #000 !important; }');
-      expect(stored).toContain('.header { color: #fff !important; }');
+      expect(stored).toContain("body { background: #000 !important; }");
+      expect(stored).toContain(".header { color: #fff !important; }");
     });
-    
-    test('会话样式和永久样式同时更新', async () => {
-      const css = 'body { margin: 0 !important; }';
-      await runApplyStyles(css, 'save');
-      
+
+    test("会话样式和永久样式同时更新", async () => {
+      const css = "body { margin: 0 !important; }";
+      await runApplyStyles(css, "save");
+
       const sKey = mockCurrentSession.stylesKey;
       const pKey = mockCurrentSession.persistKey;
-      
+
       expect(mockStorage.data[sKey]).toBeDefined();
       expect(mockStorage.data[pKey]).toBeDefined();
       expect(mockStorage.data[sKey]).toBe(mockStorage.data[pKey]);
     });
-    
-    test('空 CSS 抛出错误', async () => {
-      await expect(runApplyStyles('', 'save')).rejects.toThrow('save 模式需要提供 CSS 代码');
-      await expect(runApplyStyles(null, 'save')).rejects.toThrow('save 模式需要提供 CSS 代码');
+
+    test("空 CSS 抛出错误", async () => {
+      await expect(runApplyStyles("", "save")).rejects.toThrow(
+        "save 模式需要提供 CSS 代码",
+      );
+      await expect(runApplyStyles(null, "save")).rejects.toThrow(
+        "save 模式需要提供 CSS 代码",
+      );
     });
-    
-    test('更新样式摘要', async () => {
-      const css = 'body { background: #000 !important; }';
-      await runApplyStyles(css, 'save');
-      
+
+    test("更新样式摘要", async () => {
+      const css = "body { background: #000 !important; }";
+      await runApplyStyles(css, "save");
+
       const metaKey = mockCurrentSession.metaKey;
       const meta = mockStorage.data[metaKey];
-      
-      expect(meta.activeStylesSummary).toContain('条规则');
+
+      expect(meta.activeStylesSummary).toContain("条规则");
     });
   });
-  
-  describe('rollback_last 模式', () => {
-    test('撤销最后一次修改', async () => {
+
+  describe("rollback_last 模式", () => {
+    test("撤销最后一次修改", async () => {
       // 先保存两次
-      const css1 = 'body { background: #000 !important; }';
-      const css2 = '.header { color: #fff !important; }';
-      
-      await runApplyStyles(css1, 'save');
-      await runApplyStyles(css2, 'save');
-      
+      const css1 = "body { background: #000 !important; }";
+      const css2 = ".header { color: #fff !important; }";
+
+      await runApplyStyles(css1, "save");
+      await runApplyStyles(css2, "save");
+
       // 撤销最后一次
-      const result = await runApplyStyles(null, 'rollback_last');
-      
-      expect(result).toBe('已撤销最后一次样式修改');
-      
+      const result = await runApplyStyles(null, "rollback_last");
+
+      expect(result).toBe("已撤销最后一次样式修改");
+
       // 测试标准：rollback_last 移除最后一条
       const sKey = mockCurrentSession.stylesKey;
       const stored = mockStorage.data[sKey];
-      
+
       // 应该只剩下第一条 CSS
-      expect(stored).toContain('body { background: #000 !important; }');
-      expect(stored).not.toContain('.header { color: #fff !important; }');
+      expect(stored).toContain("body { background: #000 !important; }");
+      expect(stored).not.toContain(".header { color: #fff !important; }");
     });
-    
-    test('撤销到空状态', async () => {
-      const css = 'body { margin: 0 !important; }';
-      await runApplyStyles(css, 'save');
-      
+
+    test("撤销到空状态", async () => {
+      const css = "body { margin: 0 !important; }";
+      await runApplyStyles(css, "save");
+
       // 撤销唯一的 CSS
-      await runApplyStyles(null, 'rollback_last');
-      
+      await runApplyStyles(null, "rollback_last");
+
       const sKey = mockCurrentSession.stylesKey;
       const pKey = mockCurrentSession.persistKey;
-      
+
       // 存储应该被清空
       expect(mockStorage.data[sKey]).toBeUndefined();
       expect(mockStorage.data[pKey]).toBeUndefined();
     });
-    
-    test('多次撤销', async () => {
-      const css1 = 'body { a: 1 !important; }';
-      const css2 = 'body { b: 2 !important; }';
-      const css3 = 'body { c: 3 !important; }';
-      
-      await runApplyStyles(css1, 'save');
-      await runApplyStyles(css2, 'save');
-      await runApplyStyles(css3, 'save');
-      
+
+    test("多次撤销", async () => {
+      const css1 = "body { a: 1 !important; }";
+      const css2 = "body { b: 2 !important; }";
+      const css3 = "body { c: 3 !important; }";
+
+      await runApplyStyles(css1, "save");
+      await runApplyStyles(css2, "save");
+      await runApplyStyles(css3, "save");
+
       // 撤销两次
-      await runApplyStyles(null, 'rollback_last');
-      await runApplyStyles(null, 'rollback_last');
-      
+      await runApplyStyles(null, "rollback_last");
+      await runApplyStyles(null, "rollback_last");
+
       const sKey = mockCurrentSession.stylesKey;
       const stored = mockStorage.data[sKey];
-      
+
       // 只剩下第一条
-      expect(stored).toContain('body { a: 1 !important; }');
-      expect(stored).not.toContain('b: 2');
-      expect(stored).not.toContain('c: 3');
+      expect(stored).toContain("body { a: 1 !important; }");
+      expect(stored).not.toContain("b: 2");
+      expect(stored).not.toContain("c: 3");
     });
   });
-  
-  describe('rollback_all 模式', () => {
-    test('清空所有样式', async () => {
+
+  describe("rollback_all 模式", () => {
+    test("清空所有样式", async () => {
       // 保存多次
-      const css1 = 'body { background: #000 !important; }';
-      const css2 = '.header { color: #fff !important; }';
-      const css3 = '.footer { padding: 0 !important; }';
-      
-      await runApplyStyles(css1, 'save');
-      await runApplyStyles(css2, 'save');
-      await runApplyStyles(css3, 'save');
-      
+      const css1 = "body { background: #000 !important; }";
+      const css2 = ".header { color: #fff !important; }";
+      const css3 = ".footer { padding: 0 !important; }";
+
+      await runApplyStyles(css1, "save");
+      await runApplyStyles(css2, "save");
+      await runApplyStyles(css3, "save");
+
       // 清空所有
-      const result = await runApplyStyles(null, 'rollback_all');
-      
-      expect(result).toBe('已回滚所有样式');
-      
+      const result = await runApplyStyles(null, "rollback_all");
+
+      expect(result).toBe("已回滚所有样式");
+
       // 测试标准：rollback_all 清空
       const sKey = mockCurrentSession.stylesKey;
       const pKey = mockCurrentSession.persistKey;
-      
+
       expect(mockStorage.data[sKey]).toBeUndefined();
       expect(mockStorage.data[pKey]).toBeUndefined();
     });
-    
-    test('空状态时也能执行', async () => {
+
+    test("空状态时也能执行", async () => {
       // 没有任何 CSS，直接执行 rollback_all
-      const result = await runApplyStyles(null, 'rollback_all');
-      
-      expect(result).toBe('已回滚所有样式');
+      const result = await runApplyStyles(null, "rollback_all");
+
+      expect(result).toBe("已回滚所有样式");
     });
   });
-  
-  describe('集成测试', () => {
-    test('完整流程：save -> save -> rollback_last -> rollback_all', async () => {
+
+  describe("集成测试", () => {
+    test("完整流程：save -> save -> rollback_last -> rollback_all", async () => {
       // 步骤 1: 保存第一条 CSS
-      const css1 = 'body { background: #000 !important; }';
-      let result = await runApplyStyles(css1, 'save');
-      expect(result).toContain('已保存');
-      
+      const css1 = "body { background: #000 !important; }";
+      let result = await runApplyStyles(css1, "save");
+      expect(result).toContain("已保存");
+
       let sKey = mockCurrentSession.stylesKey;
-      expect(mockStorage.data[sKey]).toContain('background: #000');
-      
+      expect(mockStorage.data[sKey]).toContain("background: #000");
+
       // 步骤 2: 保存第二条 CSS
-      const css2 = '.header { color: #fff !important; }';
-      result = await runApplyStyles(css2, 'save');
-      expect(result).toContain('已保存');
-      
-      expect(mockStorage.data[sKey]).toContain('background: #000');
-      expect(mockStorage.data[sKey]).toContain('color: #fff');
-      
+      const css2 = ".header { color: #fff !important; }";
+      result = await runApplyStyles(css2, "save");
+      expect(result).toContain("已保存");
+
+      expect(mockStorage.data[sKey]).toContain("background: #000");
+      expect(mockStorage.data[sKey]).toContain("color: #fff");
+
       // 步骤 3: 撤销最后一条
-      result = await runApplyStyles(null, 'rollback_last');
-      expect(result).toBe('已撤销最后一次样式修改');
-      
-      expect(mockStorage.data[sKey]).toContain('background: #000');
-      expect(mockStorage.data[sKey]).not.toContain('color: #fff');
-      
+      result = await runApplyStyles(null, "rollback_last");
+      expect(result).toBe("已撤销最后一次样式修改");
+
+      expect(mockStorage.data[sKey]).toContain("background: #000");
+      expect(mockStorage.data[sKey]).not.toContain("color: #fff");
+
       // 步骤 4: 清空所有
-      result = await runApplyStyles(null, 'rollback_all');
-      expect(result).toBe('已回滚所有样式');
-      
+      result = await runApplyStyles(null, "rollback_all");
+      expect(result).toBe("已回滚所有样式");
+
       expect(mockStorage.data[sKey]).toBeUndefined();
     });
   });
@@ -671,25 +702,25 @@ describe('runApplyStyles', () => {
 // runSaveStyleSkill 测试
 // =============================================================================
 
-describe('runSaveStyleSkill', () => {
+describe("runSaveStyleSkill", () => {
   // Mock StyleSkillStore
   const mockStyleSkillStore = {
     skills: {},
     index: [],
-    
+
     async save(id, name, mood, sourceDomain, content) {
       // 检查是否已存在该 ID
-      const existingIndex = this.index.findIndex(s => s.id === id);
-      
+      const existingIndex = this.index.findIndex((s) => s.id === id);
+
       // 创建索引条目
       const entry = {
         id,
         name,
         mood,
         sourceDomain,
-        createdAt: Date.now()
+        createdAt: Date.now(),
       };
-      
+
       // 更新或添加到索引
       if (existingIndex >= 0) {
         entry.createdAt = this.index[existingIndex].createdAt;
@@ -697,29 +728,29 @@ describe('runSaveStyleSkill', () => {
       } else {
         this.index.push(entry);
       }
-      
+
       // 保存内容
       this.skills[id] = content;
     },
-    
+
     async load(id) {
       return this.skills[id] || null;
     },
-    
+
     async list() {
       return this.index;
     },
-    
+
     reset() {
       this.skills = {};
       this.index = [];
-    }
+    },
   };
 
   // Mock currentSession
   let mockCurrentSession = {
-    domain: 'example.com',
-    sessionId: 'test-session-123'
+    domain: "example.com",
+    sessionId: "test-session-123",
   };
 
   // Mock crypto.randomUUID
@@ -729,12 +760,12 @@ describe('runSaveStyleSkill', () => {
   beforeEach(() => {
     // Reset StyleSkillStore
     mockStyleSkillStore.reset();
-    
+
     // Setup crypto.randomUUID mock using vi.spyOn
     uuidCounter = 0;
-    randomUUIDMock = vi.spyOn(crypto, 'randomUUID').mockImplementation(() => {
+    randomUUIDMock = vi.spyOn(crypto, "randomUUID").mockImplementation(() => {
       uuidCounter++;
-      return `${uuidCounter.toString().padStart(8, '0')}-0000-0000-0000-000000000000`;
+      return `${uuidCounter.toString().padStart(8, "0")}-0000-0000-0000-000000000000`;
     });
   });
 
@@ -749,70 +780,78 @@ describe('runSaveStyleSkill', () => {
   async function runSaveStyleSkill(name, mood, skillContent) {
     // 1. 生成 8 位 UUID
     const id = crypto.randomUUID().slice(0, 8);
-    
+
     // 2. 获取来源域名
-    const sourceDomain = mockCurrentSession?.domain || 'unknown';
-    
+    const sourceDomain = mockCurrentSession?.domain || "unknown";
+
     // 3. 组装 header
-    const header = `# ${name}\n\n> 来源: ${sourceDomain} | 创建: ${new Date().toLocaleDateString()}\n> 风格: ${mood || ''}\n\n`;
-    
+    const header = `# ${name}\n\n> 来源: ${sourceDomain} | 创建: ${new Date().toLocaleDateString()}\n> 风格: ${mood || ""}\n\n`;
+
     // 4. 处理完整内容（避免重复添加 header）
-    const fullContent = skillContent.startsWith('# ') ? skillContent : header + skillContent;
-    
+    const fullContent = skillContent.startsWith("# ")
+      ? skillContent
+      : header + skillContent;
+
     // 5. 保存技能
-    await mockStyleSkillStore.save(id, name, mood || '', sourceDomain, fullContent);
-    
+    await mockStyleSkillStore.save(
+      id,
+      name,
+      mood || "",
+      sourceDomain,
+      fullContent,
+    );
+
     // 6. 返回成功消息
     return `已保存风格技能「${name}」(id: ${id})，可在任意网站通过 load_skill('skill:${id}') 加载使用。`;
   }
 
-  describe('基本功能', () => {
-    test('保存技能后返回包含 id 的消息', async () => {
+  describe("基本功能", () => {
+    test("保存技能后返回包含 id 的消息", async () => {
       const result = await runSaveStyleSkill(
-        '赛博朋克',
-        '深色背景+霓虹色调',
-        '## 风格描述\n深色背景配合霓虹色调...'
+        "赛博朋克",
+        "深色背景+霓虹色调",
+        "## 风格描述\n深色背景配合霓虹色调...",
       );
-      
+
       // 测试标准：返回消息包含 id
-      expect(result).toContain('已保存风格技能「赛博朋克」');
-      expect(result).toContain('id:');
+      expect(result).toContain("已保存风格技能「赛博朋克」");
+      expect(result).toContain("id:");
       expect(result).toMatch(/id: [a-z0-9]{8}/);
-      expect(result).toContain('load_skill');
+      expect(result).toContain("load_skill");
     });
 
-    test('生成 8 位 UUID', async () => {
-      await runSaveStyleSkill('测试风格', '测试描述', '测试内容');
-      
+    test("生成 8 位 UUID", async () => {
+      await runSaveStyleSkill("测试风格", "测试描述", "测试内容");
+
       const skills = await mockStyleSkillStore.list();
       expect(skills.length).toBe(1);
       expect(skills[0].id).toMatch(/^[a-z0-9]{8}$/);
     });
 
-    test('组装正确的 header', async () => {
-      const name = '赛博朋克';
-      const mood = '深色背景+霓虹色调';
-      const content = '## 风格描述\n深色背景配合霓虹色调...';
-      
+    test("组装正确的 header", async () => {
+      const name = "赛博朋克";
+      const mood = "深色背景+霓虹色调";
+      const content = "## 风格描述\n深色背景配合霓虹色调...";
+
       await runSaveStyleSkill(name, mood, content);
-      
+
       const skills = await mockStyleSkillStore.list();
       const savedContent = await mockStyleSkillStore.load(skills[0].id);
-      
+
       expect(savedContent).toContain(`# ${name}`);
       expect(savedContent).toContain(`来源: ${mockCurrentSession.domain}`);
       expect(savedContent).toContain(`风格: ${mood}`);
     });
   });
 
-  describe('测试标准验证', () => {
-    test('保存后通过 list 可见', async () => {
-      const name = '清新日式';
-      const mood = '简约清新';
-      const content = '## 风格描述\n简约清新的设计...';
-      
+  describe("测试标准验证", () => {
+    test("保存后通过 list 可见", async () => {
+      const name = "清新日式";
+      const mood = "简约清新";
+      const content = "## 风格描述\n简约清新的设计...";
+
       await runSaveStyleSkill(name, mood, content);
-      
+
       // 测试标准：保存后通过 list 可见
       const skills = await mockStyleSkillStore.list();
       expect(skills.length).toBe(1);
@@ -822,130 +861,131 @@ describe('runSaveStyleSkill', () => {
       expect(skills[0].createdAt).toBeDefined();
     });
 
-    test('load 返回完整内容', async () => {
-      const name = '科技感';
-      const mood = '未来科技';
-      const content = '## 风格描述\n未来科技感的设计...\n\n## 色彩方案\n背景: #000';
-      
+    test("load 返回完整内容", async () => {
+      const name = "科技感";
+      const mood = "未来科技";
+      const content =
+        "## 风格描述\n未来科技感的设计...\n\n## 色彩方案\n背景: #000";
+
       await runSaveStyleSkill(name, mood, content);
-      
+
       const skills = await mockStyleSkillStore.list();
       const savedContent = await mockStyleSkillStore.load(skills[0].id);
-      
+
       // 测试标准：load 返回完整内容
       expect(savedContent).toBeDefined();
       expect(savedContent).toContain(`# ${name}`);
-      expect(savedContent).toContain('未来科技感的设计');
-      expect(savedContent).toContain('背景: #000');
+      expect(savedContent).toContain("未来科技感的设计");
+      expect(savedContent).toContain("背景: #000");
     });
 
-    test('返回消息包含正确的使用方法', async () => {
-      const result = await runSaveStyleSkill('测试', '测试描述', '测试内容');
-      
+    test("返回消息包含正确的使用方法", async () => {
+      const result = await runSaveStyleSkill("测试", "测试描述", "测试内容");
+
       const skills = await mockStyleSkillStore.list();
       const expectedHint = `load_skill('skill:${skills[0].id}')`;
-      
+
       expect(result).toContain(expectedHint);
     });
   });
 
-  describe('Header 处理', () => {
-    test('内容不以 # 开头时添加 header', async () => {
-      const content = '## 风格描述\n这是风格描述...';
-      
-      await runSaveStyleSkill('测试风格', '测试', content);
-      
+  describe("Header 处理", () => {
+    test("内容不以 # 开头时添加 header", async () => {
+      const content = "## 风格描述\n这是风格描述...";
+
+      await runSaveStyleSkill("测试风格", "测试", content);
+
       const skills = await mockStyleSkillStore.list();
       const savedContent = await mockStyleSkillStore.load(skills[0].id);
-      
-      expect(savedContent).toContain('# 测试风格');
-      expect(savedContent).toContain('来源: example.com');
+
+      expect(savedContent).toContain("# 测试风格");
+      expect(savedContent).toContain("来源: example.com");
     });
 
-    test('内容已以 # 开头时不重复添加 header', async () => {
-      const content = '# 自定义标题\n\n## 风格描述\n这是风格描述...';
-      
-      await runSaveStyleSkill('测试风格', '测试', content);
-      
+    test("内容已以 # 开头时不重复添加 header", async () => {
+      const content = "# 自定义标题\n\n## 风格描述\n这是风格描述...";
+
+      await runSaveStyleSkill("测试风格", "测试", content);
+
       const skills = await mockStyleSkillStore.list();
       const savedContent = await mockStyleSkillStore.load(skills[0].id);
-      
+
       // 应该保持原样，不添加 header
       expect(savedContent).toBe(content);
     });
   });
 
-  describe('参数处理', () => {
-    test('mood 为空时正常保存', async () => {
-      const result = await runSaveStyleSkill('测试风格', '', '测试内容');
-      
+  describe("参数处理", () => {
+    test("mood 为空时正常保存", async () => {
+      const result = await runSaveStyleSkill("测试风格", "", "测试内容");
+
       const skills = await mockStyleSkillStore.list();
-      expect(skills[0].mood).toBe('');
-      expect(result).toContain('已保存风格技能「测试风格」');
+      expect(skills[0].mood).toBe("");
+      expect(result).toContain("已保存风格技能「测试风格」");
     });
 
-    test('mood 为 null 时转为空字符串', async () => {
-      await runSaveStyleSkill('测试风格', null, '测试内容');
-      
+    test("mood 为 null 时转为空字符串", async () => {
+      await runSaveStyleSkill("测试风格", null, "测试内容");
+
       const skills = await mockStyleSkillStore.list();
-      expect(skills[0].mood).toBe('');
+      expect(skills[0].mood).toBe("");
     });
 
-    test('来源域名从 currentSession 获取', async () => {
-      await runSaveStyleSkill('测试风格', '测试', '测试内容');
-      
+    test("来源域名从 currentSession 获取", async () => {
+      await runSaveStyleSkill("测试风格", "测试", "测试内容");
+
       const skills = await mockStyleSkillStore.list();
-      expect(skills[0].sourceDomain).toBe('example.com');
+      expect(skills[0].sourceDomain).toBe("example.com");
     });
 
-    test('currentSession 不存在时使用 unknown', async () => {
+    test("currentSession 不存在时使用 unknown", async () => {
       const originalSession = mockCurrentSession;
       mockCurrentSession = null;
-      
-      await runSaveStyleSkill('测试风格', '测试', '测试内容');
-      
+
+      await runSaveStyleSkill("测试风格", "测试", "测试内容");
+
       const skills = await mockStyleSkillStore.list();
-      expect(skills[0].sourceDomain).toBe('unknown');
-      
+      expect(skills[0].sourceDomain).toBe("unknown");
+
       mockCurrentSession = originalSession;
     });
   });
 
-  describe('多次保存', () => {
-    test('多次保存生成不同的 ID', async () => {
-      await runSaveStyleSkill('风格1', '描述1', '内容1');
-      await runSaveStyleSkill('风格2', '描述2', '内容2');
-      await runSaveStyleSkill('风格3', '描述3', '内容3');
-      
+  describe("多次保存", () => {
+    test("多次保存生成不同的 ID", async () => {
+      await runSaveStyleSkill("风格1", "描述1", "内容1");
+      await runSaveStyleSkill("风格2", "描述2", "内容2");
+      await runSaveStyleSkill("风格3", "描述3", "内容3");
+
       const skills = await mockStyleSkillStore.list();
       expect(skills.length).toBe(3);
-      
+
       // 验证 ID 各不相同
-      const ids = skills.map(s => s.id);
+      const ids = skills.map((s) => s.id);
       const uniqueIds = new Set(ids);
       expect(uniqueIds.size).toBe(3);
     });
 
-    test('多次保存的内容互不干扰', async () => {
-      await runSaveStyleSkill('风格A', '描述A', '内容A');
-      await runSaveStyleSkill('风格B', '描述B', '内容B');
-      
+    test("多次保存的内容互不干扰", async () => {
+      await runSaveStyleSkill("风格A", "描述A", "内容A");
+      await runSaveStyleSkill("风格B", "描述B", "内容B");
+
       const skills = await mockStyleSkillStore.list();
       expect(skills.length).toBe(2);
-      
+
       const contentA = await mockStyleSkillStore.load(skills[0].id);
       const contentB = await mockStyleSkillStore.load(skills[1].id);
-      
-      expect(contentA).toContain('内容A');
-      expect(contentB).toContain('内容B');
+
+      expect(contentA).toContain("内容A");
+      expect(contentB).toContain("内容B");
     });
   });
 
-  describe('集成测试', () => {
-    test('完整流程：保存 -> 列表 -> 加载', async () => {
+  describe("集成测试", () => {
+    test("完整流程：保存 -> 列表 -> 加载", async () => {
       // 步骤 1: 保存技能
-      const name = '赛博朋克';
-      const mood = '深色背景+霓虹色调';
+      const name = "赛博朋克";
+      const mood = "深色背景+霓虹色调";
       const content = `## 风格描述
 深色背景配合霓虹色调的高科技感设计。
 
@@ -954,26 +994,26 @@ describe('runSaveStyleSkill', () => {
 - 强调色: #ff00ff`;
 
       const result = await runSaveStyleSkill(name, mood, content);
-      
+
       // 步骤 2: 验证返回消息包含 id
-      expect(result).toContain('已保存风格技能「赛博朋克」');
+      expect(result).toContain("已保存风格技能「赛博朋克」");
       expect(result).toMatch(/id: [a-z0-9]{8}/);
-      
+
       // 步骤 3: 从列表中查找
       const skills = await mockStyleSkillStore.list();
       expect(skills.length).toBe(1);
       expect(skills[0].name).toBe(name);
       expect(skills[0].mood).toBe(mood);
-      
+
       // 步骤 4: 加载内容
       const savedContent = await mockStyleSkillStore.load(skills[0].id);
       expect(savedContent).toContain(name);
-      expect(savedContent).toContain('深色背景配合霓虹色调');
-      expect(savedContent).toContain('#0a0a1a');
-      expect(savedContent).toContain('#ff00ff');
+      expect(savedContent).toContain("深色背景配合霓虹色调");
+      expect(savedContent).toContain("#0a0a1a");
+      expect(savedContent).toContain("#ff00ff");
     });
 
-    test('实际场景：保存复杂风格技能', async () => {
+    test("实际场景：保存复杂风格技能", async () => {
       const complexContent = `## 风格描述
 深色背景配合霓虹色调的高科技感设计。主色调为深紫/深蓝，强调色使用明亮的霓虹粉和电光蓝。
 
@@ -997,59 +1037,59 @@ body { background-color: #0a0a1a !important; }
 .header { background: #1a1a2e !important; }`;
 
       const result = await runSaveStyleSkill(
-        '赛博朋克',
-        '深色背景+霓虹色调的高科技感',
-        complexContent
+        "赛博朋克",
+        "深色背景+霓虹色调的高科技感",
+        complexContent,
       );
-      
-      expect(result).toContain('已保存风格技能「赛博朋克」');
-      
+
+      expect(result).toContain("已保存风格技能「赛博朋克」");
+
       const skills = await mockStyleSkillStore.list();
       const savedContent = await mockStyleSkillStore.load(skills[0].id);
-      
-      expect(savedContent).toContain('赛博朋克');
-      expect(savedContent).toContain('霓虹色调');
-      expect(savedContent).toContain('#0a0a1a');
-      expect(savedContent).toContain('#ff00ff');
-      expect(savedContent).toContain('#00ffff');
+
+      expect(savedContent).toContain("赛博朋克");
+      expect(savedContent).toContain("霓虹色调");
+      expect(savedContent).toContain("#0a0a1a");
+      expect(savedContent).toContain("#ff00ff");
+      expect(savedContent).toContain("#00ffff");
     });
   });
 });
 
-describe('runLoadSkill', () => {
+describe("runLoadSkill", () => {
   // Mock Skill Paths
   const SKILL_PATHS = {
-    'dark-mode-template': 'skills/style-templates/dark-mode.md',
-    'minimal-template':   'skills/style-templates/minimal.md',
-    'design-principles':  'skills/design-principles.md',
-    'color-theory':       'skills/color-theory.md',
-    'css-selectors':      'skills/css-selectors-guide.md',
+    "dark-mode-template": "skills/style-templates/dark-mode.md",
+    "minimal-template": "skills/style-templates/minimal.md",
+    "design-principles": "skills/design-principles.md",
+    "color-theory": "skills/color-theory.md",
+    "css-selectors": "skills/css-selectors-guide.md",
   };
 
   // Mock StyleSkillStore
   const mockStyleSkillStore = {
     skills: {},
     index: [],
-    
+
     async load(id) {
       return this.skills[id] || null;
     },
-    
+
     async list() {
       return this.index;
     },
-    
+
     reset() {
       this.skills = {};
       this.index = [];
-    }
+    },
   };
 
   // Mock chrome.runtime
   const mockRuntime = {
     getURL(path) {
       return `chrome-extension://test-id/${path}`;
-    }
+    },
   };
 
   // Mock fetch
@@ -1059,10 +1099,10 @@ describe('runLoadSkill', () => {
   beforeEach(() => {
     // Reset StyleSkillStore
     mockStyleSkillStore.reset();
-    
+
     // Setup chrome.runtime mock
     global.chrome.runtime = mockRuntime;
-    
+
     // Setup fetch mock
     global.fetch = vi.fn(async (url) => {
       // Check if it's a built-in skill
@@ -1070,15 +1110,15 @@ describe('runLoadSkill', () => {
         if (url.includes(path)) {
           return {
             ok: true,
-            text: async () => `# ${name}\n\nThis is the content of ${name}.`
+            text: async () => `# ${name}\n\nThis is the content of ${name}.`,
           };
         }
       }
-      
+
       // Unknown path
       return {
         ok: false,
-        text: async () => ''
+        text: async () => "",
       };
     });
   });
@@ -1090,105 +1130,106 @@ describe('runLoadSkill', () => {
   // === runLoadSkill implementation (same as tools.js) ===
   async function runLoadSkill(skillName) {
     // === 用户动态风格技能 ===
-    if (skillName.startsWith('skill:')) {
+    if (skillName.startsWith("skill:")) {
       const id = skillName.slice(6);
       const content = await mockStyleSkillStore.load(id);
-      
+
       if (!content) {
         return `未找到风格技能: ${id}。使用 list_style_skills 查看可用技能。`;
       }
-      
+
       return content;
     }
-    
+
     // === 内置静态知识 ===
     const path = SKILL_PATHS[skillName];
     if (!path) {
       // 未知名称：返回可用列表
       const userSkills = await mockStyleSkillStore.list();
-      const userSkillsHint = userSkills.length > 0
-        ? `\n用户风格技能: ${userSkills.map(s => `skill:${s.id} (${s.name})`).join(', ')}`
-        : '';
-      
-      return `未知知识: ${skillName}。可用: ${Object.keys(SKILL_PATHS).join(', ')}${userSkillsHint}`;
+      const userSkillsHint =
+        userSkills.length > 0
+          ? `\n用户风格技能: ${userSkills.map((s) => `skill:${s.id} (${s.name})`).join(", ")}`
+          : "";
+
+      return `未知知识: ${skillName}。可用: ${Object.keys(SKILL_PATHS).join(", ")}${userSkillsHint}`;
     }
-    
+
     // Side Panel 中通过 chrome.runtime.getURL 访问扩展内静态资源
     const url = chrome.runtime.getURL(path);
     const resp = await fetch(url);
     return await resp.text();
   }
 
-  describe('加载内置技能', () => {
-    test('加载 dark-mode-template 返回 markdown 内容', async () => {
-      const content = await runLoadSkill('dark-mode-template');
-      
-      expect(content).toContain('# dark-mode-template');
-      expect(content).toContain('This is the content');
+  describe("加载内置技能", () => {
+    test("加载 dark-mode-template 返回 markdown 内容", async () => {
+      const content = await runLoadSkill("dark-mode-template");
+
+      expect(content).toContain("# dark-mode-template");
+      expect(content).toContain("This is the content");
       expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('skills/style-templates/dark-mode.md')
+        expect.stringContaining("skills/style-templates/dark-mode.md"),
       );
     });
 
-    test('加载 minimal-template 返回 markdown 内容', async () => {
-      const content = await runLoadSkill('minimal-template');
-      
-      expect(content).toContain('# minimal-template');
+    test("加载 minimal-template 返回 markdown 内容", async () => {
+      const content = await runLoadSkill("minimal-template");
+
+      expect(content).toContain("# minimal-template");
     });
 
-    test('加载 design-principles 返回 markdown 内容', async () => {
-      const content = await runLoadSkill('design-principles');
-      
-      expect(content).toContain('# design-principles');
+    test("加载 design-principles 返回 markdown 内容", async () => {
+      const content = await runLoadSkill("design-principles");
+
+      expect(content).toContain("# design-principles");
     });
 
-    test('加载 color-theory 返回 markdown 内容', async () => {
-      const content = await runLoadSkill('color-theory');
-      
-      expect(content).toContain('# color-theory');
+    test("加载 color-theory 返回 markdown 内容", async () => {
+      const content = await runLoadSkill("color-theory");
+
+      expect(content).toContain("# color-theory");
     });
 
-    test('加载 css-selectors 返回 markdown 内容', async () => {
-      const content = await runLoadSkill('css-selectors');
-      
-      expect(content).toContain('# css-selectors');
+    test("加载 css-selectors 返回 markdown 内容", async () => {
+      const content = await runLoadSkill("css-selectors");
+
+      expect(content).toContain("# css-selectors");
     });
 
-    test('使用 chrome.runtime.getURL 生成正确 URL', async () => {
-      await runLoadSkill('dark-mode-template');
-      
+    test("使用 chrome.runtime.getURL 生成正确 URL", async () => {
+      await runLoadSkill("dark-mode-template");
+
       expect(fetch).toHaveBeenCalledWith(
-        'chrome-extension://test-id/skills/style-templates/dark-mode.md'
+        "chrome-extension://test-id/skills/style-templates/dark-mode.md",
       );
     });
   });
 
-  describe('加载用户技能', () => {
-    test('加载存在的用户技能返回内容', async () => {
+  describe("加载用户技能", () => {
+    test("加载存在的用户技能返回内容", async () => {
       // Setup: 添加一个用户技能
-      mockStyleSkillStore.skills['abc123'] = '# 我的风格\n\n这是自定义风格。';
+      mockStyleSkillStore.skills["abc123"] = "# 我的风格\n\n这是自定义风格。";
       mockStyleSkillStore.index.push({
-        id: 'abc123',
-        name: '我的风格',
-        mood: '自定义风格',
-        sourceDomain: 'example.com',
-        createdAt: Date.now()
+        id: "abc123",
+        name: "我的风格",
+        mood: "自定义风格",
+        sourceDomain: "example.com",
+        createdAt: Date.now(),
       });
 
-      const content = await runLoadSkill('skill:abc123');
-      
-      expect(content).toContain('# 我的风格');
-      expect(content).toContain('这是自定义风格');
+      const content = await runLoadSkill("skill:abc123");
+
+      expect(content).toContain("# 我的风格");
+      expect(content).toContain("这是自定义风格");
     });
 
-    test('加载不存在的用户技能返回提示', async () => {
-      const content = await runLoadSkill('skill:notexist');
-      
-      expect(content).toContain('未找到风格技能: notexist');
-      expect(content).toContain('list_style_skills');
+    test("加载不存在的用户技能返回提示", async () => {
+      const content = await runLoadSkill("skill:notexist");
+
+      expect(content).toContain("未找到风格技能: notexist");
+      expect(content).toContain("list_style_skills");
     });
 
-    test('用户技能内容可以是任意 markdown', async () => {
+    test("用户技能内容可以是任意 markdown", async () => {
       const customContent = `# Custom Style
       
 ## Colors
@@ -1197,84 +1238,84 @@ describe('runLoadSkill', () => {
 
 ## CSS
 body { background: #000; }`;
-      
-      mockStyleSkillStore.skills['xyz789'] = customContent;
 
-      const content = await runLoadSkill('skill:xyz789');
-      
+      mockStyleSkillStore.skills["xyz789"] = customContent;
+
+      const content = await runLoadSkill("skill:xyz789");
+
       expect(content).toBe(customContent);
     });
   });
 
-  describe('未知名称处理', () => {
-    test('未知内置技能返回可用列表', async () => {
-      const content = await runLoadSkill('unknown-skill');
-      
-      expect(content).toContain('未知知识: unknown-skill');
-      expect(content).toContain('dark-mode-template');
-      expect(content).toContain('minimal-template');
-      expect(content).toContain('design-principles');
-      expect(content).toContain('color-theory');
-      expect(content).toContain('css-selectors');
+  describe("未知名称处理", () => {
+    test("未知内置技能返回可用列表", async () => {
+      const content = await runLoadSkill("unknown-skill");
+
+      expect(content).toContain("未知知识: unknown-skill");
+      expect(content).toContain("dark-mode-template");
+      expect(content).toContain("minimal-template");
+      expect(content).toContain("design-principles");
+      expect(content).toContain("color-theory");
+      expect(content).toContain("css-selectors");
     });
 
-    test('未知名称时，有用户技能则显示用户技能提示', async () => {
+    test("未知名称时，有用户技能则显示用户技能提示", async () => {
       // Setup: 添加用户技能
       mockStyleSkillStore.index.push({
-        id: 'user1',
-        name: '用户风格1',
-        mood: '测试',
-        sourceDomain: 'test.com',
-        createdAt: Date.now()
+        id: "user1",
+        name: "用户风格1",
+        mood: "测试",
+        sourceDomain: "test.com",
+        createdAt: Date.now(),
       });
       mockStyleSkillStore.index.push({
-        id: 'user2',
-        name: '用户风格2',
-        mood: '测试2',
-        sourceDomain: 'test.com',
-        createdAt: Date.now()
+        id: "user2",
+        name: "用户风格2",
+        mood: "测试2",
+        sourceDomain: "test.com",
+        createdAt: Date.now(),
       });
 
-      const content = await runLoadSkill('unknown-skill');
-      
-      expect(content).toContain('用户风格技能:');
-      expect(content).toContain('skill:user1 (用户风格1)');
-      expect(content).toContain('skill:user2 (用户风格2)');
+      const content = await runLoadSkill("unknown-skill");
+
+      expect(content).toContain("用户风格技能:");
+      expect(content).toContain("skill:user1 (用户风格1)");
+      expect(content).toContain("skill:user2 (用户风格2)");
     });
 
-    test('未知名称时，无用户技能则不显示用户技能提示', async () => {
-      const content = await runLoadSkill('unknown-skill');
-      
-      expect(content).not.toContain('用户风格技能:');
+    test("未知名称时，无用户技能则不显示用户技能提示", async () => {
+      const content = await runLoadSkill("unknown-skill");
+
+      expect(content).not.toContain("用户风格技能:");
     });
   });
 
-  describe('集成测试', () => {
-    test('完整场景：内置技能 -> 用户技能 -> 未知名称', async () => {
+  describe("集成测试", () => {
+    test("完整场景：内置技能 -> 用户技能 -> 未知名称", async () => {
       // 步骤 1: 加载内置技能
-      let content = await runLoadSkill('dark-mode-template');
-      expect(content).toContain('# dark-mode-template');
-      
+      let content = await runLoadSkill("dark-mode-template");
+      expect(content).toContain("# dark-mode-template");
+
       // 步骤 2: 添加用户技能并加载
-      mockStyleSkillStore.skills['custom'] = '# Custom Style';
+      mockStyleSkillStore.skills["custom"] = "# Custom Style";
       mockStyleSkillStore.index.push({
-        id: 'custom',
-        name: 'Custom Style',
-        mood: 'Custom',
-        sourceDomain: 'example.com',
-        createdAt: Date.now()
+        id: "custom",
+        name: "Custom Style",
+        mood: "Custom",
+        sourceDomain: "example.com",
+        createdAt: Date.now(),
       });
-      
-      content = await runLoadSkill('skill:custom');
-      expect(content).toContain('# Custom Style');
-      
+
+      content = await runLoadSkill("skill:custom");
+      expect(content).toContain("# Custom Style");
+
       // 步骤 3: 加载不存在的用户技能
-      content = await runLoadSkill('skill:notexist');
-      expect(content).toContain('未找到风格技能');
-      
+      content = await runLoadSkill("skill:notexist");
+      expect(content).toContain("未找到风格技能");
+
       // 步骤 4: 加载未知内置技能，应该显示用户技能提示
-      content = await runLoadSkill('unknown');
-      expect(content).toContain('skill:custom (Custom Style)');
+      content = await runLoadSkill("unknown");
+      expect(content).toContain("skill:custom (Custom Style)");
     });
   });
 });
@@ -1283,25 +1324,25 @@ body { background: #000; }`;
 // runListStyleSkills / runDeleteStyleSkill 测试 (T106)
 // =============================================================================
 
-describe('runListStyleSkills', () => {
+describe("runListStyleSkills", () => {
   // Mock StyleSkillStore
   const mockStyleSkillStore = {
     skills: {},
     index: [],
-    
+
     async list() {
       return this.index;
     },
-    
+
     async remove(id) {
-      this.index = this.index.filter(s => s.id !== id);
+      this.index = this.index.filter((s) => s.id !== id);
       delete this.skills[id];
     },
-    
+
     reset() {
       this.skills = {};
       this.index = [];
-    }
+    },
   };
 
   beforeEach(() => {
@@ -1311,93 +1352,120 @@ describe('runListStyleSkills', () => {
   // === runListStyleSkills implementation (same as tools.js) ===
   async function runListStyleSkills() {
     const skills = await mockStyleSkillStore.list();
-    
+
     if (skills.length === 0) {
-      return '(暂无保存的风格技能)';
+      return "(暂无保存的风格技能)";
     }
-    
-    return skills.map(s =>
-      `- skill:${s.id}「${s.name}」${s.mood ? `— ${s.mood}` : ''} (来自 ${s.sourceDomain}, ${new Date(s.createdAt).toLocaleDateString()})`
-    ).join('\n');
+
+    return skills
+      .map(
+        (s) =>
+          `- skill:${s.id}「${s.name}」${s.mood ? `— ${s.mood}` : ""} (来自 ${s.sourceDomain}, ${new Date(s.createdAt).toLocaleDateString()})`,
+      )
+      .join("\n");
   }
 
-  describe('空列表', () => {
-    test('无技能时返回默认提示', async () => {
+  describe("空列表", () => {
+    test("无技能时返回默认提示", async () => {
       const result = await runListStyleSkills();
-      
+
       // 测试标准：空列表返回提示
-      expect(result).toBe('(暂无保存的风格技能)');
+      expect(result).toBe("(暂无保存的风格技能)");
     });
   });
 
-  describe('非空列表', () => {
-    test('返回格式化的技能列表', async () => {
+  describe("非空列表", () => {
+    test("返回格式化的技能列表", async () => {
       // Setup: 添加几个技能
       mockStyleSkillStore.index = [
-        { id: 'abc123', name: '赛博朋克', mood: '深色背景+霓虹色调', sourceDomain: 'github.com', createdAt: Date.now() },
-        { id: 'def456', name: '清新日式', mood: '简约清新', sourceDomain: 'notion.so', createdAt: Date.now() },
+        {
+          id: "abc123",
+          name: "赛博朋克",
+          mood: "深色背景+霓虹色调",
+          sourceDomain: "github.com",
+          createdAt: Date.now(),
+        },
+        {
+          id: "def456",
+          name: "清新日式",
+          mood: "简约清新",
+          sourceDomain: "notion.so",
+          createdAt: Date.now(),
+        },
       ];
 
       const result = await runListStyleSkills();
-      
-      expect(result).toContain('skill:abc123');
-      expect(result).toContain('赛博朋克');
-      expect(result).toContain('深色背景+霓虹色调');
-      expect(result).toContain('github.com');
-      
-      expect(result).toContain('skill:def456');
-      expect(result).toContain('清新日式');
-      expect(result).toContain('简约清新');
-      expect(result).toContain('notion.so');
+
+      expect(result).toContain("skill:abc123");
+      expect(result).toContain("赛博朋克");
+      expect(result).toContain("深色背景+霓虹色调");
+      expect(result).toContain("github.com");
+
+      expect(result).toContain("skill:def456");
+      expect(result).toContain("清新日式");
+      expect(result).toContain("简约清新");
+      expect(result).toContain("notion.so");
     });
 
-    test('mood 为空时格式正确', async () => {
+    test("mood 为空时格式正确", async () => {
       mockStyleSkillStore.index = [
-        { id: 'test1', name: '测试风格', mood: '', sourceDomain: 'example.com', createdAt: Date.now() },
+        {
+          id: "test1",
+          name: "测试风格",
+          mood: "",
+          sourceDomain: "example.com",
+          createdAt: Date.now(),
+        },
       ];
 
       const result = await runListStyleSkills();
-      
-      expect(result).toContain('skill:test1');
-      expect(result).toContain('测试风格');
+
+      expect(result).toContain("skill:test1");
+      expect(result).toContain("测试风格");
       // mood 为空时不应该有 "—" 符号
       expect(result).not.toMatch(/测试风格「」—/);
     });
 
-    test('显示创建日期', async () => {
-      const date = new Date('2026-03-04');
+    test("显示创建日期", async () => {
+      const date = new Date("2026-03-04");
       mockStyleSkillStore.index = [
-        { id: 'test', name: '测试', mood: '', sourceDomain: 'example.com', createdAt: date.getTime() },
+        {
+          id: "test",
+          name: "测试",
+          mood: "",
+          sourceDomain: "example.com",
+          createdAt: date.getTime(),
+        },
       ];
 
       const result = await runListStyleSkills();
-      
-      expect(result).toContain('2026');
+
+      expect(result).toContain("2026");
     });
   });
 });
 
-describe('runDeleteStyleSkill', () => {
+describe("runDeleteStyleSkill", () => {
   // Mock StyleSkillStore
   const mockStyleSkillStore = {
     skills: {},
     index: [],
-    
+
     async list() {
       return this.index;
     },
-    
+
     async remove(id) {
-      const target = this.index.find(s => s.id === id);
-      this.index = this.index.filter(s => s.id !== id);
+      const target = this.index.find((s) => s.id === id);
+      this.index = this.index.filter((s) => s.id !== id);
       delete this.skills[id];
       return target;
     },
-    
+
     reset() {
       this.skills = {};
       this.index = [];
-    }
+    },
   };
 
   beforeEach(() => {
@@ -1407,69 +1475,99 @@ describe('runDeleteStyleSkill', () => {
   // === runDeleteStyleSkill implementation (same as tools.js) ===
   async function runDeleteStyleSkill(skillId) {
     const skills = await mockStyleSkillStore.list();
-    const target = skills.find(s => s.id === skillId);
-    
+    const target = skills.find((s) => s.id === skillId);
+
     if (!target) {
       return `未找到技能: ${skillId}`;
     }
-    
+
     await mockStyleSkillStore.remove(skillId);
-    
+
     return `已删除风格技能「${target.name}」`;
   }
 
-  describe('删除成功', () => {
-    test('删除存在的技能返回成功消息', async () => {
+  describe("删除成功", () => {
+    test("删除存在的技能返回成功消息", async () => {
       mockStyleSkillStore.index = [
-        { id: 'abc123', name: '赛博朋克', mood: '深色背景', sourceDomain: 'github.com', createdAt: Date.now() },
+        {
+          id: "abc123",
+          name: "赛博朋克",
+          mood: "深色背景",
+          sourceDomain: "github.com",
+          createdAt: Date.now(),
+        },
       ];
-      mockStyleSkillStore.skills['abc123'] = '# 赛博朋克\n\n内容...';
+      mockStyleSkillStore.skills["abc123"] = "# 赛博朋克\n\n内容...";
 
-      const result = await runDeleteStyleSkill('abc123');
-      
-      expect(result).toBe('已删除风格技能「赛博朋克」');
-      
+      const result = await runDeleteStyleSkill("abc123");
+
+      expect(result).toBe("已删除风格技能「赛博朋克」");
+
       // 验证已从列表中移除
       const skills = await mockStyleSkillStore.list();
       expect(skills.length).toBe(0);
     });
 
-    test('删除后其他技能保留', async () => {
+    test("删除后其他技能保留", async () => {
       mockStyleSkillStore.index = [
-        { id: 'skill1', name: '风格1', mood: '', sourceDomain: 'a.com', createdAt: Date.now() },
-        { id: 'skill2', name: '风格2', mood: '', sourceDomain: 'b.com', createdAt: Date.now() },
-        { id: 'skill3', name: '风格3', mood: '', sourceDomain: 'c.com', createdAt: Date.now() },
+        {
+          id: "skill1",
+          name: "风格1",
+          mood: "",
+          sourceDomain: "a.com",
+          createdAt: Date.now(),
+        },
+        {
+          id: "skill2",
+          name: "风格2",
+          mood: "",
+          sourceDomain: "b.com",
+          createdAt: Date.now(),
+        },
+        {
+          id: "skill3",
+          name: "风格3",
+          mood: "",
+          sourceDomain: "c.com",
+          createdAt: Date.now(),
+        },
       ];
 
-      await runDeleteStyleSkill('skill2');
-      
+      await runDeleteStyleSkill("skill2");
+
       const skills = await mockStyleSkillStore.list();
       expect(skills.length).toBe(2);
-      expect(skills.find(s => s.id === 'skill1')).toBeDefined();
-      expect(skills.find(s => s.id === 'skill3')).toBeDefined();
+      expect(skills.find((s) => s.id === "skill1")).toBeDefined();
+      expect(skills.find((s) => s.id === "skill3")).toBeDefined();
     });
   });
 
-  describe('删除不存在的技能', () => {
-    test('删除不存在的 ID 返回错误提示', async () => {
+  describe("删除不存在的技能", () => {
+    test("删除不存在的 ID 返回错误提示", async () => {
       mockStyleSkillStore.index = [
-        { id: 'abc123', name: '赛博朋克', mood: '', sourceDomain: 'github.com', createdAt: Date.now() },
+        {
+          id: "abc123",
+          name: "赛博朋克",
+          mood: "",
+          sourceDomain: "github.com",
+          createdAt: Date.now(),
+        },
       ];
 
-      const result = await runDeleteStyleSkill('notexist');
-      
+      const result = await runDeleteStyleSkill("notexist");
+
       // 测试标准：删除不存在的 id 返回错误提示
-      expect(result).toBe('未找到技能: notexist');
-      
+      expect(result).toBe("未找到技能: notexist");
+
       // 原有技能应该保留
       const skills = await mockStyleSkillStore.list();
       expect(skills.length).toBe(1);
     });
 
-    test('空列表时删除返回错误提示', async () => {
-      const result = await runDeleteStyleSkill('anyid');
-      
-      expect(result).toBe('未找到技能: anyid');
+    test("空列表时删除返回错误提示", async () => {
+      const result = await runDeleteStyleSkill("anyid");
+
+      expect(result).toBe("未找到技能: anyid");
     });
   });
 });
@@ -1478,58 +1576,58 @@ describe('runDeleteStyleSkill', () => {
 // executeTool 统一分派器测试 (T107)
 // =============================================================================
 
-describe('executeTool 统一分派器', () => {
+describe("executeTool 统一分派器", () => {
   // Mock chrome.tabs
   const mockTabs = {
-    currentActiveTab: { id: 123, url: 'https://example.com' },
-    
+    currentActiveTab: { id: 123, url: "https://example.com" },
+
     async query(queryInfo) {
       if (queryInfo.active && queryInfo.currentWindow) {
         return [this.currentActiveTab];
       }
       return [];
     },
-    
+
     sendMessage(tabId, message, callback) {
       // Default mock responses
       const { tool, args = {} } = message;
-      
+
       switch (tool) {
-        case 'get_domain':
-          callback('example.com');
+        case "get_domain":
+          callback("example.com");
           break;
-        case 'get_page_structure':
-          callback('URL: https://example.com\n\nbody\n├── header');
+        case "get_page_structure":
+          callback("URL: https://example.com\n\nbody\n├── header");
           break;
-        case 'grep':
-          callback('[1] .sidebar\n    Styles: display:block; width:300px');
+        case "grep":
+          callback("[1] .sidebar\n    Styles: display:block; width:300px");
           break;
-        case 'inject_css':
+        case "inject_css":
           callback({ success: true });
           break;
-        case 'rollback_css':
+        case "rollback_css":
           callback({ success: true });
           break;
-        case 'get_active_css':
-          callback('body { color: red; }');
+        case "get_active_css":
+          callback("body { color: red; }");
           break;
         default:
           callback({ success: true });
       }
-    }
+    },
   };
 
   // Mock chrome.storage.local
   const mockStorage = {
     data: {},
-    
+
     async get(keys) {
-      if (typeof keys === 'string') {
+      if (typeof keys === "string") {
         return { [keys]: this.data[keys] };
       }
       if (Array.isArray(keys)) {
         const result = {};
-        keys.forEach(key => {
+        keys.forEach((key) => {
           if (this.data[key] !== undefined) {
             result[key] = this.data[key];
           }
@@ -1538,54 +1636,54 @@ describe('executeTool 统一分派器', () => {
       }
       return this.data;
     },
-    
+
     async set(items) {
       Object.assign(this.data, items);
     },
-    
+
     async remove(keys) {
       const keysArray = Array.isArray(keys) ? keys : [keys];
-      keysArray.forEach(key => {
+      keysArray.forEach((key) => {
         delete this.data[key];
       });
     },
-    
+
     clear() {
       this.data = {};
-    }
+    },
   };
 
   // Mock StyleSkillStore
   const mockStyleSkillStore = {
     skills: {},
     index: [],
-    
+
     async list() {
       return this.index;
     },
-    
+
     async load(id) {
       return this.skills[id] || null;
     },
-    
+
     async remove(id) {
-      this.index = this.index.filter(s => s.id !== id);
+      this.index = this.index.filter((s) => s.id !== id);
       delete this.skills[id];
     },
-    
+
     reset() {
       this.skills = {};
       this.index = [];
-    }
+    },
   };
 
   // Mock currentSession
   const mockCurrentSession = {
-    domain: 'example.com',
-    sessionId: 'test-session-123',
-    stylesKey: 'sessions:example.com:test-session-123:styles',
-    metaKey: 'sessions:example.com:test-session-123:meta',
-    persistKey: 'persistent:example.com'
+    domain: "example.com",
+    sessionId: "test-session-123",
+    stylesKey: "sessions:example.com:test-session-123:styles",
+    metaKey: "sessions:example.com:test-session-123:meta",
+    persistKey: "persistent:example.com",
   };
 
   // Mock runtime for getURL
@@ -1593,7 +1691,7 @@ describe('executeTool 统一分派器', () => {
     getURL(path) {
       return `chrome-extension://test-id/${path}`;
     },
-    lastError: undefined
+    lastError: undefined,
   };
 
   let lockedTabId = null;
@@ -1602,19 +1700,19 @@ describe('executeTool 统一分派器', () => {
     mockStorage.clear();
     mockStyleSkillStore.reset();
     lockedTabId = null;
-    
+
     global.chrome = {
       tabs: mockTabs,
       storage: { local: mockStorage },
-      runtime: mockRuntime
+      runtime: mockRuntime,
     };
-    
+
     // Mock fetch for load_skill
     global.fetch = vi.fn(async (url) => {
-      if (url.includes('dark-mode.md')) {
-        return { ok: true, text: async () => '# Dark Mode\n\n深色模式模板...' };
+      if (url.includes("dark-mode.md")) {
+        return { ok: true, text: async () => "# Dark Mode\n\n深色模式模板..." };
       }
-      return { ok: false, text: async () => '' };
+      return { ok: false, text: async () => "" };
     });
   });
 
@@ -1624,7 +1722,11 @@ describe('executeTool 统一分派器', () => {
     return new Promise((resolve, reject) => {
       mockTabs.sendMessage(tabId, message, (response) => {
         if (chrome.runtime.lastError) {
-          reject(new Error(`Content Script 不可用: ${chrome.runtime.lastError.message}`));
+          reject(
+            new Error(
+              `Content Script 不可用: ${chrome.runtime.lastError.message}`,
+            ),
+          );
         } else {
           resolve(response);
         }
@@ -1633,24 +1735,24 @@ describe('executeTool 统一分派器', () => {
   }
 
   async function runGetUserProfile() {
-    const { userProfile } = await mockStorage.get('userProfile');
+    const { userProfile } = await mockStorage.get("userProfile");
     if (!userProfile?.trim()) {
-      return '(新用户，暂无风格偏好记录)';
+      return "(新用户，暂无风格偏好记录)";
     }
     return userProfile;
   }
 
   async function runUpdateUserProfile(content) {
     await mockStorage.set({ userProfile: content });
-    return '已更新用户画像';
+    return "已更新用户画像";
   }
 
   const SKILL_PATHS = {
-    'dark-mode-template': 'skills/style-templates/dark-mode.md',
+    "dark-mode-template": "skills/style-templates/dark-mode.md",
   };
 
   async function runLoadSkill(skillName) {
-    if (skillName.startsWith('skill:')) {
+    if (skillName.startsWith("skill:")) {
       const id = skillName.slice(6);
       const content = await mockStyleSkillStore.load(id);
       if (!content) {
@@ -1658,12 +1760,12 @@ describe('executeTool 统一分派器', () => {
       }
       return content;
     }
-    
+
     const path = SKILL_PATHS[skillName];
     if (!path) {
       return `未知知识: ${skillName}`;
     }
-    
+
     const url = chrome.runtime.getURL(path);
     const resp = await fetch(url);
     return await resp.text();
@@ -1672,16 +1774,14 @@ describe('executeTool 统一分派器', () => {
   async function runListStyleSkills() {
     const skills = await mockStyleSkillStore.list();
     if (skills.length === 0) {
-      return '(暂无保存的风格技能)';
+      return "(暂无保存的风格技能)";
     }
-    return skills.map(s =>
-      `- skill:${s.id}「${s.name}」`
-    ).join('\n');
+    return skills.map((s) => `- skill:${s.id}「${s.name}」`).join("\n");
   }
 
   async function runDeleteStyleSkill(skillId) {
     const skills = await mockStyleSkillStore.list();
-    const target = skills.find(s => s.id === skillId);
+    const target = skills.find((s) => s.id === skillId);
     if (!target) {
       return `未找到技能: ${skillId}`;
     }
@@ -1690,18 +1790,24 @@ describe('executeTool 统一分派器', () => {
   }
 
   async function runApplyStyles(css, mode) {
-    if (mode === 'save') {
-      if (!css?.trim()) throw new Error('save 模式需要提供 CSS 代码');
-      await sendToContentScript({ tool: 'inject_css', args: { css } });
+    if (mode === "save") {
+      if (!css?.trim()) throw new Error("save 模式需要提供 CSS 代码");
+      await sendToContentScript({ tool: "inject_css", args: { css } });
       return `已保存，下次访问 ${mockCurrentSession.domain} 自动应用`;
     }
-    if (mode === 'rollback_all') {
-      await sendToContentScript({ tool: 'rollback_css', args: { scope: 'all' } });
-      return '已回滚所有样式';
+    if (mode === "rollback_all") {
+      await sendToContentScript({
+        tool: "rollback_css",
+        args: { scope: "all" },
+      });
+      return "已回滚所有样式";
     }
-    if (mode === 'rollback_last') {
-      await sendToContentScript({ tool: 'rollback_css', args: { scope: 'last' } });
-      return '已撤销最后一次样式修改';
+    if (mode === "rollback_last") {
+      await sendToContentScript({
+        tool: "rollback_css",
+        args: { scope: "last" },
+      });
+      return "已撤销最后一次样式修改";
     }
     throw new Error(`未知模式: ${mode}`);
   }
@@ -1709,177 +1815,190 @@ describe('executeTool 统一分派器', () => {
   // === executeTool implementation ===
   async function executeTool(name, args) {
     switch (name) {
-      case 'get_page_structure':
-        return await sendToContentScript({ tool: 'get_page_structure' });
+      case "get_page_structure":
+        return await sendToContentScript({ tool: "get_page_structure" });
 
-      case 'grep':
+      case "grep":
         return await sendToContentScript({
-          tool: 'grep',
-          args: { 
-            query: args.query, 
-            scope: args.scope || 'children', 
-            maxResults: args.max_results || 5 
-          }
+          tool: "grep",
+          args: {
+            query: args.query,
+            scope: args.scope || "children",
+            maxResults: args.max_results || 5,
+          },
         });
 
-      case 'apply_styles':
-        return await runApplyStyles(args.css || '', args.mode);
+      case "apply_styles":
+        return await runApplyStyles(args.css || "", args.mode);
 
-      case 'get_user_profile':
+      case "get_user_profile":
         return await runGetUserProfile();
 
-      case 'update_user_profile':
+      case "update_user_profile":
         return await runUpdateUserProfile(args.content);
 
-      case 'load_skill':
+      case "load_skill":
         return await runLoadSkill(args.skill_name);
 
-      case 'list_style_skills':
+      case "list_style_skills":
         return await runListStyleSkills();
 
-      case 'delete_style_skill':
+      case "delete_style_skill":
         return await runDeleteStyleSkill(args.skill_id);
 
-      case 'TodoWrite':
-        return '任务列表已更新';
+      case "TodoWrite":
+        return "任务列表已更新";
 
       default:
         return `未知工具: ${name}`;
     }
   }
 
-  describe('Content Script 工具路由', () => {
-    test('get_page_structure 正确路由', async () => {
-      const result = await executeTool('get_page_structure', {});
-      
-      expect(result).toContain('URL: https://example.com');
-      expect(result).toContain('body');
+  describe("Content Script 工具路由", () => {
+    test("get_page_structure 正确路由", async () => {
+      const result = await executeTool("get_page_structure", {});
+
+      expect(result).toContain("URL: https://example.com");
+      expect(result).toContain("body");
     });
 
-    test('grep 正确路由并传递参数', async () => {
-      const result = await executeTool('grep', { query: '.sidebar', scope: 'self' });
-      
-      expect(result).toContain('.sidebar');
-    });
-
-    test('apply_styles save 模式正确路由', async () => {
-      const result = await executeTool('apply_styles', { 
-        css: 'body { color: red; }', 
-        mode: 'save' 
+    test("grep 正确路由并传递参数", async () => {
+      const result = await executeTool("grep", {
+        query: ".sidebar",
+        scope: "self",
       });
-      
-      expect(result).toContain('已保存');
-      expect(result).toContain('example.com');
+
+      expect(result).toContain(".sidebar");
     });
 
-    test('apply_styles rollback_all 模式正确路由', async () => {
-      const result = await executeTool('apply_styles', { mode: 'rollback_all' });
-      
-      expect(result).toBe('已回滚所有样式');
+    test("apply_styles save 模式正确路由", async () => {
+      const result = await executeTool("apply_styles", {
+        css: "body { color: red; }",
+        mode: "save",
+      });
+
+      expect(result).toContain("已保存");
+      expect(result).toContain("example.com");
     });
 
-    test('apply_styles rollback_last 模式正确路由', async () => {
-      const result = await executeTool('apply_styles', { mode: 'rollback_last' });
-      
-      expect(result).toBe('已撤销最后一次样式修改');
+    test("apply_styles rollback_all 模式正确路由", async () => {
+      const result = await executeTool("apply_styles", {
+        mode: "rollback_all",
+      });
+
+      expect(result).toBe("已回滚所有样式");
+    });
+
+    test("apply_styles rollback_last 模式正确路由", async () => {
+      const result = await executeTool("apply_styles", {
+        mode: "rollback_last",
+      });
+
+      expect(result).toBe("已撤销最后一次样式修改");
     });
   });
 
-  describe('本地工具路由', () => {
-    test('get_user_profile 正确路由', async () => {
+  describe("本地工具路由", () => {
+    test("get_user_profile 正确路由", async () => {
       // 无画像时
-      let result = await executeTool('get_user_profile', {});
-      expect(result).toBe('(新用户，暂无风格偏好记录)');
-      
+      let result = await executeTool("get_user_profile", {});
+      expect(result).toBe("(新用户，暂无风格偏好记录)");
+
       // 有画像时
-      await mockStorage.set({ userProfile: '用户偏好深色模式' });
-      result = await executeTool('get_user_profile', {});
-      expect(result).toBe('用户偏好深色模式');
+      await mockStorage.set({ userProfile: "用户偏好深色模式" });
+      result = await executeTool("get_user_profile", {});
+      expect(result).toBe("用户偏好深色模式");
     });
 
-    test('update_user_profile 正确路由', async () => {
-      const result = await executeTool('update_user_profile', { 
-        content: '用户偏好圆角设计' 
+    test("update_user_profile 正确路由", async () => {
+      const result = await executeTool("update_user_profile", {
+        content: "用户偏好圆角设计",
       });
-      
-      expect(result).toBe('已更新用户画像');
-      expect(mockStorage.data.userProfile).toBe('用户偏好圆角设计');
+
+      expect(result).toBe("已更新用户画像");
+      expect(mockStorage.data.userProfile).toBe("用户偏好圆角设计");
     });
 
-    test('load_skill 内置技能正确路由', async () => {
-      const result = await executeTool('load_skill', { skill_name: 'dark-mode-template' });
-      
-      expect(result).toContain('# Dark Mode');
+    test("load_skill 内置技能正确路由", async () => {
+      const result = await executeTool("load_skill", {
+        skill_name: "dark-mode-template",
+      });
+
+      expect(result).toContain("# Dark Mode");
     });
 
-    test('load_skill 用户技能正确路由', async () => {
-      mockStyleSkillStore.skills['abc123'] = '# 我的风格';
-      mockStyleSkillStore.index.push({ id: 'abc123', name: '我的风格' });
-      
-      const result = await executeTool('load_skill', { skill_name: 'skill:abc123' });
-      
-      expect(result).toContain('# 我的风格');
+    test("load_skill 用户技能正确路由", async () => {
+      mockStyleSkillStore.skills["abc123"] = "# 我的风格";
+      mockStyleSkillStore.index.push({ id: "abc123", name: "我的风格" });
+
+      const result = await executeTool("load_skill", {
+        skill_name: "skill:abc123",
+      });
+
+      expect(result).toContain("# 我的风格");
     });
 
-    test('list_style_skills 正确路由', async () => {
+    test("list_style_skills 正确路由", async () => {
       // 空列表
-      let result = await executeTool('list_style_skills', {});
-      expect(result).toBe('(暂无保存的风格技能)');
-      
+      let result = await executeTool("list_style_skills", {});
+      expect(result).toBe("(暂无保存的风格技能)");
+
       // 有技能
-      mockStyleSkillStore.index.push({ id: 'test', name: '测试风格' });
-      result = await executeTool('list_style_skills', {});
-      expect(result).toContain('skill:test');
+      mockStyleSkillStore.index.push({ id: "test", name: "测试风格" });
+      result = await executeTool("list_style_skills", {});
+      expect(result).toContain("skill:test");
     });
 
-    test('delete_style_skill 正确路由', async () => {
-      mockStyleSkillStore.index.push({ id: 'test', name: '测试风格' });
-      
-      const result = await executeTool('delete_style_skill', { skill_id: 'test' });
-      
-      expect(result).toBe('已删除风格技能「测试风格」');
+    test("delete_style_skill 正确路由", async () => {
+      mockStyleSkillStore.index.push({ id: "test", name: "测试风格" });
+
+      const result = await executeTool("delete_style_skill", {
+        skill_id: "test",
+      });
+
+      expect(result).toBe("已删除风格技能「测试风格」");
       expect(mockStyleSkillStore.index.length).toBe(0);
     });
 
-    test('TodoWrite 正确路由', async () => {
-      const result = await executeTool('TodoWrite', { 
-        todos: [{ content: '测试', status: 'pending', activeForm: '测试中' }] 
+    test("TodoWrite 正确路由", async () => {
+      const result = await executeTool("TodoWrite", {
+        todos: [{ content: "测试", status: "pending", activeForm: "测试中" }],
       });
-      
-      expect(result).toBe('任务列表已更新');
+
+      expect(result).toBe("任务列表已更新");
     });
   });
 
-  describe('未知工具处理', () => {
-    test('未知工具名返回错误提示', async () => {
-      const result = await executeTool('unknown_tool', {});
-      
-      expect(result).toBe('未知工具: unknown_tool');
+  describe("未知工具处理", () => {
+    test("未知工具名返回错误提示", async () => {
+      const result = await executeTool("unknown_tool", {});
+
+      expect(result).toBe("未知工具: unknown_tool");
     });
 
-    test('工具名大小写敏感', async () => {
+    test("工具名大小写敏感", async () => {
       // 正确的工具名
-      const result1 = await executeTool('TodoWrite', {});
-      expect(result1).toBe('任务列表已更新');
-      
+      const result1 = await executeTool("TodoWrite", {});
+      expect(result1).toBe("任务列表已更新");
+
       // 错误的大小写
-      const result2 = await executeTool('todowrite', {});
-      expect(result2).toBe('未知工具: todowrite');
+      const result2 = await executeTool("todowrite", {});
+      expect(result2).toBe("未知工具: todowrite");
     });
   });
 
-  describe('测试标准验证', () => {
-    test('每个工具名正确路由到对应实现函数', async () => {
+  describe("测试标准验证", () => {
+    test("每个工具名正确路由到对应实现函数", async () => {
       // 测试所有工具名称
       const tools = [
-        { name: 'get_page_structure', args: {} },
-        { name: 'grep', args: { query: 'test' } },
-        { name: 'apply_styles', args: { mode: 'rollback_all' } },
-        { name: 'get_user_profile', args: {} },
-        { name: 'update_user_profile', args: { content: 'test' } },
-        { name: 'load_skill', args: { skill_name: 'dark-mode-template' } },
-        { name: 'list_style_skills', args: {} },
-        { name: 'TodoWrite', args: { todos: [] } },
+        { name: "get_page_structure", args: {} },
+        { name: "grep", args: { query: "test" } },
+        { name: "apply_styles", args: { mode: "rollback_all" } },
+        { name: "get_user_profile", args: {} },
+        { name: "update_user_profile", args: { content: "test" } },
+        { name: "load_skill", args: { skill_name: "dark-mode-template" } },
+        { name: "list_style_skills", args: {} },
+        { name: "TodoWrite", args: { todos: [] } },
       ];
 
       for (const tool of tools) {
@@ -1889,22 +2008,24 @@ describe('executeTool 统一分派器', () => {
       }
     });
 
-    test('工具参数正确传递', async () => {
+    test("工具参数正确传递", async () => {
       // grep 的参数
-      const grepResult = await executeTool('grep', { 
-        query: '.test', 
-        scope: 'self', 
-        max_results: 10 
+      const grepResult = await executeTool("grep", {
+        query: ".test",
+        scope: "self",
+        max_results: 10,
       });
       expect(grepResult).toBeDefined();
-      
+
       // update_user_profile 的参数
-      await executeTool('update_user_profile', { content: '新偏好' });
-      expect(mockStorage.data.userProfile).toBe('新偏好');
-      
+      await executeTool("update_user_profile", { content: "新偏好" });
+      expect(mockStorage.data.userProfile).toBe("新偏好");
+
       // load_skill 的参数
-      const loadResult = await executeTool('load_skill', { skill_name: 'dark-mode-template' });
-      expect(loadResult).toContain('Dark Mode');
+      const loadResult = await executeTool("load_skill", {
+        skill_name: "dark-mode-template",
+      });
+      expect(loadResult).toContain("Dark Mode");
     });
   });
 });

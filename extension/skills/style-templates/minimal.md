@@ -1,3 +1,9 @@
+---
+name: minimal-template
+description: 极简风格模板 - 简洁、留白、功能导向的设计风格
+tags: template, minimal, clean
+---
+
 # 极简风格模板
 
 > 内置知识：简洁、留白、功能导向的设计风格

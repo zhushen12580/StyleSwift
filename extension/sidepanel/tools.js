@@ -7,6 +7,7 @@
 import { currentSession, updateStylesSummary } from "./session.js";
 import { mergeCSS } from "./css-merge.js";
 import { StyleSkillStore } from "./style-skill.js";
+import { createSkillManager } from "./skill-loader.js";
 
 // =============================================================================
 // §3.1 get_page_structure - 获取页面结构
@@ -139,7 +140,7 @@ const LOAD_SKILL_TOOL = {
   name: "load_skill",
   description: `加载领域知识或用户保存的风格技能。
 
-内置知识：
+内置知识（自动发现）：
 - dark-mode-template: 深色模式CSS模板
 - minimal-template: 极简风格模板
 - design-principles: 设计原则（对比度、层级、留白）
@@ -398,14 +399,23 @@ const BASE_TOOLS = [
 
 const ALL_TOOLS = [...BASE_TOOLS, TASK_TOOL];
 
-// 导出常量供其他模块使用
-const SKILL_PATHS = {
-  "dark-mode-template": "skills/style-templates/dark-mode.md",
-  "minimal-template": "skills/style-templates/minimal.md",
-  "design-principles": "skills/design-principles.md",
-  "color-theory": "skills/color-theory.md",
-  "css-selectors": "skills/css-selectors-guide.md",
-};
+// =============================================================================
+// Skill Manager - 统一管理静态技能和用户技能
+// =============================================================================
+
+/** @type {import('./skill-loader.js').UnifiedSkillManager|null} */
+let skillManager = null;
+
+/**
+ * 获取或初始化 Skill Manager
+ * @returns {Promise<import('./skill-loader.js').UnifiedSkillManager>}
+ */
+async function getSkillManager() {
+  if (!skillManager) {
+    skillManager = await createSkillManager(chrome.runtime.id, StyleSkillStore);
+  }
+  return skillManager;
+}
 
 // =============================================================================
 // §2.5 多 Tab 场景处理 - Tab 锁定机制
@@ -655,20 +665,8 @@ async function runEditCSS(oldCSS, newCSS) {
 /**
  * 加载领域知识或用户保存的风格技能
  *
- * 支持两种技能类型：
- * 1. 内置静态知识：通过 chrome.runtime.getURL + fetch 加载打包的 .md 文件
- * 2. 用户动态风格技能：通过 StyleSkillStore.load 从 chrome.storage.local 加载
- *
- * **内置知识列表：**
- * - dark-mode-template: 深色模式 CSS 模板
- * - minimal-template: 极简风格模板
- * - design-principles: 设计原则（对比度、层级、留白）
- * - color-theory: 配色理论
- * - css-selectors: CSS 选择器最佳实践
- *
- * **用户技能格式：**
- * - 使用 skill:{id} 格式加载，如 skill:a1b2c3d4
- * - 通过 list_style_skills 查看可用的用户技能
+ * 使用 UnifiedSkillManager 统一管理静态技能和用户技能。
+ * 静态技能通过 SkillLoader 自动发现，用户技能通过 StyleSkillStore 加载。
  *
  * @param {string} skillName - 内置知识名称，或 skill:{id} 加载用户风格技能
  * @returns {Promise<string>} 技能内容（markdown 格式）或错误提示
@@ -682,42 +680,10 @@ async function runEditCSS(oldCSS, newCSS) {
  * // 加载用户技能
  * const content = await runLoadSkill('skill:a1b2c3d4');
  * // → 返回用户保存的技能内容
- *
- * @example
- * // 未知名称
- * const content = await runLoadSkill('unknown');
- * // → 返回可用技能列表提示
  */
 async function runLoadSkill(skillName) {
-  // === 用户动态风格技能 ===
-  if (skillName.startsWith("skill:")) {
-    const id = skillName.slice(6);
-    const content = await StyleSkillStore.load(id);
-
-    if (!content) {
-      return `未找到风格技能: ${id}。使用 list_style_skills 查看可用技能。`;
-    }
-
-    return content;
-  }
-
-  // === 内置静态知识 ===
-  const path = SKILL_PATHS[skillName];
-  if (!path) {
-    // 未知名称：返回可用列表
-    const userSkills = await StyleSkillStore.list();
-    const userSkillsHint =
-      userSkills.length > 0
-        ? `\n用户风格技能: ${userSkills.map((s) => `skill:${s.id} (${s.name})`).join(", ")}`
-        : "";
-
-    return `未知知识: ${skillName}。可用: ${Object.keys(SKILL_PATHS).join(", ")}${userSkillsHint}`;
-  }
-
-  // Side Panel 中通过 chrome.runtime.getURL 访问扩展内静态资源
-  const url = chrome.runtime.getURL(path);
-  const resp = await fetch(url);
-  return await resp.text();
+  const manager = await getSkillManager();
+  return await manager.getContent(skillName);
 }
 
 // =============================================================================
@@ -962,7 +928,6 @@ export {
   // 工具定义
   BASE_TOOLS,
   ALL_TOOLS,
-  SKILL_PATHS,
   // 工具执行函数
   getTargetTabId,
   lockTab,
@@ -977,4 +942,6 @@ export {
   runListStyleSkills,
   runDeleteStyleSkill,
   executeTool,
+  // Skill Manager
+  getSkillManager,
 };
