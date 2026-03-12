@@ -26,6 +26,8 @@ import {
 
 import { StyleSkillStore } from "./style-skill.js";
 
+import { runGetUserProfile, runUpdateUserProfile } from "./profile.js";
+
 // ============================================================================
 // DOM Element References
 // ============================================================================
@@ -73,6 +75,10 @@ const DOM = {
   settingsApiKey: null,
   settingsApiBase: null,
   settingsModel: null,
+  settingsUserProfile: null,
+  profileCharCount: null,
+  saveProfileBtn: null,
+  profileStatus: null,
   verifyConnectionBtn: null,
   connectionStatus: null,
 
@@ -2832,6 +2838,10 @@ async function initSettingsView() {
   DOM.settingsApiKey = document.getElementById("settings-api-key");
   DOM.settingsApiBase = document.getElementById("settings-api-base");
   DOM.settingsModel = document.getElementById("settings-model");
+  DOM.settingsUserProfile = document.getElementById("settings-user-profile");
+  DOM.profileCharCount = document.getElementById("profile-char-count");
+  DOM.saveProfileBtn = document.getElementById("save-profile-btn");
+  DOM.profileStatus = document.getElementById("profile-status");
   DOM.verifyConnectionBtn = document.getElementById("verify-connection-btn");
   DOM.connectionStatus = document.getElementById("connection-status");
 
@@ -2840,6 +2850,7 @@ async function initSettingsView() {
   if (settingsView && settingsView.dataset.listenersAttached === "true") {
     // 仅重新加载数据，不重复绑定事件
     await loadCurrentSettings();
+    await loadUserProfile();
     await loadStorageUsage();
     return;
   }
@@ -2880,6 +2891,19 @@ async function initSettingsView() {
     }
   });
 
+  // 用户画像编辑
+  if (DOM.settingsUserProfile) {
+    // 字数统计
+    DOM.settingsUserProfile.addEventListener("input", () => {
+      updateProfileCharCount();
+    });
+  }
+
+  // 保存用户画像按钮
+  if (DOM.saveProfileBtn) {
+    DOM.saveProfileBtn.addEventListener("click", handleSaveUserProfile);
+  }
+
   // 清理历史数据按钮
   const clearStorageBtn = document.getElementById("clear-storage-btn");
   if (clearStorageBtn) {
@@ -2888,6 +2912,9 @@ async function initSettingsView() {
 
   // 加载当前设置
   await loadCurrentSettings();
+
+  // 加载用户画像
+  await loadUserProfile();
 
   // 加载存储用量
   await loadStorageUsage();
@@ -2975,6 +3002,78 @@ async function loadCurrentSettings() {
     }
   } catch (err) {
     console.warn("[Panel] No existing settings");
+  }
+}
+
+/**
+ * 加载用户画像到表单
+ */
+async function loadUserProfile() {
+  try {
+    const profile = await runGetUserProfile();
+    if (DOM.settingsUserProfile) {
+      // 如果是默认提示，显示空
+      if (profile === "(新用户，暂无风格偏好记录)") {
+        DOM.settingsUserProfile.value = "";
+      } else {
+        DOM.settingsUserProfile.value = profile;
+      }
+      updateProfileCharCount();
+    }
+  } catch (err) {
+    console.warn("[Panel] Failed to load user profile:", err);
+  }
+}
+
+/**
+ * 更新用户画像字数统计
+ */
+function updateProfileCharCount() {
+  if (DOM.settingsUserProfile && DOM.profileCharCount) {
+    const count = DOM.settingsUserProfile.value.length;
+    DOM.profileCharCount.textContent = `${count} 字`;
+  }
+}
+
+/**
+ * 处理保存用户画像
+ */
+async function handleSaveUserProfile() {
+  if (!DOM.settingsUserProfile) return;
+
+  const content = DOM.settingsUserProfile.value.trim();
+
+  if (!DOM.saveProfileBtn) return;
+  DOM.saveProfileBtn.disabled = true;
+  showProfileStatus("正在保存...", "info");
+
+  try {
+    await runUpdateUserProfile(content);
+    showProfileStatus("✓ 画像已保存", "success");
+  } catch (err) {
+    console.error("[Panel] Failed to save user profile:", err);
+    showProfileStatus(`✗ 保存失败: ${err.message}`, "error");
+  } finally {
+    DOM.saveProfileBtn.disabled = false;
+  }
+}
+
+/**
+ * 显示用户画像状态消息
+ * @param {string} message - 状态消息
+ * @param {string} type - 消息类型: 'success' | 'error' | 'info'
+ */
+function showProfileStatus(message, type) {
+  if (!DOM.profileStatus) return;
+  DOM.profileStatus.textContent = message;
+  DOM.profileStatus.className = `status-message ${type}`;
+  DOM.profileStatus.classList.remove("hidden");
+
+  // 成功消息 2 秒后自动隐藏
+  if (type === "success") {
+    setTimeout(() => {
+      DOM.profileStatus.classList.add("hidden");
+    }, 2000);
   }
 }
 

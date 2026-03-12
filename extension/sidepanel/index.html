@@ -191,6 +191,25 @@
         </div>
         
         <div class="settings-group">
+          <h3>用户画像</h3>
+          <p class="hint">记录你的风格偏好，AI 会参考这些偏好生成样式</p>
+          <div class="form-group">
+            <label for="settings-user-profile">画像内容</label>
+            <textarea
+              id="settings-user-profile"
+              class="settings-textarea"
+              placeholder="例如：偏好高对比度设计、喜欢深色模式、不喜欢圆角..."
+              rows="4"
+            ></textarea>
+          </div>
+          <div class="profile-actions">
+            <span id="profile-char-count" class="char-count">0 字</span>
+            <button id="save-profile-btn" class="btn-secondary">保存画像</button>
+          </div>
+          <div id="profile-status" class="status-message hidden"></div>
+        </div>
+
+        <div class="settings-group">
           <h3>风格技能</h3>
           <div id="skill-list" class="skill-list">
             <!-- 动态生成技能列表 -->

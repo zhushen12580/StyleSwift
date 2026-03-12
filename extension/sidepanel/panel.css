@@ -3450,6 +3450,56 @@ pre code {
   font-weight: var(--font-weight-medium);
 }
 
+/* 用户画像编辑区域 */
+.settings-textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-family);
+  font-size: var(--font-size-md);
+  color: var(--color-text-primary);
+  background: linear-gradient(180deg, var(--color-bg-primary) 0%, var(--color-bg-secondary) 100%);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: inset 0 1px 2px var(--color-metal-shadow);
+  transition: all var(--duration-fast) var(--easing-default);
+  outline: none;
+  resize: vertical;
+  line-height: var(--line-height-relaxed);
+}
+
+.settings-textarea::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.settings-textarea:hover {
+  border-color: var(--color-border-strong);
+}
+
+.settings-textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+/* 用户画像操作区 */
+.profile-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--spacing-sm);
+}
+
+.profile-actions .char-count {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+
+.profile-actions .btn-secondary {
+  width: auto;
+  min-width: 80px;
+  margin-top: 0;
+}
+
 /* ============================================================
    11. 响应式调整
    ============================================================ */
