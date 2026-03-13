@@ -55,7 +55,8 @@ const DOM = {
   statusDot: null,
   currentDomain: null,
   sessionTitle: null,
-  messagesContainer: null,
+  chatArea: null, // 滚动容器（实际可滚动区域）
+  messagesContainer: null, // 消息内容容器
   messageInput: null,
   sendBtn: null,
   stopBtn: null,
@@ -1053,6 +1054,7 @@ async function initMainView() {
   DOM.statusDot = document.getElementById("status-dot");
   DOM.currentDomain = document.getElementById("current-domain");
   DOM.sessionTitle = document.getElementById("session-title");
+  DOM.chatArea = document.getElementById("chat-area"); // 滚动容器
   DOM.messagesContainer = document.getElementById("messages-container");
   DOM.messageInput = document.getElementById("message-input");
   DOM.sendBtn = document.getElementById("send-btn");
@@ -3988,8 +3990,8 @@ class StreamingTextRenderer {
    * @private
    */
   _scrollToBottom() {
-    const scrollContainer =
-      this.options.scrollContainer || DOM.messagesContainer;
+    // 默认使用 chatArea 作为滚动容器
+    const scrollContainer = this.options.scrollContainer || DOM.chatArea;
     if (scrollContainer) {
       // 使用 requestAnimationFrame 确保平滑滚动
       requestAnimationFrame(() => {
@@ -4022,17 +4024,25 @@ function clearMessages() {
 
 /**
  * 滚动对话区到底部（平滑滚动）
+ * @param {Object} options - 配置选项
+ * @param {boolean} options.instant - 是否使用即时滚动（用于历史消息加载）
  */
-function scrollToBottom() {
-  if (DOM.messagesContainer) {
-    // 使用 requestAnimationFrame 确保平滑滚动
+function scrollToBottom(options = {}) {
+  // 注意：滚动容器是 #chat-area，而不是 #messages-container
+  const scrollContainer = DOM.chatArea;
+  if (!scrollContainer) return;
+
+  const { instant = false } = options;
+
+  // 使用双重 requestAnimationFrame 确保 DOM 完全渲染和布局完成
+  requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      DOM.messagesContainer.scrollTo({
-        top: DOM.messagesContainer.scrollHeight,
-        behavior: "smooth",
+      scrollContainer.scrollTo({
+        top: scrollContainer.scrollHeight,
+        behavior: instant ? "instant" : "smooth",
       });
     });
-  }
+  });
 }
 
 /**
@@ -4042,11 +4052,11 @@ function scrollToBottom() {
  * @returns {StreamingTextRenderer} - 渲染器实例
  */
 function createStreamingRenderer(container, options = {}) {
-  // 默认配置：自动滚动，使用 messagesContainer 作为滚动容器
+  // 默认配置：自动滚动，使用 chatArea 作为滚动容器
   const defaultOptions = {
     showCursor: true,
     autoScroll: true,
-    scrollContainer: DOM.messagesContainer,
+    scrollContainer: DOM.chatArea,
     ...options,
   };
 
@@ -4227,8 +4237,8 @@ function renderHistoryMessages(history) {
     }
   }
 
-  // 滚动到底部
-  scrollToBottom();
+  // 滚动到底部（使用即时滚动确保正确显示最新消息）
+  scrollToBottom({ instant: true });
 
   console.log(`[Panel] Rendered ${messages.length} history messages`);
 }
