@@ -440,24 +440,30 @@ function getCurrentSession() {
 // ============================================================================
 
 /**
- * 获取或创建会话
+ * 记录某域名当前活跃的会话 ID
+ * 用于 Side Panel 重新打开时恢复到上次使用的会话，而非最新创建的会话
  *
- * 根据域名读取会话索引，若无会话则新建。返回会话 ID。
- * - 如果索引中已有会话，返回最新创建的会话 ID（按 created_at 降序）
- * - 如果索引为空或不存在，创建新会话并更新索引
- *
- * @param {string} domain - 域名，如 'github.com'
- * @returns {Promise<string>} 返回会话 ID
- *
- * @example
- * // 首次调用：创建新会话
- * const sessionId1 = await getOrCreateSession('github.com');
- * console.log(sessionId1); // 'a1b2c3d4-...'
- *
- * // 再次调用：返回已存在的最新会话
- * const sessionId2 = await getOrCreateSession('github.com');
- * console.log(sessionId2); // 'a1b2c3d4-...' (与 sessionId1 相同)
+ * @param {string} domain - 域名
+ * @param {string} sessionId - 会话 ID
+ * @returns {Promise<void>}
  */
+async function setActiveSession(domain, sessionId) {
+  const key = `sessions:${domain}:active`;
+  await chrome.storage.local.set({ [key]: sessionId });
+}
+
+/**
+ * 获取某域名当前活跃的会话 ID
+ *
+ * @param {string} domain - 域名
+ * @returns {Promise<string|null>} 会话 ID，不存在时返回 null
+ */
+async function getActiveSession(domain) {
+  const key = `sessions:${domain}:active`;
+  const { [key]: sessionId = null } = await chrome.storage.local.get(key);
+  return sessionId;
+}
+
 async function getOrCreateSession(domain) {
   const indexKey = `sessions:${domain}:index`;
 
@@ -465,9 +471,14 @@ async function getOrCreateSession(domain) {
     // 读取会话索引
     const { [indexKey]: index = [] } = await chrome.storage.local.get(indexKey);
 
-    // 如果索引中有会话，返回最新创建的（created_at 最大的）
     if (Array.isArray(index) && index.length > 0) {
-      // 按 created_at 降序排序，取第一个（最新的）
+      // 优先恢复上次活跃的会话（而非按 created_at 排序取最新）
+      const activeId = await getActiveSession(domain);
+      if (activeId && index.some((s) => s.id === activeId)) {
+        return activeId;
+      }
+
+      // 回退：按 created_at 降序排序，取第一个（最新的）
       const sorted = [...index].sort(
         (a, b) => (b.created_at || 0) - (a.created_at || 0),
       );
@@ -673,13 +684,19 @@ async function deleteSession(domain, sessionId) {
     await chrome.storage.local.remove([metaKey, stylesKey]);
     console.log(`[Session] Removed storage keys: ${metaKey}, ${stylesKey}`);
 
-    // 3. 删除 IndexedDB 中的对话历史
+    // 3. 如果删除的是当前活跃会话，清除活跃记录
+    const activeId = await getActiveSession(domain);
+    if (activeId === sessionId) {
+      await chrome.storage.local.remove(`sessions:${domain}:active`);
+    }
+
+    // 4. 删除 IndexedDB 中的对话历史
     await deleteHistory(domain, sessionId);
     console.log(
       `[Session] Removed IndexedDB history for session: ${sessionId}`,
     );
 
-    // 4. 如果是该域名最后一个会话，返回标识
+    // 5. 如果是该域名最后一个会话，返回标识
     if (filtered.length === 0) {
       console.log(`[Session] Deleted last session for domain: ${domain}`);
       return { lastSession: true, domain };
@@ -1030,7 +1047,7 @@ export {
   checkAndMigrateStorage,
 };
 export { cleanupStorage, cleanupStyleSkills, getStorageUsage };
-export { getOrCreateSession, deleteSession };
+export { getOrCreateSession, deleteSession, setActiveSession, getActiveSession };
 export { loadSessionMeta, saveSessionMeta };
 export { loadAndPrepareHistory };
 export { autoTitle };

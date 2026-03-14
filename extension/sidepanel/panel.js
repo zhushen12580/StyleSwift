@@ -1213,6 +1213,9 @@ async function loadSessionForDomain(domain) {
     const currentSession = new session.SessionContext(domain, sessionId);
     session.setCurrentSession(currentSession);
 
+    // 记录活跃会话（确保下次打开 Side Panel 时恢复到此会话）
+    await session.setActiveSession(domain, sessionId);
+
     // 更新全局状态中的会话 ID
     stateManager.set("currentSessionId", sessionId);
 
@@ -2980,6 +2983,9 @@ async function handleSessionClick(domain, sessionId) {
     const newSession = new session.SessionContext(domain, sessionId);
     session.setCurrentSession(newSession);
 
+    // 记录活跃会话（确保下次打开 Side Panel 时恢复到此会话）
+    await session.setActiveSession(domain, sessionId);
+
     // === 3. 加载目标会话样式并注入 ===
     const stylesKey = newSession.stylesKey;
     const { [stylesKey]: sessionCSS = "" } =
@@ -3076,6 +3082,9 @@ async function handleNewSession() {
     // 创建新的 SessionContext
     const newSession = new session.SessionContext(domain, newSessionId);
     session.setCurrentSession(newSession);
+
+    // 记录活跃会话（确保下次打开 Side Panel 时恢复到此新会话）
+    await session.setActiveSession(domain, newSessionId);
 
     // 卸载当前会话样式并清空 active_styles
     try {
