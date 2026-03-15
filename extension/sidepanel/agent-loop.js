@@ -3,7 +3,7 @@
  * Agent 主循环 + 系统提示词定义
  */
 
-import { BASE_TOOLS, ALL_TOOLS, getSkillManager } from "./tools.js";
+import { BASE_TOOLS, SUBAGENT_TOOLS, ALL_TOOLS, getSkillManager } from "./tools.js";
 
 // =============================================================================
 // §10.0 跨 Provider 消息序列化 / 反序列化
@@ -53,7 +53,13 @@ function serializeToOpenAI(system, messages) {
           for (const item of msg.content) {
             if (item.type === "tool_result") {
               let toolContent = item.content;
-              if (typeof toolContent !== "string") {
+              let inlineImages = [];
+              // tool_result.content 为数组时（截图场景），提取文本和图片分别处理
+              if (Array.isArray(toolContent)) {
+                const textParts = toolContent.filter((c) => c.type === "text").map((c) => c.text);
+                inlineImages = toolContent.filter((c) => c.type === "image_url");
+                toolContent = textParts.join("\n") || "";
+              } else if (typeof toolContent !== "string") {
                 toolContent = JSON.stringify(toolContent);
               }
               result.push({
@@ -61,7 +67,28 @@ function serializeToOpenAI(system, messages) {
                 tool_call_id: item.tool_use_id,
                 content: toolContent,
               });
+              // 图片作为独立 user 消息紧跟其后（OpenAI vision 多模态）
+              if (inlineImages.length > 0) {
+                result.push({
+                  role: "user",
+                  content: inlineImages.map((c) => ({
+                    type: "image_url",
+                    image_url: c.image_url,
+                  })),
+                });
+              }
             }
+          }
+          // 顶层混入的图片 → 独立 user 消息（旧格式兼容）
+          const imageItems = msg.content.filter((c) => c.type === "image_url");
+          if (imageItems.length > 0) {
+            result.push({
+              role: "user",
+              content: imageItems.map((item) => ({
+                type: "image_url",
+                image_url: item.image_url,
+              })),
+            });
           }
         } else {
           // 多模态内容（文本 + 图片）
@@ -87,7 +114,7 @@ function serializeToOpenAI(system, messages) {
 
       // 推理文本拼接（仅用于展示，某些兼容层能接受）
       if (msg._reasoning) {
-        textContent = `<think/>\n${msg._reasoning}\n</think/>\n\n${textContent}`;
+        textContent = `<think>\n${msg._reasoning}\n</think>\n\n${textContent}`;
       }
 
       const toolCalls = msg.content
@@ -162,14 +189,35 @@ function serializeToClaude(messages) {
         claudeContent = msg.content.map((item) => {
           if (item.type === "tool_result") {
             // ICF tool_result → Claude tool_result block
-            let content = item.content;
-            if (typeof content !== "string") {
-              content = JSON.stringify(content);
+            // content 可能是字符串、对象，或包含 image_url 的数组（截图场景）
+            let claudeToolContent;
+            if (Array.isArray(item.content)) {
+              claudeToolContent = item.content.map((c) => {
+                if (c.type === "image_url") {
+                  const url = c.image_url?.url || "";
+                  const match = url.match(/^data:([^;]+);base64,(.+)$/);
+                  if (match) {
+                    return {
+                      type: "image",
+                      source: { type: "base64", media_type: match[1], data: match[2] },
+                    };
+                  }
+                  return { type: "image", source: { type: "url", url } };
+                }
+                if (c.type === "text") return { type: "text", text: c.text };
+                return { type: "text", text: JSON.stringify(c) };
+              });
+            } else {
+              let content = item.content;
+              if (typeof content !== "string") {
+                content = JSON.stringify(content);
+              }
+              claudeToolContent = [{ type: "text", text: content }];
             }
             return {
               type: "tool_result",
               tool_use_id: item.tool_use_id,
-              content: [{ type: "text", text: content }],
+              content: claudeToolContent,
             };
           }
           if (item.type === "image_url") {
@@ -493,7 +541,7 @@ function finalizeClaudeStream(state, callbacks) {
 const SYSTEM_BASE = `
 你是 StyleSwift，网页样式个性化智能体。致力于满足用户想要个性化网页视觉风格的需求。
 
-【意图澄清】请求模糊（如"好看点"、"专业感"）且无历史偏好可参考时，先提一个简短确认问题再执行（如"倾向深色还是浅色？"），不超过一问；有历史偏好时直接按偏好执行。
+【意图澄清】请求模糊（如"好看点"、"专业感"）且无历史偏好可参考时，先提一个简短确认问题再执行（如"倾向深色还是浅色？"、"喜欢什么风格？"），不超过一问；有历史偏好时直接按偏好执行。
 
 【任务规划】复杂多步骤任务先用 TodoWrite 规划：首次调用列出所有步骤(status:pending)，执行时逐项更新为 in_progress/completed。简单单步任务无需规划。
 
@@ -515,6 +563,13 @@ const SYSTEM_BASE = `
 - 花括号必须严格配对：每个 { 必须有对应的 }，尤其注意 @media/@keyframes 等嵌套规则的外层闭合
 - 注释禁止放在 @media/@keyframes 左花括号之前（错误：/* x */ @media ... {，正确：@media ... { /* x */ ）
 - 单次 apply_styles 的 CSS 不超过 30 条规则；规则更多时拆分为多次调用
+- 不生成可注入恶意脚本的 CSS（如 CSS expression 注入等）
+
+【质量检查】应用样式后，以下情况调用 Task(agent_type:QualityAudit) 进行质检：
+- 涉及 5+ 条 CSS 规则的批量修改
+- 全局色彩或主题变更（如深色模式）
+- 用户反馈样式有问题需要排查
+质检 Agent 会截取页面截图进行视觉分析，并返回问题列表。收到质检结果后，根据 issues 自动修复 high/medium 级别问题。
 
 【行为准则】
 - 并行工具调用：多个独立信息需求时，在同一轮同时发起多个工具调用
@@ -541,22 +596,51 @@ const SYSTEM_BASE = `
  * 执行时会在 Side Panel 中独立运行，共享同一个 API Key 和模型配置。
  */
 const AGENT_TYPES = {
-  StyleGenerator: {
-    description: "样式生成专家。根据用户意图和页面结构生成CSS代码。",
-    tools: ["get_page_structure", "grep", "load_skill"],
-    prompt: `你是样式生成专家，专注于为网页生成高质量的 CSS 代码。
+  QualityAudit: {
+    description: "样式质检专家。验证已应用CSS的视觉效果、可访问性和一致性。",
+    tools: [
+      "get_page_structure",
+      "grep",
+      "get_current_styles",
+      "load_skill",
+      "capture_screenshot",
+    ],
+    prompt: `你是样式质检专家，负责审核已应用 CSS 的实际效果。你会收到页面截图作为视觉参考。
 
-根据用户意图和页面结构生成 CSS，遵守以下约束：
-- 使用具体类/ID选择器 + !important；禁用 * 和标签通配符
-- 颜色用 hex 或 rgba；禁用 CSS 变量(var())、@import
-- 可按需调用 get_page_structure 或 grep 获取页面信息
-- 可调用 load_skill 获取设计知识（配色、排版、设计原则等）
+检查清单：
+1. 对比度：文字与背景的色彩对比度是否足够（目标 WCAG AA 4.5:1），关注浅色文字/深色背景和深色文字/浅色背景
+2. 可见性：是否有文字被遮挡、按钮不可辨识、内容溢出容器
+3. 一致性：相似元素（链接、标题、卡片）的样式是否统一，有无遗漏
+4. 色彩协调：新增样式与页面原有色调是否和谐，有无色彩冲突
+5. 布局完整性：修改是否导致元素错位、间距异常、对齐破坏
+6. 选择器副作用：CSS 规则是否意外影响了非目标元素
+7. 动画性能：是否使用了昂贵的布局属性动画（width/height/top/left），应改用 transform/opacity
+8. 响应式：是否有硬编码固定宽度导致窄屏溢出，交互元素是否≥44×44px（触摸目标），内容是否产生水平滚动
+9. 暗色模式：若页面支持主题切换，新样式是否有暗色模式变体，有无硬编码颜色未走设计 token
+10. AI 痕迹：是否存在 AI 生成风格特征——滥用渐变文字、毛玻璃效果、千篇一律的卡片网格、灰色覆盖在彩色上、弹跳缓动、冗余装饰性元素
 
-最终以 JSON 格式返回结果，其他中间步骤不输出：
+评判原则：
+- 每个问题必须说明影响，不报无实际影响的问题
+- 严格区分严重级别，不把所有问题都标为 high
+- 也要指出做得好的地方（在 summary 中体现）
+- 建议必须具体可执行（给出修复 CSS），不给笼统建议
+
+步骤：
+- 先分析截图获取视觉印象
+- 调用 get_current_styles 查看完整 CSS
+- 调用 get_page_structure 检查应用后的页面结构
+- 对可疑元素用 grep 深入检查计算样式
+- 需要设计知识时调用 load_skill（如 critique, audit）
+- 可调用 capture_screenshot 获取最新截图
+
+以 JSON 格式返回结果：
 {
-    "css": "生成的CSS代码",
-    "affected_selectors": ["受影响的选择器"],
-    "description": "简短的样式描述"
+  "passed": true/false,
+  "score": 1-10,
+  "issues": [
+    { "severity": "high|medium|low", "element": "选择器", "problem": "问题描述", "impact": "影响说明", "suggestion": "修复建议CSS" }
+  ],
+  "summary": "一句话总结，包含亮点与主要问题"
 }`,
   },
 };
@@ -688,14 +772,41 @@ function findFirstTurnEnd(history) {
 }
 
 /**
+ * 估算消息历史的 token 数量
+ *
+ * 简单估算：约 1 token = 4 字符。对于中文和代码，比例可能更低。
+ * 此估算用于在 API 调用前快速判断是否需要压缩历史。
+ *
+ * @param {Array} messages - Claude 格式消息数组
+ * @returns {number} 估算的 token 数量
+ */
+function estimateTokenCount(messages) {
+  let totalChars = 0;
+  for (const msg of messages) {
+    if (typeof msg.content === "string") {
+      totalChars += msg.content.length;
+    } else if (Array.isArray(msg.content)) {
+      for (const block of msg.content) {
+        if (block.type === "text" && block.text) {
+          totalChars += block.text.length;
+        }
+        // 忽略 image block，base64 图片不参与估算
+      }
+    }
+  }
+  // 估算：每 4 个字符 = 1 token，再加 10% 的 overhead
+  return Math.ceil(totalChars / 4 * 1.1);
+}
+
+/**
  * 压缩对话历史（仅用于 LLM 视图，不影响持久化）
  *
  * 基于 API 返回的 lastInputTokens 判断是否需要压缩。
- * 压缩策略：保留第一轮完整对话 + 最近 5 轮对话，中间部分生成 LLM 摘要。
+  * 压缩策略：保留第一轮完整对话 + 最近 1 轮对话，中间部分生成 LLM 摘要。
  * 完整对话历史和 CSS 快照始终完整保存在 IndexedDB 中。
  *
  * @param {Array} history - 对话历史数组
- * @param {number} lastInputTokens - 上次 API 调用的 input_tokens
+ * @param {number} lastInputTokens - 上次 API 调用的 input_tokens（或估算值）
  * @returns {Promise<Array>} 压缩后的消息数组（可能不变）
  */
 async function checkAndCompressHistory(history, lastInputTokens) {
@@ -704,7 +815,7 @@ async function checkAndCompressHistory(history, lastInputTokens) {
   }
 
   const firstTurnEnd = findFirstTurnEnd(history);
-  const recentStart = findTurnBoundary(history, 3);
+  const recentStart = findTurnBoundary(history, 1);
 
   if (recentStart <= firstTurnEnd) {
     return history;
@@ -992,24 +1103,75 @@ function sleep(ms) {
  * @param {AbortSignal} abortSignal - 取消信号
  * @returns {Promise<{content: Array, stop_reason: string|null, usage: object|null, reasoning: string|null}>}
  */
-async function callLLMStream(system, messages, tools, callbacks, abortSignal) {
-  // 检测消息中是否包含图片
-  const hasImages = messages.some((msg) => {
-    if (msg.role === "user" && Array.isArray(msg.content)) {
-      return msg.content.some((c) => c.type === "image_url");
+/**
+ * 检测消息列表中最后一条消息是否含图，用于决定本轮是否启用视觉模型
+ *
+ * 判断依据：只看 messages 数组的**最后一条消息**：
+ *   - 最后一条是含图的 user 消息（用户附图 或 截图工具刚返回）→ 需要视觉模型
+ *   - 最后一条是 assistant 消息（工具调用或文本回复之后）→ 不需要视觉模型
+ *
+ * 历史消息中的图片不影响判断——它们会通过 _stripImagesFromMessages 剥离，
+ * 确保不会将历史截图发给不支持多模态的主力模型。
+ *
+ * @param {Array} messages - ICF 消息数组
+ * @returns {boolean}
+ */
+function _detectImages(messages) {
+  if (!messages.length) return false;
+
+  // 只看最后一条消息
+  const last = messages[messages.length - 1];
+  if (last.role !== "user" || !Array.isArray(last.content)) return false;
+
+  return last.content.some((c) => {
+    if (c.type === "image_url") return true;
+    // tool_result 里嵌套的图片（截图工具返回结果）
+    if (c.type === "tool_result" && Array.isArray(c.content)) {
+      return c.content.some((inner) => inner.type === "image_url");
     }
     return false;
   });
+}
+
+/**
+ * 剥离消息列表中的所有图片（顶层 image_url 和 tool_result 嵌套图片）
+ * 用于非视觉轮次，确保图片不被发给不支持多模态的主力模型
+ * @param {Array} messages - ICF 消息数组
+ * @returns {Array} 不含图片的 ICF 消息数组
+ */
+function _stripImagesFromMessages(messages) {
+  return messages.map((msg) => {
+    if (msg.role !== "user" || !Array.isArray(msg.content)) return msg;
+    const stripped = msg.content
+      .filter((c) => c.type !== "image_url")
+      .map((c) => {
+        if (c.type === "tool_result" && Array.isArray(c.content)) {
+          const textOnly = c.content.filter((inner) => inner.type !== "image_url");
+          // 若原内容仅含图片（无文本），保留占位符避免发送空内容
+          return { ...c, content: textOnly.length > 0 ? textOnly : [{ type: "text", text: "(图片已省略)" }] };
+        }
+        return c;
+      });
+    return { ...msg, content: stripped };
+  });
+}
+
+async function callLLMStream(system, messages, tools, callbacks, abortSignal) {
+  // 检测消息中是否包含图片（含 tool_result 里嵌套的图片）
+  const hasImages = _detectImages(messages);
 
   const { getSettingsForRequest } = await import("./api.js");
   const { apiKey, model, apiBase, provider } = await getSettingsForRequest(hasImages);
+
+  // 不使用视觉模型时，剥离历史中的所有图片，避免将截图发给不支持多模态的主力模型
+  const safeMsgs = hasImages ? messages : _stripImagesFromMessages(messages);
 
   try {
     if (provider === "claude") {
       return await _callClaudeStream(
         { apiKey, model, apiBase },
         system,
-        messages,
+        safeMsgs,
         tools,
         callbacks,
         abortSignal,
@@ -1018,7 +1180,7 @@ async function callLLMStream(system, messages, tools, callbacks, abortSignal) {
       return await _callOpenAIStream(
         { apiKey, model, apiBase },
         system,
-        messages,
+        safeMsgs,
         tools,
         callbacks,
         abortSignal,
@@ -1261,7 +1423,7 @@ async function callLLMStreamSafe(
  * 防止死循环，超过此次数自动停止
  * @type {number}
  */
-const MAX_ITERATIONS = 20;
+const MAX_ITERATIONS = 30;
 
 /**
  * 子智能体最大迭代次数
@@ -1442,26 +1604,23 @@ async function executeToolWithRetry(toolName, args, executor, context) {
  * 子智能体在隔离上下文中运行，不会污染主对话历史。
  * 执行环境在 Side Panel 中，共享同一个 API Key 和模型配置。
  *
+ * QualityAudit 子智能体会在启动时自动截取页面截图并注入首条消息，
+ * 使 LLM 能结合视觉信息进行质检分析。
+ *
  * @param {string} description - 任务简短描述（3-5字）
  * @param {string} prompt - 详细的任务指令
- * @param {string} agentType - 子智能体类型（目前支持 'StyleGenerator'）
+ * @param {string} agentType - 子智能体类型（目前支持 'QualityAudit'）
+ * @param {AbortSignal} [abortSignal] - 取消信号
+ * @param {number} [tabId] - 主 Agent 绑定的标签页 ID，不传则自动获取当前标签页
  * @returns {Promise<string>} 子智能体返回的结果摘要
- *
- * @example
- * const result = await runTask(
- *   '生成样式',
- *   '为页面生成深色模式的 CSS',
- *   'StyleGenerator'
- * );
  */
-async function runTask(description, prompt, agentType, abortSignal) {
+async function runTask(description, prompt, agentType, abortSignal, tabId) {
   const config = AGENT_TYPES[agentType];
 
   if (!config) {
     return `未知子智能体类型: ${agentType}`;
   }
 
-  // 将用户偏好注入子 Agent，使其在生成样式时参考已知偏好
   let enrichedPrompt = prompt;
   try {
     const { getProfileOneLiner } = await import("./profile.js");
@@ -1477,32 +1636,70 @@ async function runTask(description, prompt, agentType, abortSignal) {
 
   const subTools =
     config.tools === "*"
-      ? BASE_TOOLS
-      : BASE_TOOLS.filter((t) => config.tools.includes(t.name));
+      ? SUBAGENT_TOOLS
+      : SUBAGENT_TOOLS.filter((t) => config.tools.includes(t.name));
 
-  const subMessages = [{ role: "user", content: enrichedPrompt }];
+  const { executeTool, getTargetTabId, captureScreenshot } =
+    await import("./tools.js");
+
+  const resolvedTabId = tabId ?? await getTargetTabId();
+
+  // QualityAudit：自动截图并注入到首条消息（多模态）
+  let firstUserContent;
+  if (agentType === "QualityAudit") {
+    try {
+      const dataUrl = await captureScreenshot(resolvedTabId);
+      firstUserContent = [
+        { type: "text", text: enrichedPrompt },
+        { type: "image_url", image_url: { url: dataUrl } },
+      ];
+    } catch (err) {
+      console.warn("[Subagent] Screenshot failed, using text-only:", err);
+      firstUserContent = enrichedPrompt;
+    }
+  } else {
+    firstUserContent = enrichedPrompt;
+  }
+
+  const subMessages = [{ role: "user", content: firstUserContent }];
   let iterations = 0;
   let subToolCallHistory = [];
 
-  const { executeTool, getTargetTabId } = await import("./tools.js");
-
-  // 获取当前锁定的 tabId，确保子 Agent 的工具操作与主 Agent 一致
-  const tabId = await getTargetTabId();
-
   while (iterations++ < SUB_MAX_ITERATIONS) {
-    // 检查取消信号
     if (abortSignal?.aborted) {
       return "(子智能体已被取消)";
     }
 
     try {
+      // 构建发给 LLM 的历史：第一轮使用含截图的完整历史，后续轮次剥离首条消息中的图片
+      // 避免大型 base64 截图随每轮请求重复发送，节省 token
+      let currentSubMessages;
+      if (iterations === 1) {
+        currentSubMessages = subMessages;
+      } else {
+        const [firstMsg, ...restMsgs] = subMessages;
+        let strippedFirst;
+        if (Array.isArray(firstMsg.content)) {
+          const textOnly = firstMsg.content.filter((c) => c.type === "text");
+          strippedFirst = {
+            role: "user",
+            content: textOnly.length > 0 ? textOnly : firstMsg.content,
+          };
+        } else {
+          strippedFirst = firstMsg;
+        }
+        currentSubMessages = [strippedFirst, ...restMsgs];
+      }
+
       const response = await callLLMStreamSafe(
         subSystem,
-        subMessages,
+        currentSubMessages,
         subTools,
         { onText: () => {}, onToolCall: () => {} },
         abortSignal,
       );
+
+      subMessages.push({ role: "assistant", content: response.content });
 
       if (response.stop_reason !== "tool_use") {
         const textBlock = response.content.find((b) => b.type === "text");
@@ -1514,7 +1711,6 @@ async function runTask(description, prompt, agentType, abortSignal) {
         if (abortSignal?.aborted) return "(子智能体已被取消)";
 
         if (block.type === "tool_use") {
-          // 子智能体死循环检测
           const callKey = generateToolCallKey(block.name, block.input);
           subToolCallHistory.push(callKey);
           if (subToolCallHistory.length >= DUPLICATE_CALL_THRESHOLD) {
@@ -1524,7 +1720,29 @@ async function runTask(description, prompt, agentType, abortSignal) {
             }
           }
 
-          const output = await executeTool(block.name, block.input, { tabId });
+          // capture_screenshot 需特殊处理：将截图嵌入 tool_result.content（多模态）
+          if (block.name === "capture_screenshot") {
+            try {
+              const dataUrl = await captureScreenshot(resolvedTabId);
+              results.push({
+                type: "tool_result",
+                tool_use_id: block.id,
+                content: [
+                  { type: "text", text: "截图已捕获，请分析附图中的页面视觉效果。" },
+                  { type: "image_url", image_url: { url: dataUrl } },
+                ],
+              });
+            } catch (err) {
+              results.push({
+                type: "tool_result",
+                tool_use_id: block.id,
+                content: `截图失败: ${err.message}`,
+              });
+            }
+            continue;
+          }
+
+          const output = await executeTool(block.name, block.input, { tabId: resolvedTabId });
           results.push({
             type: "tool_result",
             tool_use_id: block.id,
@@ -1533,8 +1751,9 @@ async function runTask(description, prompt, agentType, abortSignal) {
         }
       }
 
-      subMessages.push({ role: "assistant", content: response.content });
-      subMessages.push({ role: "user", content: results });
+      if (results.length > 0) {
+        subMessages.push({ role: "user", content: results });
+      }
     } catch (error) {
       if (error.name === "AbortError") return "(子智能体已被取消)";
       console.error("[Subagent] Error:", error);
@@ -1603,7 +1822,7 @@ async function agentLoop(prompt, uiCallbacks) {
   setTodoUpdateCallback(uiCallbacks.onTodoUpdate || null);
 
   // 动态导入所需模块
-  const { getTargetTabId, lockTab, unlockTab, executeTool } =
+  const { getTargetTabId, lockTab, unlockTab, executeTool, captureScreenshot } =
     await import("./tools.js");
   const {
     getOrCreateSession,
@@ -1678,6 +1897,13 @@ async function agentLoop(prompt, uiCallbacks) {
     const userMsg = { role: "user", content: textOnlyContent };
     fullHistory.push(userMsg);
     let llmHistory = [...fullHistory];
+
+    // 循环前预检查：估算 token 数量，超预算时提前压缩
+    const estimatedTokens = estimateTokenCount(serializeToClaude(llmHistory));
+    if (estimatedTokens > TOKEN_BUDGET) {
+      llmHistory = await checkAndCompressHistory(llmHistory, estimatedTokens);
+    }
+
     let lastInputTokens = 0;
     let response;
     let iterations = 0;
@@ -1764,6 +1990,29 @@ async function agentLoop(prompt, uiCallbacks) {
 
           uiCallbacks.showToolExecuting?.(block.name);
 
+          // capture_screenshot 需特殊处理：将截图嵌入 tool_result.content（多模态）
+          if (block.name === "capture_screenshot") {
+            try {
+              const dataUrl = await captureScreenshot(tabId);
+              results.push({
+                type: "tool_result",
+                tool_use_id: block.id,
+                content: [
+                  { type: "text", text: "截图已捕获，请分析附图中的页面视觉效果。" },
+                  { type: "image_url", image_url: { url: dataUrl } },
+                ],
+              });
+            } catch (err) {
+              results.push({
+                type: "tool_result",
+                tool_use_id: block.id,
+                content: `截图失败: ${err.message}`,
+              });
+            }
+            uiCallbacks.showToolResult?.(block.id, "截图已捕获");
+            continue;
+          }
+
           // 使用带重试的工具执行，传递 abortSignal 和 tabId 上下文
           // tabId 确保工具始终操作 Agent 启动时绑定的标签页，不受用户切换 tab 影响
           const toolContext = { abortSignal: signal, tabId };
@@ -1787,7 +2036,7 @@ async function agentLoop(prompt, uiCallbacks) {
       fullHistory.push(toolResultMsg);
       llmHistory.push(toolResultMsg);
 
-      // 超预算时仅压缩 LLM 视图，完整历史不受影响
+      // 循环内安全检查：使用 API 返回的实际 token 数量，超预算时压缩
       if (lastInputTokens > TOKEN_BUDGET) {
         llmHistory = await checkAndCompressHistory(llmHistory, lastInputTokens);
       }
@@ -1912,6 +2161,7 @@ export {
   checkAndCompressHistory,
   findTurnBoundary,
   summarizeOldTurns,
+  estimateTokenCount,
   RESTRICTED_PATTERNS,
   isRestrictedPage,
   checkPageAccess,
@@ -1943,5 +2193,6 @@ export {
   executeToolWithRetry,
   // Re-export from tools.js
   BASE_TOOLS,
+  SUBAGENT_TOOLS,
   ALL_TOOLS,
 };

@@ -1824,7 +1824,189 @@ pre code {
   margin-top: var(--spacing-xs);
 }
 
-/* 任务列表悬浮容器 - 附着在输入框上方 */
+/* ── Task 子任务卡片专属样式 ── */
+
+/* 子任务卡片：蓝色边框区分 */
+.tool-card.task-card {
+  border-color: var(--color-accent, #4f8ef7);
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--color-accent, #4f8ef7) 6%, var(--color-bg-secondary)) 0%,
+    var(--color-bg-secondary) 100%
+  );
+}
+
+.tool-card.task-card .tool-card-header {
+  border-bottom: none;
+}
+
+.tool-card.task-card:hover {
+  border-color: var(--color-accent, #4f8ef7);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent, #4f8ef7) 30%, transparent);
+}
+
+/* 处理中：子任务蓝色脉动 */
+.tool-card.processing.task-card {
+  border-color: var(--color-accent, #4f8ef7);
+  background-color: color-mix(in srgb, var(--color-accent, #4f8ef7) 8%, var(--color-bg-secondary));
+}
+
+.tool-card.processing.task-card .tool-card-status {
+  color: var(--color-accent, #4f8ef7);
+}
+
+/* Agent type 徽章 */
+.task-card-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  background: color-mix(in srgb, var(--color-accent, #4f8ef7) 15%, transparent);
+  color: var(--color-accent, #4f8ef7);
+  border: 1px solid color-mix(in srgb, var(--color-accent, #4f8ef7) 30%, transparent);
+  margin-left: var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+/* 通过/失败 + 评分行 */
+.task-result-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.task-result-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.task-result-badge.pass {
+  background: color-mix(in srgb, var(--color-success, #34d399) 15%, transparent);
+  color: var(--color-success, #34d399);
+  border: 1px solid color-mix(in srgb, var(--color-success, #34d399) 30%, transparent);
+}
+
+.task-result-badge.fail {
+  background: color-mix(in srgb, var(--color-error, #f87171) 15%, transparent);
+  color: var(--color-error, #f87171);
+  border: 1px solid color-mix(in srgb, var(--color-error, #f87171) 30%, transparent);
+}
+
+.task-result-score {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.task-result-score strong {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* 摘要文本 */
+.task-result-summary {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  margin-bottom: var(--spacing-sm);
+}
+
+/* Issues 数量统计 chip */
+.task-issue-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-sm);
+}
+
+.task-issue-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.task-issue-chip.high {
+  background: color-mix(in srgb, var(--color-error, #f87171) 12%, transparent);
+  color: var(--color-error, #f87171);
+  border: 1px solid color-mix(in srgb, var(--color-error, #f87171) 25%, transparent);
+}
+
+.task-issue-chip.medium {
+  background: color-mix(in srgb, var(--color-warning, #fbbf24) 12%, transparent);
+  color: var(--color-warning-text, #b45309);
+  border: 1px solid color-mix(in srgb, var(--color-warning, #fbbf24) 25%, transparent);
+}
+
+.task-issue-chip.low {
+  background: color-mix(in srgb, var(--color-text-tertiary) 10%, transparent);
+  color: var(--color-text-tertiary);
+  border: 1px solid var(--color-border);
+}
+
+/* 折叠原始输出 details/summary */
+.task-raw-details {
+  margin-top: var(--spacing-xs);
+}
+
+.task-raw-details summary {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  user-select: none;
+  padding: 2px 0;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.task-raw-details summary::before {
+  content: "▸";
+  font-size: 10px;
+  transition: transform 0.15s ease;
+}
+
+.task-raw-details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.task-raw-details summary:hover {
+  color: var(--color-text-secondary);
+}
+
+.task-raw-output {
+  margin-top: var(--spacing-xs);
+  padding: var(--spacing-sm);
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 240px;
+  overflow-y: auto;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+/* 纯文本预览 */
+.task-text-preview {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  margin-bottom: var(--spacing-xs);
+}
+
+
 .todo-floating-container {
   background: linear-gradient(180deg, var(--color-bg-primary) 0%, var(--color-bg-secondary) 100%);
   border-bottom: 1px solid var(--color-border);

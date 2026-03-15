@@ -1433,8 +1433,6 @@ function extractElementInfo(el) {
   const tag = el.tagName.toLowerCase();
   const selector = uniqueSelector(el);
   const fullPath = buildFullPathSelector(el);
-  const tree = buildTree(el, 0, 8);
-  const treeText = tree ? formatTree(tree, "", true, 8) : selector;
 
   const cs = window.getComputedStyle(el);
   const styles = {};
@@ -1465,7 +1463,6 @@ function extractElementInfo(el) {
       width: Math.round(rect.width),
       height: Math.round(rect.height),
     },
-    treeText,
     meta,
   };
 }

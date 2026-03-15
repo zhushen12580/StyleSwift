@@ -1409,7 +1409,6 @@ async function handleSendClick() {
         : null,
       pickedInfo.text ? `文本: "${pickedInfo.text}"` : null,
       `尺寸: ${pickedInfo.rect.width}×${pickedInfo.rect.height}`,
-      `\n元素及子元素结构:\n${pickedInfo.treeText}`,
     ]
       .filter(Boolean)
       .join("\n");
@@ -4824,16 +4823,17 @@ class ToolCardManager {
     card.dataset.toolName = toolName;
 
     const displayName = getToolDisplayName(toolName);
+    const isTask = toolName === "Task";
 
     card.innerHTML = `
       <div class="tool-card-header">
         <div class="tool-card-title">
-          <span class="tool-card-icon">🔧</span>
+          <span class="tool-card-icon">${isTask ? "🤖" : "🔧"}</span>
           <span class="tool-card-name">${displayName}</span>
         </div>
         <div class="tool-card-status processing">
           <span class="status-indicator">◌</span>
-          <span class="status-text">进行中</span>
+          <span class="status-text">${isTask ? "子智能体运行中…" : "进行中"}</span>
         </div>
       </div>
     `;
@@ -4859,36 +4859,63 @@ class ToolCardManager {
     if (!card) return;
 
     const displayName = getToolDisplayName(toolName);
+    const isTask = toolName === "Task";
 
     // 更新卡片状态
     card.classList.remove("processing");
     card.classList.add("completed", "collapsed");
 
-    // 格式化输入参数
-    const inputDisplay = this.formatInput(input);
+    if (isTask) {
+      // Task 子任务专属渲染
+      card.classList.add("task-card");
+      const taskTitle = input?.description
+        ? this.escapeHtml(input.description)
+        : displayName;
+      const agentType = input?.agent_type || "";
+      const agentBadge = agentType
+        ? `<span class="task-card-badge">${this.escapeHtml(agentType)}</span>`
+        : "";
 
-    // 格式化输出（截断长文本）
-    const outputDisplay = this.formatOutput(output);
+      const summaryHtml = this.formatTaskOutput(output);
 
-    card.innerHTML = `
-      <div class="tool-card-header">
-        <div class="tool-card-title">
-          <span class="tool-card-icon">✅</span>
-          <span class="tool-card-name">${displayName}</span>
+      card.innerHTML = `
+        <div class="tool-card-header">
+          <div class="tool-card-title">
+            <span class="tool-card-icon">🤖</span>
+            <span class="tool-card-name">${taskTitle}</span>
+            ${agentBadge}
+          </div>
+          <div class="tool-card-expand">▸</div>
         </div>
-        <div class="tool-card-expand">▸</div>
-      </div>
-      <div class="tool-card-body">
-        <div class="tool-card-section">
-          <div class="tool-card-label">输入:</div>
-          <div class="tool-card-content">${inputDisplay}</div>
+        <div class="tool-card-body">
+          ${summaryHtml}
         </div>
-        <div class="tool-card-section">
-          <div class="tool-card-label">输出:</div>
-          <div class="tool-card-content tool-card-output">${outputDisplay}</div>
+      `;
+    } else {
+      // 普通工具默认渲染
+      const inputDisplay = this.formatInput(input);
+      const outputDisplay = this.formatOutput(output);
+
+      card.innerHTML = `
+        <div class="tool-card-header">
+          <div class="tool-card-title">
+            <span class="tool-card-icon">✅</span>
+            <span class="tool-card-name">${displayName}</span>
+          </div>
+          <div class="tool-card-expand">▸</div>
         </div>
-      </div>
-    `;
+        <div class="tool-card-body">
+          <div class="tool-card-section">
+            <div class="tool-card-label">输入:</div>
+            <div class="tool-card-content">${inputDisplay}</div>
+          </div>
+          <div class="tool-card-section">
+            <div class="tool-card-label">输出:</div>
+            <div class="tool-card-content tool-card-output">${outputDisplay}</div>
+          </div>
+        </div>
+      `;
+    }
 
     // 绑定展开/折叠事件
     const header = card.querySelector(".tool-card-header");
@@ -5000,6 +5027,96 @@ class ToolCardManager {
     const formatted = escaped.replace(/\n/g, "<br>");
 
     return `<span class="tool-card-text">${formatted}</span>`;
+  }
+
+  /**
+   * 格式化子任务（Task）输出，尝试解析 JSON 以生成结构化摘要
+   * @param {string} output - 子任务输出文本
+   * @returns {string} - 格式化后的HTML
+   */
+  formatTaskOutput(output) {
+    if (!output) {
+      return '<span class="tool-card-empty">(无输出)</span>';
+    }
+
+    // 尝试提取并解析 JSON（支持被 markdown 代码块包裹的情况）
+    let parsed = null;
+    try {
+      const jsonMatch = output.match(/```(?:json)?\s*([\s\S]*?)```/) ||
+        output.match(/(\{[\s\S]*\})/);
+      if (jsonMatch) {
+        parsed = JSON.parse(jsonMatch[1].trim());
+      } else {
+        parsed = JSON.parse(output.trim());
+      }
+    } catch (_) {
+      // 非 JSON，退回纯文本显示
+    }
+
+    if (parsed && typeof parsed === "object") {
+      // 结构化渲染（QualityAudit 格式）
+      const parts = [];
+
+      // 通过/失败 + 评分
+      if ("passed" in parsed || "score" in parsed) {
+        const passed = parsed.passed;
+        const score = parsed.score;
+        const passedHtml = passed !== undefined
+          ? `<span class="task-result-badge ${passed ? "pass" : "fail"}">${passed ? "✓ 通过" : "✗ 未通过"}</span>`
+          : "";
+        const scoreHtml = score !== undefined
+          ? `<span class="task-result-score">评分 <strong>${score}</strong>/10</span>`
+          : "";
+        if (passedHtml || scoreHtml) {
+          parts.push(`<div class="task-result-row">${passedHtml}${scoreHtml}</div>`);
+        }
+      }
+
+      // 摘要
+      if (parsed.summary) {
+        parts.push(`<div class="task-result-summary">${this.escapeHtml(parsed.summary)}</div>`);
+      }
+
+      // issues 统计
+      if (Array.isArray(parsed.issues) && parsed.issues.length > 0) {
+        const high = parsed.issues.filter((i) => i.severity === "high").length;
+        const medium = parsed.issues.filter((i) => i.severity === "medium").length;
+        const low = parsed.issues.filter((i) => i.severity === "low").length;
+        const issueChips = [];
+        if (high > 0) issueChips.push(`<span class="task-issue-chip high">${high} 严重</span>`);
+        if (medium > 0) issueChips.push(`<span class="task-issue-chip medium">${medium} 中等</span>`);
+        if (low > 0) issueChips.push(`<span class="task-issue-chip low">${low} 轻微</span>`);
+        if (issueChips.length > 0) {
+          parts.push(`<div class="task-issue-chips">${issueChips.join("")}</div>`);
+        }
+      }
+
+      // 折叠的原始输出
+      const rawEscaped = this.escapeHtml(output);
+      parts.push(`
+        <details class="task-raw-details">
+          <summary>查看完整报告</summary>
+          <pre class="task-raw-output">${rawEscaped}</pre>
+        </details>
+      `);
+
+      return parts.join("");
+    }
+
+    // 纯文本：超过 300 字时截断 + 折叠展开
+    const escaped = this.escapeHtml(output);
+    if (output.length > 300) {
+      const preview = this.escapeHtml(output.substring(0, 300));
+      return `
+        <div class="task-text-preview">${preview.replace(/\n/g, "<br>")}…</div>
+        <details class="task-raw-details">
+          <summary>查看完整输出</summary>
+          <pre class="task-raw-output">${escaped}</pre>
+        </details>
+      `;
+    }
+
+    return `<div class="task-text-preview">${escaped.replace(/\n/g, "<br>")}</div>`;
   }
 
   /**

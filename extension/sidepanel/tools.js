@@ -293,6 +293,35 @@ const EDIT_CSS_TOOL = {
 };
 
 // =============================================================================
+// §3.11 capture_screenshot - 截取页面可见区域
+// =============================================================================
+
+const CAPTURE_SCREENSHOT_TOOL = {
+  name: "capture_screenshot",
+  description: "截取当前页面可见区域的截图，用于视觉分析页面样式效果。",
+  input_schema: {
+    type: "object",
+    properties: {},
+    required: [],
+  },
+};
+
+/**
+ * 截取指定 Tab 的可见区域
+ *
+ * @param {number} [tabId] - 目标 Tab ID（可选，优先于全局锁定）
+ * @returns {Promise<string>} base64 Data URL（data:image/png;base64,...）
+ */
+async function captureScreenshot(tabId) {
+  const targetTabId = tabId ?? (await getTargetTabId());
+  const tab = await chrome.tabs.get(targetTabId);
+  const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
+    format: "png",
+  });
+  return dataUrl;
+}
+
+// =============================================================================
 // §五、TodoWrite - 任务列表管理
 // =============================================================================
 
@@ -358,12 +387,12 @@ const TASK_TOOL = {
 子智能体在隔离上下文中运行，不会污染主对话历史。
 
 可用的子智能体：
-- StyleGenerator: 样式生成专家
+- QualityAudit: 样式质检专家，验证已应用CSS的视觉效果、可访问性和一致性
 
 使用场景：
-- 需要复杂推理的任务
-- 需要多次工具调用的任务
-- 可能产生大量中间输出的任务`,
+- 应用了较多样式（5+条规则）后需要质检
+- 全局色彩/主题变更后验证效果
+- 用户反馈样式有问题，需要系统性排查`,
   input_schema: {
     type: "object",
     properties: {
@@ -371,7 +400,7 @@ const TASK_TOOL = {
       prompt: { type: "string", description: "详细的任务指令" },
       agent_type: {
         type: "string",
-        enum: ["StyleGenerator"],
+        enum: ["QualityAudit"],
         description: "子智能体类型",
       },
     },
@@ -398,7 +427,9 @@ const BASE_TOOLS = [
   TODO_WRITE_TOOL,
 ];
 
-const ALL_TOOLS = [...BASE_TOOLS, TASK_TOOL];
+const SUBAGENT_TOOLS = [...BASE_TOOLS, CAPTURE_SCREENSHOT_TOOL];
+
+const ALL_TOOLS = [...BASE_TOOLS, TASK_TOOL, CAPTURE_SCREENSHOT_TOOL];
 
 // =============================================================================
 // Skill Manager - 统一管理静态技能和用户技能
@@ -953,6 +984,11 @@ const TOOL_HANDLERS = {
 
   delete_style_skill: async (args) => await runDeleteStyleSkill(args.skill_id),
 
+  capture_screenshot: async (_args, context) => {
+    const dataUrl = await captureScreenshot(context?.tabId);
+    return dataUrl;
+  },
+
   TodoWrite: async (args) => {
     const { updateTodos } = await import("./todo-manager.js");
     return updateTodos(args.todos);
@@ -968,6 +1004,7 @@ const TOOL_HANDLERS = {
         args.prompt,
         args.agent_type,
         context?.abortSignal,
+        context?.tabId,
       );
     }
     return "(子智能体功能尚未实现)";
@@ -1000,6 +1037,7 @@ async function executeTool(name, args, context) {
 export {
   // 工具定义
   BASE_TOOLS,
+  SUBAGENT_TOOLS,
   ALL_TOOLS,
   // 工具执行函数
   getTargetTabId,
@@ -1008,6 +1046,7 @@ export {
   getTargetDomain,
   sendToContentScript,
   normalizeToolResult,
+  captureScreenshot,
   runApplyStyles,
   runEditCSS,
   runLoadSkill,

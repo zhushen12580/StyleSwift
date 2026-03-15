@@ -12,12 +12,11 @@
   ],
 
   "host_permissions": [
-    "https://api.anthropic.com/*"
+    "https://api.anthropic.com/*",
+    "<all_urls>"
   ],
 
-  "optional_host_permissions": [
-    "https://*/*"
-  ],
+  "optional_host_permissions": [],
 
   "background": {
     "service_worker": "background/service-worker.js"
