@@ -441,7 +441,7 @@ const GLOBAL_STATE_CONFIG = {
    * - 技能区：正常
    */
   ready: {
-    topBar: { status: "idle", showStyleBadge: false },
+    topBar: { status: "idle" },
     chatArea: { mode: "normal" },
     inputArea: { mode: "idle" },
     skillArea: { mode: "normal" },
@@ -456,7 +456,7 @@ const GLOBAL_STATE_CONFIG = {
    * - 技能区：正常但不可点击
    */
   processing: {
-    topBar: { status: "running", showStyleBadge: false },
+    topBar: { status: "running" },
     chatArea: { mode: "streaming" },
     inputArea: { mode: "processing" },
     skillArea: { mode: "disabled" },
@@ -465,13 +465,13 @@ const GLOBAL_STATE_CONFIG = {
 
   /**
    * 有样式生效状态
-   * - 顶栏：🟢 绿色 + 小徽标
+   * - 顶栏：🟢 绿色
    * - 对话区：正常
    * - 输入区：正常 + 样式应用后浮层
    * - 技能区：正常
    */
   hasStyles: {
-    topBar: { status: "idle", showStyleBadge: true },
+    topBar: { status: "idle" },
     chatArea: { mode: "normal" },
     inputArea: { mode: "idle" },
     skillArea: { mode: "normal" },
@@ -484,7 +484,7 @@ const GLOBAL_STATE_CONFIG = {
    * - 其他区域：不显示（引导页）
    */
   apiKeyMissing: {
-    topBar: { status: "error", showStyleBadge: false },
+    topBar: { status: "error" },
     chatArea: { mode: "hidden" },
     inputArea: { mode: "hidden" },
     skillArea: { mode: "hidden" },
@@ -499,7 +499,7 @@ const GLOBAL_STATE_CONFIG = {
    * - 技能区：正常
    */
   apiKeyInvalid: {
-    topBar: { status: "error", showStyleBadge: false },
+    topBar: { status: "error" },
     chatArea: { mode: "normal" },
     inputArea: { mode: "idle" },
     skillArea: { mode: "normal" },
@@ -514,7 +514,7 @@ const GLOBAL_STATE_CONFIG = {
    * - 技能区：正常
    */
   networkError: {
-    topBar: { status: "error", showStyleBadge: false },
+    topBar: { status: "error" },
     chatArea: { mode: "normal" },
     inputArea: { mode: "idle" },
     skillArea: { mode: "normal" },
@@ -529,7 +529,7 @@ const GLOBAL_STATE_CONFIG = {
    * - 技能区：正常
    */
   apiError: {
-    topBar: { status: "error", showStyleBadge: false },
+    topBar: { status: "error" },
     chatArea: { mode: "normal" },
     inputArea: { mode: "idle" },
     skillArea: { mode: "normal" },
@@ -544,7 +544,7 @@ const GLOBAL_STATE_CONFIG = {
    * - 技能区：整体置灰禁用
    */
   restricted: {
-    topBar: { status: "restricted", showStyleBadge: false },
+    topBar: { status: "restricted" },
     chatArea: { mode: "restricted" },
     inputArea: { mode: "restricted" },
     skillArea: { mode: "disabled" },
@@ -676,19 +676,6 @@ function applyTopBarState(config) {
       break;
   }
 
-  // 更新样式徽标
-  const existingBadge = DOM.statusDot.querySelector(".style-badge");
-  if (config.showStyleBadge && !existingBadge) {
-    // 添加样式徽标
-    const badge = document.createElement("span");
-    badge.className = "style-badge";
-    badge.innerHTML = iconHtml('sparkles', 10);
-    badge.title = "当前页面有样式生效";
-    DOM.statusDot.appendChild(badge);
-  } else if (!config.showStyleBadge && existingBadge) {
-    // 移除样式徽标
-    existingBadge.remove();
-  }
 }
 
 /**
