@@ -149,10 +149,14 @@
         </div>
         <!-- 输入主体：textarea + 底部工具栏 -->
         <div id="input-wrapper" class="input-wrapper">
+          <div id="typewriter-placeholder" class="typewriter-placeholder">
+            <span id="typewriter-text" class="typewriter-text"></span>
+            <span class="typewriter-cursor"></span>
+          </div>
           <textarea
             id="message-input"
             class="message-input"
-            placeholder="描述你想要的风格..."
+            placeholder=""
             rows="1"
             aria-label="输入风格描述"
           ></textarea>

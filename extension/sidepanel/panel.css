@@ -815,19 +815,21 @@ pre code {
   overflow-y: auto;
   overflow-x: hidden;
   padding: var(--spacing-md);
-  padding-bottom: var(--spacing-xl); /* 底部留白，避免最后一条消息贴住输入区 */
+  padding-bottom: var(--spacing-xl);
   background: var(--color-bg-primary);
+  position: relative;
 }
 
 .chat-area-empty {
-  flex: 1;
+  position: absolute;
+  bottom: var(--spacing-md);
+  left: var(--spacing-md);
+  right: var(--spacing-md);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: var(--spacing-2xl) var(--spacing-lg);
-  gap: var(--spacing-sm);
+  align-items:stretch;
+  justify-content: flex-end;
+  padding: 0;
 }
 
 .empty-state-icon {
@@ -859,25 +861,26 @@ pre code {
 
 .empty-state-examples {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
   gap: var(--spacing-xs);
-  width: 100%;
-  max-width: 280px;
+  justify-content: flex-start;
 }
 
 .example-prompt-chip {
-  display: block;
-  width: 100%;
-  padding: var(--spacing-sm) var(--spacing-md);
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-xs) var(--spacing-sm);
   background: var(--color-bg-secondary);
   border: 1px dashed var(--color-border-strong);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-full);
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
-  text-align: left;
+  text-align: center;
   cursor: pointer;
   transition: all var(--duration-fast) var(--easing-out-quart);
   line-height: var(--line-height-normal);
+  white-space: nowrap;
 }
 
 .example-prompt-chip:hover {
@@ -885,7 +888,6 @@ pre code {
   border-color: color-mix(in oklch, var(--color-primary) 35%, transparent);
   border-style: solid;
   color: var(--color-primary-active);
-  transform: translateX(2px);
 }
 
 /* ============================================================
@@ -1280,6 +1282,7 @@ pre code {
 
 /* 输入区容器 — 纵向布局：textarea 上方，工具栏下方 */
 .input-wrapper {
+  position: relative;
   display: flex;
   flex-direction: column;
   background: var(--color-bg-primary);
@@ -1327,6 +1330,48 @@ pre code {
 .message-input:disabled {
   color: var(--color-text-disabled);
   cursor: not-allowed;
+}
+
+/* 打字机效果占位符 */
+.typewriter-placeholder {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  right: 0;
+  padding: 2px var(--spacing-md) var(--spacing-xs);
+  pointer-events: none;
+  z-index: 1;
+  opacity: 1;
+  transition: opacity var(--duration-fast) var(--easing-default);
+}
+
+.typewriter-placeholder.hidden {
+  opacity: 0;
+}
+
+.typewriter-text {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family);
+  line-height: 1.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.typewriter-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background-color: var(--color-primary);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: typewriter-blink 1s step-end infinite;
+}
+
+@keyframes typewriter-blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
 }
 
 /* 输入工具栏 — 底部操作行 */
