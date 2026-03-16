@@ -16,11 +16,11 @@
    ============================================================ */
 
 :root {
-  /* ---------- 品牌主色：琥珀金 ---------- */
-  --color-primary: oklch(64% 0.16 60);
-  --color-primary-hover: oklch(58% 0.17 60);
-  --color-primary-active: oklch(52% 0.18 60);
-  --color-primary-light: oklch(96% 0.05 60);
+  /* ---------- 品牌主色：陶土橙 ---------- */
+  --color-primary: oklch(63% 0.12 42);
+  --color-primary-hover: oklch(57% 0.13 42);
+  --color-primary-active: oklch(51% 0.14 42);
+  --color-primary-light: oklch(96% 0.04 42);
 
   /* ---------- 背景：暖奶白（向品牌色倾斜的中性）---------- */
   --color-bg-primary: oklch(98.5% 0.004 80);
@@ -161,10 +161,10 @@
   --color-border: rgba(255, 255, 255, 0.07);
   --color-border-light: rgba(255, 255, 255, 0.045);
   --color-border-strong: rgba(255, 255, 255, 0.11);
-  --color-primary: oklch(76% 0.15 60);
-  --color-primary-hover: oklch(80% 0.13 60);
-  --color-primary-active: oklch(70% 0.17 60);
-  --color-primary-light: oklch(64% 0.16 60 / 0.18);
+  --color-primary: oklch(75% 0.11 42);
+  --color-primary-hover: oklch(79% 0.10 42);
+  --color-primary-active: oklch(69% 0.13 42);
+  --color-primary-light: oklch(63% 0.12 42 / 0.18);
   --color-success-bg: oklch(22% 0.04 145);
   --color-warning-bg: oklch(22% 0.04 75);
   --color-error-bg: oklch(22% 0.05 25);
@@ -195,10 +195,10 @@
     --color-border: rgba(255, 255, 255, 0.07);
     --color-border-light: rgba(255, 255, 255, 0.045);
     --color-border-strong: rgba(255, 255, 255, 0.11);
-    --color-primary: oklch(76% 0.15 60);
-    --color-primary-hover: oklch(80% 0.13 60);
-    --color-primary-active: oklch(70% 0.17 60);
-    --color-primary-light: oklch(64% 0.16 60 / 0.18);
+    --color-primary: oklch(75% 0.11 42);
+    --color-primary-hover: oklch(79% 0.10 42);
+    --color-primary-active: oklch(69% 0.13 42);
+    --color-primary-light: oklch(63% 0.12 42 / 0.18);
     --color-success-bg: oklch(22% 0.04 145);
     --color-warning-bg: oklch(22% 0.04 75);
     --color-error-bg: oklch(22% 0.05 25);
