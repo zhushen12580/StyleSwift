@@ -1494,34 +1494,33 @@ pre code {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  position: relative;
 }
 
 .status-indicator .dot {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-full);
-  transition: background-color var(--duration-normal) var(--easing-default);
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  transition: opacity var(--duration-normal) var(--easing-default),
+              filter var(--duration-normal) var(--easing-default);
 }
 
-/* 状态灯颜色 */
+/* 状态图标效果 */
 .status-indicator .dot.ready {
-  background-color: var(--color-status-ready);
-  box-shadow: none;
+  opacity: 1;
+  filter: none;
 }
 
 .status-indicator .dot.processing {
-  background-color: var(--color-primary);
-  animation: pulse-ring 2s var(--easing-out-expo) infinite;
+  animation: pulse 2s ease-in-out infinite;
 }
 
 .status-indicator .dot.error {
-  background-color: var(--color-status-error);
   animation: shake-x 0.4s var(--easing-in-out);
 }
 
 .status-indicator .dot.restricted {
-  background-color: var(--color-status-restricted);
-  opacity: 0.6;
+  opacity: 0.45;
 }
 
 /* 处理中：品牌色呼吸光环 */
@@ -3714,16 +3713,14 @@ pre code {
 
 .logo-icon {
   width: 64px;
-  width: 60px;
-  height: 60px;
+  height: 64px;
   margin: 0 auto var(--spacing-lg);
-  background: var(--color-primary-light);
+  background: transparent;
   border-radius: var(--radius-xl);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-primary);
-  box-shadow: 0 0 0 1px color-mix(in oklch, var(--color-primary) 20%, transparent);
+  overflow: hidden;
 }
 
 .logo-text {
@@ -4697,28 +4694,28 @@ pre code {
 }
 
 .status-dot .dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: var(--color-status-ready);
-  transition: background-color var(--duration-normal) var(--easing-default);
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  transition: opacity var(--duration-normal) var(--easing-default),
+              filter var(--duration-normal) var(--easing-default);
 }
 
 .status-dot .dot.ready {
-  background-color: var(--color-status-ready);
+  opacity: 1;
+  filter: none;
 }
 
 .status-dot .dot.processing {
-  background-color: var(--color-status-processing);
   animation: pulse 1.5s ease-in-out infinite;
 }
 
 .status-dot .dot.error {
-  background-color: var(--color-status-error);
+  animation: shake-x 0.4s var(--easing-in-out);
 }
 
 .status-dot .dot.restricted {
-  background-color: var(--color-status-restricted);
+  opacity: 0.45;
 }
 
 /* 处理中脉动动画 */
