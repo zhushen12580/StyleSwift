@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,10 +7,10 @@
   <link rel="stylesheet" href="panel.css">
 </head>
 <body>
-  <!-- 主容器 -->
+  <!-- Main Container -->
   <div id="app">
     
-    <!-- 引导页：首次使用时显示 -->
+    <!-- Onboarding Page: Shown on first use -->
     <section id="onboarding-view" class="view hidden">
       <div class="onboarding-content">
         <div class="logo-area">
@@ -18,136 +18,136 @@
             <img src="../icons/icon-16.png" alt="StyleSwift Logo" style="width:64px;height:64px;object-fit:contain;">
           </div>
           <h1 class="logo-text">StyleSwift</h1>
-          <p class="tagline">一句话，给常逛的网页换皮肤</p>
+          <p class="tagline" data-i18n="tagline">Transform any webpage with a single sentence</p>
         </div>
         
         <div class="setup-form">
           <div class="form-group">
-            <label for="api-key-input">API Key</label>
+            <label for="api-key-input" data-i18n="apiKeyLabel">API Key</label>
             <input type="password" id="api-key-input" placeholder="sk-ant-..." autocomplete="off">
-            <p class="hint">输入你的API Key</p>
+            <p class="hint" data-i18n="apiKeyPlaceholder">Enter your API Key</p>
           </div>
           
           <div class="form-group">
-            <label for="api-base-input">API 地址 (可选)</label>
-            <input type="text" id="api-base-input" placeholder="https://api.anthropic.com" autocomplete="off">
-            <p class="hint">默认使用 Anthropic 官方地址</p>
+            <label for="api-base-input" data-i18n="apiAddressLabel">API Address (optional)</label>
+            <input type="text" id="api-base-input" data-i18n-placeholder="defaultApiUrl" autocomplete="off">
+            <p class="hint" data-i18n="apiAddressPlaceholder">Use Anthropic official address by default</p>
           </div>
 
           <div class="form-group">
-            <label for="model-input">模型 (可选)</label>
-            <input type="text" id="model-input" placeholder="claude-sonnet-4-20250514" autocomplete="off">
-            <p class="hint">默认使用 deepseek/deepseek-r1</p>
+            <label for="model-input" data-i18n="modelLabel">Model (optional)</label>
+            <input type="text" id="model-input" data-i18n-placeholder="defaultModel" autocomplete="off">
+            <p class="hint" data-i18n="modelPlaceholder">Use deepseek/deepseek-r1 by default</p>
           </div>
 
-          <button id="start-btn" class="btn-primary" disabled>开始使用</button>
+          <button id="start-btn" class="btn-primary" disabled data-i18n="startUsing">Get Started</button>
           
           <div id="setup-error" class="error-message hidden"></div>
           
           <div class="help-links">
-            <a href="https://ppio.com/model-api/console" target="_blank">获取 API Key</a>
+            <a href="https://ppio.com/model-api/console" target="_blank" data-i18n="getApiKey">Get API Key</a>
           </div>
         </div>
       </div>
     </section>
     
-    <!-- 主界面 -->
+    <!-- Main View -->
     <section id="main-view" class="view hidden">
       
-      <!-- 顶栏（含会话下拉，下拉相对顶栏定位） -->
+      <!-- Top Bar (with session dropdown) -->
       <header id="top-bar" class="topbar">
         <div class="topbar-left">
           <div class="status-indicator status-dot" id="status-dot">
             <img src="../icons/icon-16.png" alt="StyleSwift" class="dot ready">
           </div>
         </div>
-        <div class="topbar-center" id="session-header" title="点击切换会话">
+        <div class="topbar-center" id="session-header" data-i18n-title="clickToSwitchSession">
           <span id="current-domain" class="domain">--</span>
           <span class="separator">·</span>
-          <span id="session-title" class="title">新会话</span>
+          <span id="session-title" class="title" data-i18n="newSession">New Session</span>
           <span class="icon icon-chevron-down dropdown-arrow" style="width:10px;height:10px" aria-hidden="true"></span>
         </div>
         <div class="topbar-right">
-          <button id="settings-btn" class="btn-ghost btn-icon" title="设置">
+          <button id="settings-btn" class="btn-ghost btn-icon" data-i18n-title="settings">
             <span class="icon icon-settings" style="width:16px;height:16px" aria-hidden="true"></span>
           </button>
         </div>
-        <!-- 会话列表下拉：挂载在顶栏内，定位在顶栏正下方 -->
+        <!-- Session List Dropdown -->
           <div id="session-list-panel" class="session-dropdown-panel hidden">
           <div class="session-dropdown-header">
-            <span>会话历史</span>
+            <span data-i18n="sessionHistory">Session History</span>
             <button id="new-session-btn" class="new-session-btn">
               <span class="icon icon-plus" style="width:12px;height:12px" aria-hidden="true"></span>
-              <span>新会话</span>
+              <span data-i18n="newSession">New Session</span>
             </button>
           </div>
           <div id="session-list" class="session-list-container">
-            <!-- 动态生成会话项 -->
+            <!-- Dynamically generated session items -->
           </div>
         </div>
       </header>
       
-      <!-- 错误横幅 -->
+      <!-- Error Banner -->
       <div id="error-banner" class="error-banner hidden">
         <div class="error-banner-content">
           <span class="icon icon-alert error-banner-icon" style="width:14px;height:14px" aria-hidden="true"></span>
           <span id="error-banner-message" class="error-banner-message"></span>
           <button id="error-banner-action" class="error-banner-action"></button>
         </div>
-        <button id="error-banner-close" class="error-banner-close" title="关闭" aria-label="关闭错误提示">
+        <button id="error-banner-close" class="error-banner-close" data-i18n-title="closeError" data-i18n-aria-label="closeError">
           <span class="icon icon-x" style="width:12px;height:12px" aria-hidden="true"></span>
         </button>
       </div>
       
-      <!-- 风格技能快捷区 -->
+      <!-- Skill Chips Area -->
       <section id="skill-area" class="skill-area">
         <div class="skill-area-header">
           <div id="skill-area-toggle" class="skill-area-toggle">
             <span class="icon icon-wand skill-area-icon" style="width:13px;height:13px" aria-hidden="true"></span>
-            <span>风格技能</span>
+            <span data-i18n="styleSkills">Style Skills</span>
             <span class="icon icon-chevron-down arrow" style="width:10px;height:10px" aria-hidden="true"></span>
           </div>
         </div>
         <div id="skill-chips" class="skill-chips">
           <div id="skill-chips-inner" class="skill-chips-inner">
-            <!-- 动态生成技能 chips -->
+            <!-- Dynamically generated skill chips -->
           </div>
         </div>
       </section>
       
-      <!-- 聊天区域 -->
+      <!-- Chat Area -->
       <main id="chat-area" class="chat-area">
         <div id="messages-container">
-          <!-- 动态生成消息 -->
+          <!-- Dynamically generated messages -->
         </div>
         
-        <!-- 样式摘要 -->
+        <!-- Styles Summary -->
         <div id="styles-summary" class="hidden">
-          <span class="label">已应用样式:</span>
+          <span class="label" data-i18n="appliedStyles">Applied Styles:</span>
           <span id="styles-info" class="info"></span>
         </div>
       </main>
       
-      <!-- 输入区域 -->
+      <!-- Input Area -->
       <footer id="input-area" class="input-area">
-        <!-- 选中元素预览条 -->
+        <!-- Picked Element Bar -->
         <div id="picked-element-bar" class="picked-element-bar hidden">
           <span class="icon icon-mouse picked-element-icon" style="width:12px;height:12px" aria-hidden="true"></span>
           <span id="picked-element-label" class="picked-element-label"></span>
-          <button id="picked-element-clear" class="picked-element-clear" title="移除选中元素" aria-label="移除选中元素">
+          <button id="picked-element-clear" class="picked-element-clear" data-i18n-title="removeElement" data-i18n-aria-label="removeElement">
             <span class="icon icon-x" style="width:10px;height:10px" aria-hidden="true"></span>
           </button>
         </div>
-        <!-- 图片预览条 -->
+        <!-- Attached Images Bar -->
         <div id="attached-images-bar" class="attached-images-bar hidden">
           <div id="attached-images-container" class="attached-images-container">
-            <!-- 动态生成图片预览 -->
+            <!-- Dynamically generated image previews -->
           </div>
-          <button id="attached-images-clear" class="attached-images-clear" title="移除所有图片" aria-label="移除所有图片">
+          <button id="attached-images-clear" class="attached-images-clear" data-i18n-title="removeAllImages" data-i18n-aria-label="removeAllImages">
             <span class="icon icon-x" style="width:10px;height:10px" aria-hidden="true"></span>
           </button>
         </div>
-        <!-- 输入主体：textarea + 底部工具栏 -->
+        <!-- Input Main: textarea + bottom toolbar -->
         <div id="input-wrapper" class="input-wrapper">
           <div id="typewriter-placeholder" class="typewriter-placeholder">
             <span id="typewriter-text" class="typewriter-text"></span>
@@ -158,23 +158,23 @@
             class="message-input"
             placeholder=""
             rows="1"
-            aria-label="输入风格描述"
+            data-i18n-aria-label="inputStyleDesc"
           ></textarea>
           <div class="input-toolbar">
             <div class="input-toolbar-left">
-              <button id="picker-btn" class="toolbar-btn" title="选取页面元素" aria-label="选取页面元素">
+              <button id="picker-btn" class="toolbar-btn" data-i18n-title="pickPageElement" data-i18n-aria-label="pickPageElement">
                 <span class="icon icon-mouse" style="width:14px;height:14px" aria-hidden="true"></span>
               </button>
-              <button id="image-upload-btn" class="toolbar-btn" title="上传参考图片" aria-label="上传参考图片">
+              <button id="image-upload-btn" class="toolbar-btn" data-i18n-title="uploadRefImage" data-i18n-aria-label="uploadRefImage">
                 <span class="icon icon-image" style="width:14px;height:14px" aria-hidden="true"></span>
               </button>
               <input type="file" id="image-upload-input" accept="image/*" multiple hidden>
             </div>
             <div class="input-toolbar-right">
-              <button id="send-btn" class="send-btn" title="发送 (Enter)" aria-label="发送">
+              <button id="send-btn" class="send-btn" data-i18n-title="send" data-i18n-aria-label="send">
                 <span class="icon icon-send" style="width:13px;height:13px" aria-hidden="true"></span>
               </button>
-              <button id="stop-btn" class="stop-btn hidden" title="停止" aria-label="停止">
+              <button id="stop-btn" class="stop-btn hidden" data-i18n-title="stop" data-i18n-aria-label="stop">
                 <span class="icon icon-stop" style="width:10px;height:10px" aria-hidden="true"></span>
               </button>
             </div>
@@ -184,97 +184,97 @@
       
     </section>
     
-    <!-- 设置页 -->
+    <!-- Settings View -->
     <section id="settings-view" class="view hidden">
       <header class="settings-header">
-        <button id="settings-back-btn" class="settings-back-btn" title="返回 (自动保存)">
+        <button id="settings-back-btn" class="settings-back-btn" data-i18n-title="returnAutoSave">
           <span class="icon icon-chevron-left" style="width:16px;height:16px" aria-hidden="true"></span>
-          <span class="back-label">返回</span>
+          <span class="back-label" data-i18n="back">Back</span>
         </button>
-        <h2>设置</h2>
-        <span id="settings-save-hint" class="settings-save-hint hidden">未保存</span>
+        <h2 data-i18n="settings">Settings</h2>
+        <span id="settings-save-hint" class="settings-save-hint hidden" data-i18n="unsaved">Unsaved</span>
       </header>
       
       <div class="settings-content">
         <div class="settings-group">
-          <h3>API 配置</h3>
+          <h3 data-i18n="apiConfigTitle">API Configuration</h3>
           <div class="form-group">
-            <label for="settings-api-key">API Key</label>
+            <label for="settings-api-key" data-i18n="apiKeyLabel">API Key</label>
             <div class="input-with-action">
               <input type="password" id="settings-api-key" placeholder="sk-ant-...">
-              <button id="toggle-key-visibility" class="icon-btn" title="切换可见性" aria-label="切换 API Key 可见性">
+              <button id="toggle-key-visibility" class="icon-btn" data-i18n-title="toggleVisibility" data-i18n-aria-label="toggleVisibility">
                 <span class="icon icon-eye" style="width:16px;height:16px" aria-hidden="true"></span>
               </button>
             </div>
           </div>
           <div class="form-group">
-            <label for="settings-api-base">API 地址</label>
-            <input type="text" id="settings-api-base" placeholder="https://api.anthropic.com">
+            <label for="settings-api-base" data-i18n="apiAddressLabel">API Address</label>
+            <input type="text" id="settings-api-base" data-i18n-placeholder="defaultApiUrl">
           </div>
           <div class="form-group">
-            <label for="settings-model">模型</label>
-            <input type="text" id="settings-model" placeholder="deepseek/deepseek-r1">
+            <label for="settings-model" data-i18n="modelLabel">Model</label>
+            <input type="text" id="settings-model" data-i18n-placeholder="defaultModel2">
           </div>
-          <button id="verify-connection-btn" class="btn-secondary">验证连接</button>
+          <button id="verify-connection-btn" class="btn-secondary" data-i18n="verifyConnection">Verify Connection</button>
           <div id="connection-status" class="status-message hidden"></div>
         </div>
 
         <div class="settings-group">
-          <h3>视觉模型配置</h3>
-          <p class="hint">用于处理图片的视觉模型配置，留空则使用默认 API 配置</p>
+          <h3 data-i18n="visionModelConfigTitle">Vision Model Configuration</h3>
+          <p class="hint" data-i18n="visionModelDesc">Vision model settings for image processing. Leave empty to use default API configuration.</p>
           <div class="form-group">
-            <label for="settings-vision-api-key">视觉模型 API Key (可选)</label>
+            <label for="settings-vision-api-key" data-i18n="visionApiKeyLabel">Vision Model API Key (optional)</label>
             <div class="input-with-action">
-              <input type="password" id="settings-vision-api-key" placeholder="留空则使用上方 API Key">
+              <input type="password" id="settings-vision-api-key" data-i18n-placeholder="visionApiKeyPlaceholder">
             </div>
           </div>
           <div class="form-group">
-            <label for="settings-vision-api-base">视觉模型 API 地址 (可选)</label>
-            <input type="text" id="settings-vision-api-base" placeholder="留空则使用上方 API 地址">
+            <label for="settings-vision-api-base" data-i18n="visionApiBaseLabel">Vision Model API Address (optional)</label>
+            <input type="text" id="settings-vision-api-base" data-i18n-placeholder="visionApiBasePlaceholder">
           </div>
           <div class="form-group">
-            <label for="settings-vision-model">视觉模型名称</label>
-            <input type="text" id="settings-vision-model" placeholder="例如: gpt-4o, claude-sonnet-4-20250514">
+            <label for="settings-vision-model" data-i18n="visionModelLabel">Vision Model Name</label>
+            <input type="text" id="settings-vision-model" data-i18n-placeholder="visionModelPlaceholder">
           </div>
         </div>
         
         <div class="settings-group">
-          <h3>用户画像</h3>
-          <p class="hint">记录你的风格偏好，AI 会参考这些偏好生成样式</p>
+          <h3 data-i18n="userProfileTitle">User Profile</h3>
+          <p class="hint" data-i18n="userProfileDesc">Record your style preferences. AI will use these to generate styles.</p>
           <div class="form-group">
-            <label for="settings-user-profile">画像内容</label>
+            <label for="settings-user-profile" data-i18n="name">Profile Content</label>
             <textarea
               id="settings-user-profile"
               class="settings-textarea"
-              placeholder="例如：偏好高对比度设计、喜欢深色模式、不喜欢圆角..."
+              data-i18n-placeholder="userProfilePlaceholder"
               rows="4"
             ></textarea>
           </div>
           <div class="profile-actions">
-            <span id="profile-char-count" class="char-count">0 字</span>
-            <button id="save-profile-btn" class="btn-secondary">保存画像</button>
+            <span id="profile-char-count" class="char-count">0 chars</span>
+            <button id="save-profile-btn" class="btn-secondary" data-i18n="saveProfile">Save Profile</button>
           </div>
           <div id="profile-status" class="status-message hidden"></div>
         </div>
 
         <div class="settings-group">
-          <h3>静态技能</h3>
-          <p class="hint">启用/禁用内置技能，禁用的技能不会出现在快捷区</p>
+          <h3 data-i18n="staticSkillsTitle">Static Skills</h3>
+          <p class="hint" data-i18n="staticSkillsDesc">Enable/disable built-in skills. Disabled skills won't appear in the quick area.</p>
           <div id="static-skill-list" class="static-skill-list">
-            <!-- 动态生成静态技能列表 -->
+            <!-- Dynamically generated static skill list -->
           </div>
         </div>
 
         <div class="settings-group">
-          <h3>风格技能</h3>
-          <p class="hint">保存的风格技能可在任意网站复用，点击编辑</p>
+          <h3 data-i18n="styleSkillTitle">Style Skills</h3>
+          <p class="hint" data-i18n="styleSkillDesc">Saved style skills can be reused on any website. Click to edit.</p>
           <div id="skill-list" class="skill-list">
-            <!-- 动态生成技能列表 -->
+            <!-- Dynamically generated skill list -->
           </div>
         </div>
         
         <div class="settings-group">
-          <h3>存储</h3>
+          <h3 data-i18n="storageTitle">Storage</h3>
           <div class="storage-usage-container">
             <div class="storage-usage-bar">
               <div id="storage-progress" class="storage-progress" style="width: 0%"></div>
@@ -284,36 +284,36 @@
               <span id="storage-detail">-- MB / -- MB</span>
             </div>
           </div>
-          <button id="clear-storage-btn" class="btn-secondary">清理历史数据</button>
-          <p class="hint">清理90天前的会话和超出限制的历史记录</p>
+          <button id="clear-storage-btn" class="btn-secondary" data-i18n="clearHistory">Clear History</button>
+          <p class="hint" data-i18n="clearHistoryDesc">Clear sessions older than 90 days and excess history records.</p>
         </div>
         
         <div class="settings-group">
-          <h3>关于</h3>
-          <p class="about-text">StyleSwift v1.0.0</p>
-          <p class="about-text">一句话，给常逛的网页换皮肤</p>
+          <h3 data-i18n="aboutTitle">About</h3>
+          <p class="about-text" data-i18n="aboutVersion">StyleSwift v1.0.0</p>
+          <p class="about-text" data-i18n="tagline">Transform any webpage with a single sentence</p>
         </div>
       </div>
     </section>
     
-    <!-- 加载状态 -->
+    <!-- Loading Overlay -->
     <div id="loading-overlay" class="overlay hidden">
       <div class="loading-spinner"></div>
     </div>
     
-    <!-- 错误提示 -->
+    <!-- Error Toast -->
     <div id="error-toast" class="toast hidden">
       <span id="error-message"></span>
-      <button id="dismiss-error" class="icon-btn" aria-label="关闭提示">
+      <button id="dismiss-error" class="icon-btn" data-i18n-aria-label="close">
         <span class="icon icon-x" style="width:12px;height:12px" aria-hidden="true"></span>
       </button>
     </div>
     
   </div>
   
-  <!-- JavaScript 模块 -->
-  <!-- 使用 ES 模块，import 自动处理依赖关系 -->
-  <!-- style-skill.js 需要在 tools.js 之前被 import（tools.js 中有 import 语句） -->
+  <!-- JavaScript Modules -->
+  <!-- ES modules, imports handle dependencies automatically -->
+  <script type="module" src="i18n.js"></script>
   <script type="module" src="style-skill.js"></script>
   <script type="module" src="session.js"></script>
   <script type="module" src="profile.js"></script>

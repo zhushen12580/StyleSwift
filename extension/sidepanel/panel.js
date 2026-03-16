@@ -30,6 +30,8 @@ import { SkillLoader } from "./skill-loader.js";
 
 import { runGetUserProfile, runUpdateUserProfile } from "./profile.js";
 
+import { getMessage, getUILanguage, applyTranslations, isChineseLanguage, getLocale, formatMessage } from "./i18n.js";
+
 // ============================================================================
 // Icon Utility — Iconify 图标辅助函数
 // ============================================================================
@@ -145,12 +147,8 @@ class TypewriterEffect {
     this.textElement = null;
     this.placeholderElement = null;
     this.inputElement = null;
-    this.examples = [
-      "给页面换个皮肤，要旧报纸风格",
-      "顺便说说一个风格",
-      "隐藏这个元素",
-      "增加行间距，让阅读更舒适"
-    ];
+    // Typewriter examples - localizedi18n
+    this.examples = this.getLocalizedExamples();
     this.currentIndex = 0;
     this.currentText = "";
     this.isTyping = false;
@@ -161,6 +159,19 @@ class TypewriterEffect {
     this.deleteSpeed = 30; // 删除速度 (ms)
     this.pauseDelay = 2000; // 完成后暂停时间 (ms)
     this.switchDelay = 500; // 切换示例前的暂停时间 (ms)
+  }
+
+  /**
+   * Get localized typewriter examples
+   * @returns {string[]}
+   */
+  getLocalizedExamples() {
+    return [
+      getMessage('typingExample1'),
+      getMessage('typingExample2'),
+      getMessage('typingExample3'),
+      getMessage('typingExample4'),
+    ];
   }
 
   /**
@@ -175,7 +186,7 @@ class TypewriterEffect {
     this.inputElement = inputElement;
 
     if (!this.textElement || !this.placeholderElement || !this.inputElement) {
-      console.warn("TypewriterEffect: 缺少必要的 DOM 元素");
+      console.warn("[TypewriterEffect] " + getMessage("typewriterNothing"));
       return;
     }
 
@@ -864,7 +875,7 @@ function updateTopBarDisplay(domain, title) {
   }
 
   if (titleEl) {
-    titleEl.textContent = title || "新会话";
+    titleEl.textContent = title || getMessage("newSession");
   }
 }
 
@@ -942,7 +953,7 @@ function applyInputAreaState(config) {
       // 处理中：输入框禁用 + 停止按钮
       DOM.inputArea.classList.add("processing");
       DOM.messageInput.disabled = true;
-      DOM.messageInput.placeholder = "正在处理中...";
+      DOM.messageInput.placeholder = getMessage("processing");
       DOM.sendBtn.classList.add("hidden");
       DOM.stopBtn.classList.remove("hidden");
       // Agent 运行时隐藏打字机效果
@@ -953,7 +964,7 @@ function applyInputAreaState(config) {
       // 受限页面：整体置灰 + 提示
       DOM.inputArea.classList.add("restricted");
       DOM.messageInput.disabled = true;
-      DOM.messageInput.placeholder = "此页面不支持样式修改";
+      DOM.messageInput.placeholder = getMessage("restrictedPage");
       DOM.messageInput.value = "";
       DOM.sendBtn.disabled = true;
       // 受限页面隐藏打字机效果
@@ -1178,7 +1189,7 @@ async function handleStartClick() {
 
   // 基本验证
   if (!apiKey) {
-    showSetupError("请输入 API Key");
+    showSetupError(getMessage("enterApiKey"));
     return;
   }
 
@@ -1199,7 +1210,7 @@ async function handleStartClick() {
   try {
     new URL(apiBase);
   } catch {
-    showSetupError("API 地址格式不正确");
+    showSetupError(getMessage("apiAddressFormatError"));
     return;
   }
 
@@ -1214,15 +1225,15 @@ async function handleStartClick() {
 
     if (!result.ok) {
       // 连接失败
-      let errorMsg = "连接验证失败";
+      let errorMsg = getMessage("connectionVerifyFailed");
 
       if (result.error) {
         // 网络错误
         errorMsg = `连接失败: ${result.error}`;
       } else if (result.status === 401) {
-        errorMsg = "API Key 无效，请检查是否正确";
+        errorMsg = getMessage("apiKeyInvalidPleaseCheck");
       } else if (result.status === 403) {
-        errorMsg = "访问被拒绝，请检查 API Key 权限";
+        errorMsg = getMessage("accessDeniedPleaseCheck");
       } else if (result.status) {
         errorMsg = `连接失败 (HTTP ${result.status})`;
       }
@@ -1350,7 +1361,7 @@ async function initMainView() {
   applyGlobalState();
 
   // 更新顶栏显示
-  updateTopBarDisplay("--", "新会话");
+  updateTopBarDisplay("--", getMessage("newSession"));
 
   // 绑定顶栏交互事件
   bindTopBarEvents();
@@ -1423,7 +1434,7 @@ async function initMainView() {
       stateManager.set("currentDomain", domain);
 
       // 更新顶栏显示
-      updateTopBarDisplay(domain, "新会话");
+      updateTopBarDisplay(domain, getMessage("newSession"));
 
       // === Step 5: 加载会话 ===
       await loadSessionForDomain(domain);
@@ -1610,7 +1621,7 @@ function updateInputAreaState(state) {
       // 处理中：输入框禁用 + 停止按钮
       DOM.inputArea.classList.add("processing");
       DOM.messageInput.disabled = true;
-      DOM.messageInput.placeholder = "正在处理中...";
+      DOM.messageInput.placeholder = getMessage("processing");
       DOM.messageInput.value = "";
       DOM.sendBtn.classList.add("hidden");
       DOM.stopBtn.classList.remove("hidden");
@@ -1620,7 +1631,7 @@ function updateInputAreaState(state) {
       // 受限页面：整体置灰 + 提示
       DOM.inputArea.classList.add("restricted");
       DOM.messageInput.disabled = true;
-      DOM.messageInput.placeholder = "此页面不支持样式修改";
+      DOM.messageInput.placeholder = getMessage("restrictedPage");
       DOM.messageInput.value = "";
       DOM.sendBtn.disabled = true;
       break;
@@ -1804,7 +1815,7 @@ async function handleSendClick() {
       curReasoningBlock.classList.add("finished", "collapsed");
       curReasoningHeader.setAttribute("aria-expanded", "false");
       if (curReasoningTitleEl) {
-        curReasoningTitleEl.textContent = `思考过程（${reasoningCharCount} 字）`;
+        curReasoningTitleEl.textContent = formatMessage('thinkingProcess', { count: reasoningCharCount });
       }
     }
     streamingRenderer.finish();
@@ -1939,7 +1950,7 @@ async function handleSendClick() {
       curReasoningBlock.classList.add("collapsed");
       curReasoningHeader.setAttribute("aria-expanded", "false");
       if (curReasoningTitleEl) {
-        curReasoningTitleEl.textContent = `思考过程（${reasoningCharCount} 字）`;
+        curReasoningTitleEl.textContent = formatMessage('thinkingProcess', { count: reasoningCharCount });
       }
     }
 
@@ -2444,7 +2455,7 @@ function renderAttachedImages() {
     const removeBtn = document.createElement("button");
     removeBtn.className = "attached-image-remove";
     removeBtn.textContent = "×";
-    removeBtn.title = "移除图片";
+    removeBtn.title = getMessage("removeImage");
     removeBtn.addEventListener("click", () => removeAttachedImage(index));
     item.appendChild(removeBtn);
 
@@ -2714,7 +2725,7 @@ function createBuiltInChip(skill, isRecent = false) {
   chip.dataset.prompt = skill.prompt;
 
   chip.innerHTML = `
-    ${isRecent ? '<span class="skill-recent-badge">最近</span>' : ''}
+    ${isRecent ? '<span class="skill-recent-badge">' + getMessage('recentBadge') + '</span>' : ''}
     <span class="skill-icon">${skill.icon}</span>
     <span class="skill-name">${skill.name}</span>
   `;
@@ -2742,7 +2753,7 @@ function createUserSkillChip(skill, isRecent = false) {
   chip.dataset.prompt = prompt;
 
   chip.innerHTML = `
-    ${isRecent ? '<span class="skill-recent-badge">最近</span>' : ''}
+    ${isRecent ? '<span class="skill-recent-badge">' + getMessage('recentBadge') + '</span>' : ''}
     <span class="skill-name">${skill.name}</span>
   `;
 
@@ -2816,15 +2827,15 @@ function showSkillContextMenu(e, skill) {
   menu.innerHTML = `
     <div class="context-menu-item" data-action="apply">
       <span class="menu-icon">${iconHtml('sparkles', 14)}</span>
-      <span>应用</span>
+      <span>${getMessage('apply')}</span>
     </div>
     <div class="context-menu-item" data-action="view">
       <span class="menu-icon">${iconHtml('file-text', 14)}</span>
-      <span>查看详情</span>
+      <span>${getMessage('viewDetails')}</span>
     </div>
     <div class="context-menu-item danger" data-action="delete">
       <span class="menu-icon">${iconHtml('trash', 14)}</span>
-      <span>删除</span>
+      <span>${getMessage('delete')}</span>
     </div>
   `;
 
@@ -2915,7 +2926,7 @@ async function viewSkillDetails(skill) {
     const content = await StyleSkillStore.load(skill.id);
 
     if (!content) {
-      showError("无法加载技能详情");
+      showError(getMessage("loadSkillDetailsError"));
       return;
     }
 
@@ -2930,10 +2941,10 @@ async function viewSkillDetails(skill) {
         </div>
         <div class="modal-body">
           <div class="skill-meta">
-            <span class="skill-source">来源: ${escapeHtml(skill.sourceDomain || "unknown")}</span>
-            <span class="skill-date">创建于: ${new Date(skill.createdAt).toLocaleDateString("zh-CN")}</span>
+            <span class="skill-source">${getMessage('source')}: ${escapeHtml(skill.sourceDomain || "unknown")}</span>
+            <span class="skill-date">${getMessage('createdAt')}: ${new Date(skill.createdAt).toLocaleDateString(getLocale())}</span>
           </div>
-          ${skill.mood ? `<div class="skill-mood">风格: ${escapeHtml(skill.mood)}</div>` : ""}
+          ${skill.mood ? `<div class="skill-mood">${getMessage('style')}: ${escapeHtml(skill.mood)}</div>` : ""}
           <div class="skill-content">
             <pre>${escapeHtml(content)}</pre>
           </div>
@@ -2957,7 +2968,7 @@ async function viewSkillDetails(skill) {
     document.body.appendChild(modal);
   } catch (err) {
     console.error("[Panel] Failed to view skill details:", err);
-    showError("加载技能详情失败");
+    showError(getMessage("loadSkillDetailsError"));
   }
 }
 
@@ -2972,7 +2983,7 @@ async function deleteSkillWithConfirmation(skill) {
   modal.innerHTML = `
     <div class="modal-content">
       <div class="modal-header">
-        <h3>确认删除</h3>
+        <h3>${getMessage('confirmDelete')}</h3>
       </div>
       <div class="modal-body">
         <p>确定要删除风格技能「${escapeHtml(skill.name)}」吗？</p>
@@ -3013,7 +3024,7 @@ async function deleteSkillWithConfirmation(skill) {
       console.log("[Panel] Skill deleted:", skill.name);
     } catch (err) {
       console.error("[Panel] Failed to delete skill:", err);
-      showError("删除技能失败");
+      showError(getMessage("deleteSkillError"));
     }
   });
 
@@ -3107,7 +3118,7 @@ async function renderSessionList() {
   const domain = AppState.currentDomain;
   if (!domain) {
     listContainer.innerHTML =
-      '<div class="session-list-empty">未检测到当前域名</div>';
+      '<div class="session-list-empty">' + getMessage("domainNotDetected") + '</div>';
     return;
   }
 
@@ -3121,7 +3132,7 @@ async function renderSessionList() {
 
     if (!Array.isArray(index) || index.length === 0) {
       listContainer.innerHTML =
-        '<div class="session-list-empty">暂无会话记录</div>';
+        '<div class="session-list-empty">' + getMessage("noSessions") + '</div>';
       return;
     }
 
@@ -3152,7 +3163,7 @@ async function renderSessionList() {
   } catch (error) {
     console.error("[Panel] Failed to render session list:", error);
     listContainer.innerHTML =
-      '<div class="session-list-empty">加载会话失败</div>';
+      '<div class="session-list-empty">' + getMessage("loadSessionError") + '</div>';
   }
 }
 
@@ -3177,7 +3188,7 @@ async function createSessionCard(sessionItem, domain, currentSessionId) {
   const firstUserMessage = historyData.messages.find(
     (msg) => msg.role === "user",
   );
-  const preview = firstUserMessage?.content || "（无内容）";
+  const preview = firstUserMessage?.content || getMessage("noContent");
 
   // 创建卡片元素
   const card = document.createElement("div");
@@ -3195,12 +3206,12 @@ async function createSessionCard(sessionItem, domain, currentSessionId) {
   // 组装卡片内容
   card.innerHTML = `
     <div class="session-info">
-      <div class="session-title">${escapeHtml(meta.title || "新会话")}</div>
+      <div class="session-title">${escapeHtml(meta.title || getMessage("newSession"))}</div>
       <div class="session-date">${dateStr}</div>
       <div class="session-preview">${escapeHtml(preview.slice(0, 50))}</div>
     </div>
     <div class="session-actions">
-      <button class="session-delete-btn" title="删除会话" ${id === currentSessionId ? "disabled" : ""}>
+      <button class="session-delete-btn" title="${getMessage('deleteSession')}" ${id === currentSessionId ? "disabled" : ""}>
         ${iconHtml('trash', 13)}
       </button>
     </div>
@@ -3218,7 +3229,7 @@ async function createSessionCard(sessionItem, domain, currentSessionId) {
   deleteBtn.addEventListener("click", (e) => {
     e.stopPropagation();
     if (!deleteBtn.disabled) {
-      handleDeleteSession(domain, id, meta.title || "新会话");
+      handleDeleteSession(domain, id, meta.title || getMessage("newSession"));
     }
   });
 
@@ -3294,7 +3305,7 @@ async function handleSessionClick(domain, sessionId) {
 
     // === 4. 更新顶栏显示 ===
     const meta = await session.loadSessionMeta(domain, sessionId);
-    updateTopBarDisplay(domain, meta.title || "新会话");
+    updateTopBarDisplay(domain, meta.title || getMessage("newSession"));
 
     // 更新全局状态中的域名和会话 ID
     stateManager.set("currentDomain", domain);
@@ -3328,7 +3339,7 @@ async function handleSessionClick(domain, sessionId) {
     console.log("[Panel] Session switched successfully");
   } catch (error) {
     console.error("[Panel] Failed to switch session:", error);
-    showError("切换会话失败");
+    showError(getMessage("switchSessionError"));
   }
 }
 
@@ -3342,7 +3353,7 @@ async function handleNewSession() {
     // 获取当前域名
     const domain = AppState.currentDomain;
     if (!domain) {
-      showError("未检测到当前域名");
+      showError(getMessage("domainNotDetected"));
       return;
     }
 
@@ -3394,7 +3405,7 @@ async function handleNewSession() {
     stateManager.set("hasConversationStarted", false);
 
     // 更新顶栏显示
-    updateTopBarDisplay(domain, "新会话");
+    updateTopBarDisplay(domain, getMessage("newSession"));
 
     // 关闭下拉面板
     const panel = document.getElementById("session-list-panel");
@@ -3407,7 +3418,7 @@ async function handleNewSession() {
     console.log(`[Panel] New session created: ${newSessionId}`);
   } catch (error) {
     console.error("[Panel] Failed to create new session:", error);
-    showError("创建会话失败");
+    showError(getMessage("createSessionError"));
   }
 }
 
@@ -3466,7 +3477,7 @@ function showDeleteConfirmationModal(domain, sessionId, sessionTitle) {
     </div>
     <div class="modal-footer">
       <button class="modal-btn modal-btn-secondary" data-action="cancel">取消</button>
-      <button class="modal-btn modal-btn-danger" data-action="confirm">确认删除</button>
+      <button class="modal-btn modal-btn-danger" data-action="confirm">${getMessage('confirm')}</button>
     </div>
   `;
 
@@ -3519,7 +3530,7 @@ function showLastSessionModal(domain, sessionId, sessionTitle) {
     </div>
     <div class="modal-footer">
       <button class="modal-btn modal-btn-secondary" data-action="cancel">取消</button>
-      <button class="modal-btn modal-btn-danger" data-action="delete">确认删除</button>
+      <button class="modal-btn modal-btn-danger" data-action="delete">${getMessage('confirm')}</button>
     </div>
   `;
 
@@ -3569,7 +3580,7 @@ async function executeDeleteSession(domain, sessionId) {
     console.log("[Panel] Session deleted successfully");
   } catch (error) {
     console.error("[Panel] Failed to delete session:", error);
-    showError("删除会话失败");
+    showError(getMessage("deleteSession") + " " + getMessage("saveFailed"));
   }
 }
 
@@ -3792,7 +3803,7 @@ async function handleSettingsBack() {
 function showSaveSuccess() {
   const saveHint = document.getElementById("settings-save-hint");
   if (saveHint) {
-    saveHint.textContent = "✓ 已保存";
+    saveHint.textContent = "✓ " + getMessage("saved");
     saveHint.classList.remove("hidden", "unsaved");
     saveHint.classList.add("saved");
     setTimeout(() => {
@@ -3839,7 +3850,7 @@ async function loadUserProfile() {
     const profile = await runGetUserProfile();
     if (DOM.settingsUserProfile) {
       // 如果是默认提示，显示空
-      if (profile === "(新用户，暂无风格偏好记录)") {
+      if (profile === "(" + getMessage("newUserProfile") + ")") {
         DOM.settingsUserProfile.value = "";
       } else {
         DOM.settingsUserProfile.value = profile;
@@ -3893,7 +3904,7 @@ async function renderStaticSkillList() {
     const disabledSkills = await getDisabledSkills();
 
     if (allSkills.length === 0) {
-      container.innerHTML = '<p class="hint">暂无内置技能</p>';
+      container.innerHTML = '<p class="hint">' + getMessage('noStaticSkills') + '</p>';
       return;
     }
 
@@ -3966,7 +3977,7 @@ async function renderUserSkillList() {
     const disabledUserSkills = await getDisabledUserSkills();
 
     if (userSkills.length === 0) {
-      container.innerHTML = '<p class="hint">暂无保存的风格技能</p>';
+      container.innerHTML = '<p class="hint">' + getMessage('noStyleSkills') + '</p>';
       return;
     }
 
@@ -3977,7 +3988,7 @@ async function renderUserSkillList() {
     }
   } catch (err) {
     console.error("[Panel] Failed to render user skill list:", err);
-    container.innerHTML = '<p class="hint error">加载失败</p>';
+    container.innerHTML = '<p class="hint error">' + getMessage('loadSkillError') + '</p>';
   }
 }
 
@@ -3997,19 +4008,19 @@ function createUserSkillItem(skill, isEnabled) {
   item.innerHTML = `
     <div class="user-skill-info">
       <span class="user-skill-name">${escapeHtml(skill.name)}</span>
-      <span class="user-skill-mood">${escapeHtml(skill.mood || "无描述")}</span>
+      <span class="user-skill-mood">${escapeHtml(skill.mood || getMessage("noDesc"))}</span>
       <div class="user-skill-meta">
         <span class="user-skill-domain">${escapeHtml(skill.sourceDomain || "unknown")}</span>
         <span class="user-skill-date">${createdDate}</span>
       </div>
     </div>
     <div class="user-skill-actions">
-      <label class="toggle-switch toggle-switch-small" title="${isEnabled ? "已启用" : "已禁用"}">
+      <label class="toggle-switch toggle-switch-small" title="${isEnabled ? getMessage("enabled") : getMessage("disabled")}">
         <input type="checkbox" ${isEnabled ? "checked" : ""}>
         <span class="toggle-slider"></span>
       </label>
       <button class="btn-icon-small" data-action="edit" title="编辑">${iconHtml('pencil', 13)}</button>
-      <button class="btn-icon-small" data-action="delete" title="删除">${iconHtml('trash', 13)}</button>
+      <button class="btn-icon-small" data-action="delete" title="${getMessage('delete')}">${iconHtml('trash', 13)}</button>
     </div>
   `;
 
@@ -4019,7 +4030,7 @@ function createUserSkillItem(skill, isEnabled) {
     const enabled = e.target.checked;
     await setUserSkillEnabled(skill.id, enabled);
     // 更新 tooltip
-    toggle.parentElement.title = enabled ? "已启用" : "已禁用";
+    toggle.parentElement.title = enabled ? getMessage("enabled") : getMessage("disabled");
     // 刷新主界面的技能 chips
     await renderSkillChips();
     console.log(
@@ -4056,21 +4067,21 @@ async function openSkillEditor(skill) {
   modal.innerHTML = `
     <div class="modal-content skill-editor-content">
       <div class="modal-header">
-        <h3>编辑风格技能</h3>
-        <button class="modal-close-btn" title="关闭">×</button>
+        <h3>${getMessage('editStyleSkill')}</h3>
+        <button class="modal-close-btn" title="${getMessage('close')}">×</button>
       </div>
       <div class="modal-body">
         <div class="form-group">
           <label for="edit-skill-name">名称</label>
-          <input type="text" id="edit-skill-name" value="${escapeHtml(skill.name)}" placeholder="风格名称">
+          <input type="text" id="edit-skill-name" value="${escapeHtml(skill.name)}" data-i18n-placeholder="styleNamePlaceholder">
         </div>
         <div class="form-group">
           <label for="edit-skill-mood">描述</label>
-          <input type="text" id="edit-skill-mood" value="${escapeHtml(skill.mood || "")}" placeholder="一句话风格描述">
+          <input type="text" id="edit-skill-mood" value="${escapeHtml(skill.mood || "")}" data-i18n-placeholder="styleDescPlaceholder">
         </div>
         <div class="form-group">
           <label for="edit-skill-content">内容</label>
-          <textarea id="edit-skill-content" class="settings-textarea skill-editor-textarea" placeholder="技能内容（Markdown 格式）">${escapeHtml(content || "")}</textarea>
+          <textarea id="edit-skill-content" class="settings-textarea skill-editor-textarea" data-i18n-placeholder="skillContentPlaceholder">${escapeHtml(content || "")}</textarea>
         </div>
       </div>
       <div class="modal-footer">
@@ -4109,7 +4120,7 @@ async function openSkillEditor(skill) {
 
     try {
       saveBtn.disabled = true;
-      saveBtn.textContent = "保存中...";
+      saveBtn.textContent = getMessage('saving');
 
       await StyleSkillStore.save(
         skill.id,
@@ -4126,8 +4137,8 @@ async function openSkillEditor(skill) {
     } catch (err) {
       console.error("[Panel] Failed to save skill:", err);
       saveBtn.disabled = false;
-      saveBtn.textContent = "保存";
-      alert("保存失败: " + err.message);
+      saveBtn.textContent = getMessage("save");
+      alert(getMessage("saveFailed") + ": " + err.message);
     }
   });
 
@@ -4154,11 +4165,11 @@ async function handleSaveUserProfile() {
 
   if (!DOM.saveProfileBtn) return;
   DOM.saveProfileBtn.disabled = true;
-  showProfileStatus("正在保存...", "loading");
+  showProfileStatus(getMessage("saving"), "loading");
 
   try {
     await runUpdateUserProfile(content);
-    showProfileStatus("✓ 画像已保存", "success");
+    showProfileStatus("✓ " + getMessage("profileSaved"), "success");
   } catch (err) {
     console.error("[Panel] Failed to save user profile:", err);
     showProfileStatus(`✗ 保存失败: ${err.message}`, "error");
@@ -4202,19 +4213,19 @@ async function handleVerifyConnection() {
   const model = DOM.settingsModel.value.trim() || DEFAULT_MODEL;
 
   if (!apiKey) {
-    showConnectionStatus("请输入 API Key", "error");
+    showConnectionStatus(getMessage("enterApiKey"), "error");
     return;
   }
 
   DOM.verifyConnectionBtn.disabled = true;
   DOM.verifyConnectionBtn.classList.add("loading");
-  showConnectionStatus("正在验证连接...", "loading");
+  showConnectionStatus(getMessage("verifyingConnection"), "loading");
 
   try {
     const result = await validateConnection(apiKey, apiBase, model);
 
     if (result.ok) {
-      showConnectionStatus("✓ 连接成功，设置已保存", "success");
+      showConnectionStatus("✓ " + getMessage("connectionSuccess"), "success");
       // 保存所有设置
       await saveSettings({ apiKey, apiBase, model });
       AppState.apiKeyStatus = "valid";
@@ -4222,9 +4233,9 @@ async function handleVerifyConnection() {
       const saveHint = document.getElementById("settings-save-hint");
       if (saveHint) saveHint.classList.add("hidden");
     } else {
-      let msg = "连接失败";
-      if (result.status === 401) msg = "API Key 无效";
-      else if (result.status === 403) msg = "访问被拒绝";
+      let msg = getMessage("connectionFailed");
+      if (result.status === 401) msg = getMessage("apiKeyInvalid");
+      else if (result.status === 403) msg = getMessage("accessDenied");
       else if (result.error) msg = result.error;
 
       showConnectionStatus(`✗ ${msg}`, "error");
@@ -4324,7 +4335,7 @@ async function loadStorageUsage() {
 
     const detailText = document.getElementById("storage-detail");
     if (detailText) {
-      detailText.textContent = "无法获取存储信息";
+      detailText.textContent = getMessage("getStorageFailed");
     }
   }
 }
@@ -4334,14 +4345,7 @@ async function loadStorageUsage() {
  */
 async function handleClearStorage() {
   // 确认对话框
-  const confirmed = confirm(
-    "确定要清理历史数据吗？\n\n" +
-      "这将删除：\n" +
-      "• 超过 90 天的会话\n" +
-      "• 每个域名超过 20 个的旧会话\n" +
-      "• 超过 50 个的旧风格技能\n\n" +
-      "此操作不可撤销。",
-  );
+  const confirmed = confirm(getMessage("clearHistoryConfirm"));
 
   if (!confirmed) return;
 
@@ -4353,7 +4357,7 @@ async function handleClearStorage() {
     const clearBtn = document.getElementById("clear-storage-btn");
     if (clearBtn) {
       clearBtn.disabled = true;
-      clearBtn.textContent = "清理中...";
+      clearBtn.textContent = getMessage("clearing");
     }
 
     // 执行清理
@@ -4363,7 +4367,7 @@ async function handleClearStorage() {
     await loadStorageUsage();
 
     // 显示成功提示
-    alert("历史数据清理完成！");
+    alert(getMessage("clearHistorySuccess"));
   } catch (error) {
     console.error("[Panel] Failed to clear storage:", error);
     alert("清理失败：" + error.message);
@@ -4372,7 +4376,7 @@ async function handleClearStorage() {
     const clearBtn = document.getElementById("clear-storage-btn");
     if (clearBtn) {
       clearBtn.disabled = false;
-      clearBtn.textContent = "清理历史数据";
+      clearBtn.textContent = getMessage("clearHistory");
     }
   }
 }
@@ -4396,6 +4400,9 @@ async function handleClearStorage() {
 async function init() {
   console.log("[Panel] Initializing...");
 
+  // Initialize i18n translations
+  applyTranslations();
+  
   // === Step 1: 存储 Schema 版本迁移 ===
   try {
     const session = await import("./session.js");
@@ -4528,7 +4535,7 @@ function renderAssistantMessageContainer() {
   reasoningHeader.setAttribute("aria-expanded", "true");
   reasoningHeader.innerHTML =
     '<span class="reasoning-spinner"></span>' +
-    '<span class="reasoning-title">思考中…</span>' +
+    '<span class="reasoning-title">' + getMessage('thinking') + '</span>' +
     '<span class="reasoning-chevron"></span>';
 
   const reasoningContent = document.createElement("div");
@@ -4977,7 +4984,7 @@ function renderHistoryMessages(history) {
         reasoningBlock.classList.add("visible", "finished", "collapsed");
         reasoningHeader.setAttribute("aria-expanded", "false");
         if (reasoningTitleEl) {
-          reasoningTitleEl.textContent = `思考过程（${charCount} 字）`;
+          reasoningTitleEl.textContent = formatMessage('thinkingProcess', { count: charCount });
         }
       }
 

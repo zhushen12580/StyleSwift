@@ -1,0 +1,650 @@
+{
+  "extName": {
+    "message": "StyleSwift",
+    "description": "Extension name"
+  },
+  "extDescription": {
+    "message": "Customize webpage styles with a single sentence",
+    "description": "Extension description shown in manifest"
+  },
+  "tagline": {
+    "message": "Transform any webpage with a single sentence",
+    "description": "App tagline on onboarding page"
+  },
+  "startUsing": {
+    "message": "Get Started",
+    "description": "Start button on onboarding page"
+  },
+  "getApiKey": {
+    "message": "Get API Key",
+    "description": "Link to get API key"
+  },
+  "newSession": {
+    "message": "New Session",
+    "description": "New session label"
+  },
+  "sessionHistory": {
+    "message": "Session History",
+    "description": "Session history header"
+  },
+  "settings": {
+    "message": "Settings",
+    "description": "Settings button title"
+  },
+  "back": {
+    "message": "Back",
+    "description": "Back button label"
+  },
+  "styleSkills": {
+    "message": "Style Skills",
+    "description": "Style skills section title"
+  },
+  "appliedStyles": {
+    "message": "Applied Styles:",
+    "description": "Applied styles label"
+  },
+  "removeElement": {
+    "message": "Remove selected element",
+    "description": "Remove selected element tooltip"
+  },
+  "removeAllImages": {
+    "message": "Remove all images",
+    "description": "Remove all images tooltip"
+  },
+  "inputStyleDesc": {
+    "message": "Enter style description",
+    "description": "Input placeholder aria label"
+  },
+  "pickPageElement": {
+    "message": "Select page element",
+    "description": "Pick page element button tooltip"
+  },
+  "uploadRefImage": {
+    "message": "Upload reference image",
+    "description": "Upload reference image button tooltip"
+  },
+  "send": {
+    "message": "Send",
+    "description": "Send button label"
+  },
+  "stop": {
+    "message": "Stop",
+    "description": "Stop button label"
+  },
+  "closeError": {
+    "message": "Close error message",
+    "description": "Close error button aria label"
+  },
+  "close": {
+    "message": "Close",
+    "description": "Close button title"
+  },
+  "apiKeyLabel": {
+    "message": "API Key",
+    "description": "API Key input label"
+  },
+  "apiKeyPlaceholder": {
+    "message": "Enter your API Key",
+    "description": "API Key input placeholder hint"
+  },
+  "apiAddressLabel": {
+    "message": "API Address (optional)",
+    "description": "API address input label"
+  },
+  "apiAddressPlaceholder": {
+    "message": "Use Anthropic official address by default",
+    "description": "API address input hint"
+  },
+  "modelLabel": {
+    "message": "Model (optional)",
+    "description": "Model input label"
+  },
+  "modelPlaceholder": {
+    "message": "Use deepseek/deepseek-r1 by default",
+    "description": "Model input hint"
+  },
+  "apiConfigTitle": {
+    "message": "API Configuration",
+    "description": "API configuration section title"
+  },
+  "visionModelConfigTitle": {
+    "message": "Vision Model Configuration",
+    "description": "Vision model configuration section title"
+  },
+  "visionModelDesc": {
+    "message": "Vision model settings for image processing. Leave empty to use default API configuration.",
+    "description": "Vision model configuration description"
+  },
+  "visionApiKeyLabel": {
+    "message": "Vision Model API Key (optional)",
+    "description": "Vision API Key input label"
+  },
+  "visionApiKeyPlaceholder": {
+    "message": "Use API Key above if empty",
+    "description": "Vision API Key placeholder hint"
+  },
+  "visionApiBaseLabel": {
+    "message": "Vision Model API Address (optional)",
+    "description": "Vision API address input label"
+  },
+  "visionApiBasePlaceholder": {
+    "message": "Use API address above if empty",
+    "description": "Vision API address placeholder hint"
+  },
+  "visionModelLabel": {
+    "message": "Vision Model Name",
+    "description": "Vision model name input label"
+  },
+  "visionModelPlaceholder": {
+    "message": "e.g., gpt-4o, claude-sonnet-4-20250514",
+    "description": "Vision model name placeholder"
+  },
+  "verifyConnection": {
+    "message": "Verify Connection",
+    "description": "Verify connection button"
+  },
+  "userProfileTitle": {
+    "message": "User Profile",
+    "description": "User profile section title"
+  },
+  "userProfileDesc": {
+    "message": "Record your style preferences. AI will use these to generate styles.",
+    "description": "User profile description"
+  },
+  "userProfilePlaceholder": {
+    "message": "e.g., prefer high contrast design, like dark mode, dislike rounded corners...",
+    "description": "User profile placeholder"
+  },
+  "charCount": {
+    "message": "{count} chars",
+    "description": "Character count with placeholder"
+  },
+  "saveProfile": {
+    "message": "Save Profile",
+    "description": "Save profile button"
+  },
+  "staticSkillsTitle": {
+    "message": "Static Skills",
+    "description": "Static skills section title"
+  },
+  "staticSkillsDesc": {
+    "message": "Enable/disable built-in skills. Disabled skills won't appear in the quick area.",
+    "description": "Static skills description"
+  },
+  "noStaticSkills": {
+    "message": "No built-in skills available",
+    "description": "No static skills available"
+  },
+  "loadSkillError": {
+    "message": "Failed to load skills",
+    "description": "Failed to load skills error"
+  },
+  "styleSkillTitle": {
+    "message": "Style Skills",
+    "description": "Style skills section title in settings"
+  },
+  "styleSkillDesc": {
+    "message": "Saved style skills can be reused on any website. Click to edit.",
+    "description": "Style skills description in settings"
+  },
+  "noStyleSkills": {
+    "message": "No saved style skills",
+    "description": "No style skills saved"
+  },
+  "storageTitle": {
+    "message": "Storage",
+    "description": "Storage section title"
+  },
+  "clearHistory": {
+    "message": "Clear History",
+    "description": "Clear history data button"
+  },
+  "clearHistoryDesc": {
+    "message": "Clear sessions older than 90 days and excess history records.",
+    "description": "Clear history description"
+  },
+  "aboutTitle": {
+    "message": "About",
+    "description": "About section title"
+  },
+  "aboutVersion": {
+    "message": "StyleSwift v1.0.0",
+    "description": "Version text"
+  },
+  "unsaved": {
+    "message": "Unsaved",
+    "description": "Unsaved changes hint"
+  },
+  "saved": {
+    "message": "Saved",
+    "description": "Saved confirmation"
+  },
+  "toggleVisibility": {
+    "message": "Toggle visibility",
+    "description": "Toggle API key visibility"
+  },
+  "processing": {
+    "message": "Processing...",
+    "description": "Processing status placeholder"
+  },
+  "restrictedPage": {
+    "message": "Style modification not supported on this page",
+    "description": "Restricted page message"
+  },
+  "restrictedPageDesc": {
+    "message": "Chrome extensions cannot modify browser internal pages (chrome://, extension store, etc.)",
+    "description": "Restricted page description"
+  },
+  "recentBadge": {
+    "message": "Recent",
+    "description": "Recent skill badge"
+  },
+  "apply": {
+    "message": "Apply",
+    "description": "Apply action"
+  },
+  "viewDetails": {
+    "message": "View Details",
+    "description": "View details action"
+  },
+  "delete": {
+    "message": "Delete",
+    "description": "Delete action"
+  },
+  "confirmDelete": {
+    "message": "Confirm Delete",
+    "description": "Confirm delete title"
+  },
+  "confirmDeleteDesc": {
+    "message": "Are you sure you want to delete style skill \"{name}\"?",
+    "description": "Confirm delete description with placeholder"
+  },
+  "cannotRecover": {
+    "message": "This action cannot be undone",
+    "description": "Cannot recover warning"
+  },
+  "cancel": {
+    "message": "Cancel",
+    "description": "Cancel button"
+  },
+  "confirm": {
+    "message": "Delete",
+    "description": "Confirm delete button"
+  },
+  "deleteSkillError": {
+    "message": "Failed to delete skill",
+    "description": "Delete skill error"
+  },
+  "loadSkillDetailsError": {
+    "message": "Unable to load skill details",
+    "description": "Load skill details error"
+  },
+  "source": {
+    "message": "Source",
+    "description": "Source label"
+  },
+  "createdAt": {
+    "message": "Created",
+    "description": "Created at label"
+  },
+  "style": {
+    "message": "Style",
+    "description": "Style label"
+  },
+  "noContent": {
+    "message": "(No content)",
+    "description": "No content placeholder"
+  },
+  "deleteSession": {
+    "message": "Delete session",
+    "description": "Delete session tooltip"
+  },
+  "loadSessionError": {
+    "message": "Failed to load session",
+    "description": "Load session error"
+  },
+  "noSessions": {
+    "message": "No session history",
+    "description": "No sessions available"
+  },
+  "domainNotDetected": {
+    "message": "Current domain not detected",
+    "description": "Domain not detected"
+  },
+  "createSessionError": {
+    "message": "Failed to create session",
+    "description": "Create session error"
+  },
+  "switchSessionError": {
+    "message": "Failed to switch session",
+    "description": "Switch session error"
+  },
+  "newSessionTitle": {
+    "message": "New Session",
+    "description": "New session default title"
+  },
+  "lastSession": {
+    "message": "This is the last session for {domain}",
+    "description": "Last session warning with domain placeholder"
+  },
+  "lastSessionDesc": {
+    "message": "Deleting will remove all session data for this domain.",
+    "description": "Last session description"
+  },
+  "deleteConfirmTitle": {
+    "message": "Delete \"{title}\"?",
+    "description": "Delete confirm title with placeholder"
+  },
+  "deleteConfirmDesc": {
+    "message": "Session history and styles will be permanently deleted.",
+    "description": "Delete confirm description"
+  },
+  "thinking": {
+    "message": "Thinking...",
+    "description": "Thinking status"
+  },
+  "thinkingProcess": {
+    "message": "Thinking Process ({count} chars)",
+    "description": "Thinking process with character count"
+  },
+  "thinkingNothing": {
+    "message": "(No reasoning content)",
+    "description": "No reasoning content"
+  },
+  "connectionSuccess": {
+    "message": "Connection successful, settings saved",
+    "description": "Connection success message"
+  },
+  "connectionFailed": {
+    "message": "Connection failed",
+    "description": "Connection failed"
+  },
+  "apiKeyInvalid": {
+    "message": "Invalid API Key",
+    "description": "API Key invalid"
+  },
+  "accessDenied": {
+    "message": "Access denied",
+    "description": "Access denied"
+  },
+  "verifyingConnection": {
+    "message": "Verifying connection...",
+    "description": "Verifying connection status"
+  },
+  "enterApiKey": {
+    "message": "Please enter API Key",
+    "description": "Enter API Key prompt"
+  },
+  "saving": {
+    "message": "Saving...",
+    "description": "Saving status"
+  },
+  "profileSaved": {
+    "message": "Profile saved",
+    "description": "Profile saved success"
+  },
+  "saveFailed": {
+    "message": "Save failed",
+    "description": "Save failed"
+  },
+  "connectionError": {
+    "message": "Connection error",
+    "description": "Connection error"
+  },
+  "getStorageFailed": {
+    "message": "Unable to get storage info",
+    "description": "Failed to get storage info"
+  },
+  "clearHistoryConfirm": {
+    "message": "Are you sure you want to clear history data?\n\nThis will delete:\n• Sessions older than 90 days\n• Old sessions exceeding 20 per domain\n• Old style skills exceeding 50\n\nThis action cannot be undone.",
+    "description": "Clear history confirmation dialog"
+  },
+  "clearHistorySuccess": {
+    "message": "History data cleared!",
+    "description": "Clear history success"
+  },
+  "clearing": {
+    "message": "Clearing...",
+    "description": "Clearing status"
+  },
+  "cantLoadPage": {
+    "message": "Cannot operate on this page",
+    "description": "Cannot operate on this page"
+  },
+  "pageRestricted": {
+    "message": "Page restricted",
+    "description": "Page restricted status"
+  },
+  "processing2": {
+    "message": "Processing...",
+    "description": "Processing..."
+  },
+  "darkMode": {
+    "message": "Dark Mode",
+    "description": "Dark mode skill name"
+  },
+  "minimal": {
+    "message": "Minimal",
+    "description": "Minimal style skill name"
+  },
+  "enabled": {
+    "message": "Enabled",
+    "description": "Enabled status"
+  },
+  "disabled": {
+    "message": "Disabled",
+    "description": "Disabled status"
+  },
+  "edit": {
+    "message": "Edit",
+    "description": "Edit button"
+  },
+  "editStyleSkill": {
+    "message": "Edit Style Skill",
+    "description": "Edit style skill title"
+  },
+  "name": {
+    "message": "Name",
+    "description": "Name label"
+  },
+  "desc": {
+    "message": "Description",
+    "description": "Description label"
+  },
+  "content": {
+    "message": "Content",
+    "description": "Content label"
+  },
+  "styleNamePlaceholder": {
+    "message": "Style name",
+    "description": "Style name placeholder"
+  },
+  "styleDescPlaceholder": {
+    "message": "One-line style description",
+    "description": "Style description placeholder"
+  },
+  "skillContentPlaceholder": {
+    "message": "Skill content (Markdown format)",
+    "description": "Skill content placeholder"
+  },
+  "noDesc": {
+    "message": "No description",
+    "description": "No description"
+  },
+  "save": {
+    "message": "Save",
+    "description": "Save button"
+  },
+  "saving2": {
+    "message": "Saving...",
+    "description": "Saving..."
+  },
+  "saveFailed2": {
+    "message": "Save failed",
+    "description": "Save failed (with colon)"
+  },
+  "connectionSuccess2": {
+    "message": "✓ Connection successful",
+    "description": "Connection success with checkmark"
+  },
+  "connectionFailed2": {
+    "message": "✗ Connection failed",
+    "description": "Connection failed with X mark"
+  },
+  "profileSaved2": {
+    "message": "✓ Profile saved",
+    "description": "Profile saved with checkmark"
+  },
+  "profileSaveFailed": {
+    "message": "✗ Save failed: {error}",
+    "description": "Profile save failed with message"
+  },
+  "apiAddressFormatError": {
+    "message": "Invalid API address format",
+    "description": "API address format error"
+  },
+  "enterApiKey2": {
+    "message": "Please enter API Key",
+    "description": "Enter API Key error"
+  },
+  "connectionVerifyFailed": {
+    "message": "Connection verification failed",
+    "description": "Connection verification failed"
+  },
+  "connectionFailedWithError": {
+    "message": "Connection failed",
+    "description": "Connection failed with error"
+  },
+  "apiKeyInvalidPleaseCheck": {
+    "message": "Invalid API Key, please check if correct",
+    "description": "API Key invalid, please check"
+  },
+  "accessDeniedPleaseCheck": {
+    "message": "Access denied, please check API Key permissions",
+    "description": "Access denied, check API Key permissions"
+  },
+  "connectionFailedWithStatus": {
+    "message": "Connection failed",
+    "description": "Connection failed with HTTP status"
+  },
+  "saveSettingsFailed": {
+    "message": "Failed to save settings",
+    "description": "Save settings failed"
+  },
+  "returnAutoSave": {
+    "message": "Back (auto-save)",
+    "description": "Return button title with auto-save hint"
+  },
+  "defaultApiUrl": {
+    "message": "https://api.anthropic.com",
+    "description": "Default API URL placeholder"
+  },
+  "defaultModel": {
+    "message": "claude-sonnet-4-20250514",
+    "description": "Default model placeholder"
+  },
+  "defaultModel2": {
+    "message": "deepseek/deepseek-r1",
+    "description": "Default model hint"
+  },
+  "clickToSwitchSession": {
+    "message": "Click to switch session",
+    "description": "Click to switch session title"
+  },
+  "removeImage": {
+    "message": "Remove image",
+    "description": "Remove image tooltip"
+  },
+  "pastedImage": {
+    "message": "Pasted image",
+    "description": "Pasted image placeholder"
+  },
+  "images": {
+    "message": "{count} images",
+    "description": "Images count with placeholder"
+  },
+  "typingExample1": {
+    "message": "Give this page a vintage newspaper look",
+    "description": "Typewriter example 1"
+  },
+  "typingExample2": {
+    "message": "Let me describe a style first",
+    "description": "Typewriter example 2"
+  },
+  "typingExample3": {
+    "message": "Hide this element",
+    "description": "Typewriter example 3"
+  },
+  "typingExample4": {
+    "message": "Increase line height for better readability",
+    "description": "Typewriter example 4"
+  },
+  "maxImagesReached": {
+    "message": "Maximum images reached",
+    "description": "Max images reached warning"
+  },
+  "imageTooLarge": {
+    "message": "Image too large",
+    "description": "Image too large warning"
+  },
+  "invalidFileType": {
+    "message": "Invalid file type",
+    "description": "Invalid file type warning"
+  },
+  "stylesConfirmed": {
+    "message": "Styles confirmed",
+    "description": "Styles confirmed log"
+  },
+  "undoLast": {
+    "message": "Last style step undone",
+    "description": "Undid last style step"
+  },
+  "undoFailed": {
+    "message": "Undo failed",
+    "description": "Undo failed"
+  },
+  "undoAll": {
+    "message": "All styles undone",
+    "description": "Undid all styles"
+  },
+  "undoAllFailed": {
+    "message": "Undo all failed",
+    "description": "Undo all failed"
+  },
+  "styleSkillDeleted": {
+    "message": "Style skill deleted",
+    "description": "Style skill deleted"
+  },
+  "skillChipClicked": {
+    "message": "Skill chip clicked",
+    "description": "Log message for skill chip click"
+  },
+  "apiKeyInvalid2": {
+    "message": "API_KEY_INVALID",
+    "description": "Error type: API key invalid"
+  },
+  "networkError": {
+    "message": "NETWORK_ERROR",
+    "description": "Error type: network error"
+  },
+  "apiError": {
+    "message": "API_ERROR",
+    "description": "Error type: API error"
+  },
+  "retry": {
+    "message": "Retry",
+    "description": "Retry button"
+  },
+  "applyMyStyle": {
+    "message": "Apply my \"{name}\" style",
+    "description": "Apply user style prompt"
+  },
+  "typewriterNothing": {
+    "message": "Missing required DOM elements",
+    "description": "Typewriter missing DOM elements warning"
+  },
+  "newUserProfile": {
+    "message": "New user, no style preferences recorded",
+    "description": "New user default profile message"
+  }
+}

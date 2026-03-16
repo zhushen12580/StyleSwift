@@ -1,0 +1,650 @@
+{
+  "extName": {
+    "message": "StyleSwift",
+    "description": "Extension name"
+  },
+  "extDescription": {
+    "message": "一句话，给常逛的网页换皮肤",
+    "description": "Extension description shown in manifest"
+  },
+  "tagline": {
+    "message": "一句话，给常逛的网页换皮肤",
+    "description": "App tagline on onboarding page"
+  },
+  "startUsing": {
+    "message": "开始使用",
+    "description": "Start button on onboarding page"
+  },
+  "getApiKey": {
+    "message": "获取 API Key",
+    "description": "Link to get API key"
+  },
+  "newSession": {
+    "message": "新会话",
+    "description": "New session label"
+  },
+  "sessionHistory": {
+    "message": "会话历史",
+    "description": "Session history header"
+  },
+  "settings": {
+    "message": "设置",
+    "description": "Settings button title"
+  },
+  "back": {
+    "message": "返回",
+    "description": "Back button label"
+  },
+  "styleSkills": {
+    "message": "风格技能",
+    "description": "Style skills section title"
+  },
+  "appliedStyles": {
+    "message": "已应用样式:",
+    "description": "Applied styles label"
+  },
+  "removeElement": {
+    "message": "移除选中元素",
+    "description": "Remove selected element tooltip"
+  },
+  "removeAllImages": {
+    "message": "移除所有图片",
+    "description": "Remove all images tooltip"
+  },
+  "inputStyleDesc": {
+    "message": "输入风格描述",
+    "description": "Input placeholder aria label"
+  },
+  "pickPageElement": {
+    "message": "选取页面元素",
+    "description": "Pick page element button tooltip"
+  },
+  "uploadRefImage": {
+    "message": "上传参考图片",
+    "description": "Upload reference image button tooltip"
+  },
+  "send": {
+    "message": "发送",
+    "description": "Send button label"
+  },
+  "stop": {
+    "message": "停止",
+    "description": "Stop button label"
+  },
+  "closeError": {
+    "message": "关闭错误提示",
+    "description": "Close error button aria label"
+  },
+  "close": {
+    "message": "关闭",
+    "description": "Close button title"
+  },
+  "apiKeyLabel": {
+    "message": "API Key",
+    "description": "API Key input label"
+  },
+  "apiKeyPlaceholder": {
+    "message": "输入你的API Key",
+    "description": "API Key input placeholder hint"
+  },
+  "apiAddressLabel": {
+    "message": "API 地址 (可选)",
+    "description": "API address input label"
+  },
+  "apiAddressPlaceholder": {
+    "message": "默认使用 Anthropic 官方地址",
+    "description": "API address input hint"
+  },
+  "modelLabel": {
+    "message": "模型 (可选)",
+    "description": "Model input label"
+  },
+  "modelPlaceholder": {
+    "message": "默认使用 deepseek/deepseek-r1",
+    "description": "Model input hint"
+  },
+  "apiConfigTitle": {
+    "message": "API 配置",
+    "description": "API configuration section title"
+  },
+  "visionModelConfigTitle": {
+    "message": "视觉模型配置",
+    "description": "Vision model configuration section title"
+  },
+  "visionModelDesc": {
+    "message": "用于处理图片的视觉模型配置，留空则使用默认 API 配置",
+    "description": "Vision model configuration description"
+  },
+  "visionApiKeyLabel": {
+    "message": "视觉模型 API Key (可选)",
+    "description": "Vision API Key input label"
+  },
+  "visionApiKeyPlaceholder": {
+    "message": "留空则使用上方 API Key",
+    "description": "Vision API Key placeholder hint"
+  },
+  "visionApiBaseLabel": {
+    "message": "视觉模型 API 地址 (可选)",
+    "description": "Vision API address input label"
+  },
+  "visionApiBasePlaceholder": {
+    "message": "留空则使用上方 API 地址",
+    "description": "Vision API address placeholder hint"
+  },
+  "visionModelLabel": {
+    "message": "视觉模型名称",
+    "description": "Vision model name input label"
+  },
+  "visionModelPlaceholder": {
+    "message": "例如: gpt-4o, claude-sonnet-4-20250514",
+    "description": "Vision model name placeholder"
+  },
+  "verifyConnection": {
+    "message": "验证连接",
+    "description": "Verify connection button"
+  },
+  "userProfileTitle": {
+    "message": "用户画像",
+    "description": "User profile section title"
+  },
+  "userProfileDesc": {
+    "message": "记录你的风格偏好，AI 会参考这些偏好生成样式",
+    "description": "User profile description"
+  },
+  "userProfilePlaceholder": {
+    "message": "例如：偏好高对比度设计、喜欢深色模式、不喜欢圆角...",
+    "description": "User profile placeholder"
+  },
+  "charCount": {
+    "message": "{count} 字",
+    "description": "Character count with placeholder"
+  },
+  "saveProfile": {
+    "message": "保存画像",
+    "description": "Save profile button"
+  },
+  "staticSkillsTitle": {
+    "message": "静态技能",
+    "description": "Static skills section title"
+  },
+  "staticSkillsDesc": {
+    "message": "启用/禁用内置技能，禁用的技能不会出现在快捷区",
+    "description": "Static skills description"
+  },
+  "noStaticSkills": {
+    "message": "暂无内置技能",
+    "description": "No static skills available"
+  },
+  "loadSkillError": {
+    "message": "加载技能失败",
+    "description": "Failed to load skills error"
+  },
+  "styleSkillTitle": {
+    "message": "风格技能",
+    "description": "Style skills section title in settings"
+  },
+  "styleSkillDesc": {
+    "message": "保存的风格技能可在任意网站复用，点击编辑",
+    "description": "Style skills description in settings"
+  },
+  "noStyleSkills": {
+    "message": "暂无保存的风格技能",
+    "description": "No style skills saved"
+  },
+  "storageTitle": {
+    "message": "存储",
+    "description": "Storage section title"
+  },
+  "clearHistory": {
+    "message": "清理历史数据",
+    "description": "Clear history data button"
+  },
+  "clearHistoryDesc": {
+    "message": "清理90天前的会话和超出限制的历史记录",
+    "description": "Clear history description"
+  },
+  "aboutTitle": {
+    "message": "关于",
+    "description": "About section title"
+  },
+  "aboutVersion": {
+    "message": "StyleSwift v1.0.0",
+    "description": "Version text"
+  },
+  "unsaved": {
+    "message": "未保存",
+    "description": "Unsaved changes hint"
+  },
+  "saved": {
+    "message": "已保存",
+    "description": "Saved confirmation"
+  },
+  "toggleVisibility": {
+    "message": "切换可见性",
+    "description": "Toggle API key visibility"
+  },
+  "processing": {
+    "message": "正在处理中...",
+    "description": "Processing status placeholder"
+  },
+  "restrictedPage": {
+    "message": "此页面不支持样式修改",
+    "description": "Restricted page message"
+  },
+  "restrictedPageDesc": {
+    "message": "Chrome 扩展无法操作浏览器内部页面（chrome://、扩展商店等）",
+    "description": "Restricted page description"
+  },
+  "recentBadge": {
+    "message": "最近",
+    "description": "Recent skill badge"
+  },
+  "apply": {
+    "message": "应用",
+    "description": "Apply action"
+  },
+  "viewDetails": {
+    "message": "查看详情",
+    "description": "View details action"
+  },
+  "delete": {
+    "message": "删除",
+    "description": "Delete action"
+  },
+  "confirmDelete": {
+    "message": "确认删除",
+    "description": "Confirm delete title"
+  },
+  "confirmDeleteDesc": {
+    "message": "确定要删除风格技能「{name}」吗？",
+    "description": "Confirm delete description with placeholder"
+  },
+  "cannotRecover": {
+    "message": "删除后无法恢复",
+    "description": "Cannot recover warning"
+  },
+  "cancel": {
+    "message": "取消",
+    "description": "Cancel button"
+  },
+  "confirm": {
+    "message": "确认删除",
+    "description": "Confirm delete button"
+  },
+  "deleteSkillError": {
+    "message": "删除技能失败",
+    "description": "Delete skill error"
+  },
+  "loadSkillDetailsError": {
+    "message": "无法加载技能详情",
+    "description": "Load skill details error"
+  },
+  "source": {
+    "message": "来源",
+    "description": "Source label"
+  },
+  "createdAt": {
+    "message": "创建于",
+    "description": "Created at label"
+  },
+  "style": {
+    "message": "风格",
+    "description": "Style label"
+  },
+  "noContent": {
+    "message": "（无内容）",
+    "description": "No content placeholder"
+  },
+  "deleteSession": {
+    "message": "删除会话",
+    "description": "Delete session tooltip"
+  },
+  "loadSessionError": {
+    "message": "加载会话失败",
+    "description": "Load session error"
+  },
+  "noSessions": {
+    "message": "暂无会话记录",
+    "description": "No sessions available"
+  },
+  "domainNotDetected": {
+    "message": "未检测到当前域名",
+    "description": "Domain not detected"
+  },
+  "createSessionError": {
+    "message": "创建会话失败",
+    "description": "Create session error"
+  },
+  "switchSessionError": {
+    "message": "切换会话失败",
+    "description": "Switch session error"
+  },
+  "newSessionTitle": {
+    "message": "新会话",
+    "description": "New session default title"
+  },
+  "lastSession": {
+    "message": "这是 {domain} 的最后一个会话",
+    "description": "Last session warning with domain placeholder"
+  },
+  "lastSessionDesc": {
+    "message": "删除后将清除该域名的所有会话数据。",
+    "description": "Last session description"
+  },
+  "deleteConfirmTitle": {
+    "message": "删除「{title}」？",
+    "description": "Delete confirm title with placeholder"
+  },
+  "deleteConfirmDesc": {
+    "message": "会话记录和该会话的样式将被永久删除。",
+    "description": "Delete confirm description"
+  },
+  "thinking": {
+    "message": "思考中…",
+    "description": "Thinking status"
+  },
+  "thinkingProcess": {
+    "message": "思考过程（{count} 字）",
+    "description": "Thinking process with character count"
+  },
+  "thinkingNothing": {
+    "message": "（无推理内容）",
+    "description": "No reasoning content"
+  },
+  "connectionSuccess": {
+    "message": "连接成功，设置已保存",
+    "description": "Connection success message"
+  },
+  "connectionFailed": {
+    "message": "连接失败",
+    "description": "Connection failed"
+  },
+  "apiKeyInvalid": {
+    "message": "API Key 无效",
+    "description": "API Key invalid"
+  },
+  "accessDenied": {
+    "message": "访问被拒绝",
+    "description": "Access denied"
+  },
+  "verifyingConnection": {
+    "message": "正在验证连接...",
+    "description": "Verifying connection status"
+  },
+  "enterApiKey": {
+    "message": "请输入 API Key",
+    "description": "Enter API Key prompt"
+  },
+  "saving": {
+    "message": "正在保存...",
+    "description": "Saving status"
+  },
+  "profileSaved": {
+    "message": "画像已保存",
+    "description": "Profile saved success"
+  },
+  "saveFailed": {
+    "message": "保存失败",
+    "description": "Save failed"
+  },
+  "connectionError": {
+    "message": "连接错误",
+    "description": "Connection error"
+  },
+  "getStorageFailed": {
+    "message": "无法获取存储信息",
+    "description": "Failed to get storage info"
+  },
+  "clearHistoryConfirm": {
+    "message": "确定要清理历史数据吗？\n\n这将删除：\n• 超过 90 天的会话\n• 每个域名超过 20 个的旧会话\n• 超过 50 个的旧风格技能\n\n此操作不可撤销。",
+    "description": "Clear history confirmation dialog"
+  },
+  "clearHistorySuccess": {
+    "message": "历史数据清理完成！",
+    "description": "Clear history success"
+  },
+  "clearing": {
+    "message": "清理中...",
+    "description": "Clearing status"
+  },
+  "cantLoadPage": {
+    "message": "无法操作此页面",
+    "description": "Cannot operate on this page"
+  },
+  "pageRestricted": {
+    "message": "页面受限",
+    "description": "Page restricted status"
+  },
+  "processing2": {
+    "message": "处理中...",
+    "description": "Processing..."
+  },
+  "darkMode": {
+    "message": "Dark Mode",
+    "description": "Dark mode skill name"
+  },
+  "minimal": {
+    "message": "Minimal",
+    "description": "Minimal style skill name"
+  },
+  "enabled": {
+    "message": "已启用",
+    "description": "Enabled status"
+  },
+  "disabled": {
+    "message": "已禁用",
+    "description": "Disabled status"
+  },
+  "edit": {
+    "message": "编辑",
+    "description": "Edit button"
+  },
+  "editStyleSkill": {
+    "message": "编辑风格技能",
+    "description": "Edit style skill title"
+  },
+  "name": {
+    "message": "名称",
+    "description": "Name label"
+  },
+  "desc": {
+    "message": "描述",
+    "description": "Description label"
+  },
+  "content": {
+    "message": "内容",
+    "description": "Content label"
+  },
+  "styleNamePlaceholder": {
+    "message": "风格名称",
+    "description": "Style name placeholder"
+  },
+  "styleDescPlaceholder": {
+    "message": "一句话风格描述",
+    "description": "Style description placeholder"
+  },
+  "skillContentPlaceholder": {
+    "message": "技能内容（Markdown 格式）",
+    "description": "Skill content placeholder"
+  },
+  "noDesc": {
+    "message": "无描述",
+    "description": "No description"
+  },
+  "save": {
+    "message": "保存",
+    "description": "Save button"
+  },
+  "saving2": {
+    "message": "保存中...",
+    "description": "Saving..."
+  },
+  "saveFailed2": {
+    "message": "保存失败",
+    "description": "Save failed (with colon)"
+  },
+  "connectionSuccess2": {
+    "message": "✓ 连接成功",
+    "description": "Connection success with checkmark"
+  },
+  "connectionFailed2": {
+    "message": "✗ 连接失败",
+    "description": "Connection failed with X mark"
+  },
+  "profileSaved2": {
+    "message": "✓ 画像已保存",
+    "description": "Profile saved with checkmark"
+  },
+  "profileSaveFailed": {
+    "message": "✗ 保存失败",
+    "description": "Profile save failed with message"
+  },
+  "apiAddressFormatError": {
+    "message": "API 地址格式不正确",
+    "description": "API address format error"
+  },
+  "enterApiKey2": {
+    "message": "请输入 API Key",
+    "description": "Enter API Key error"
+  },
+  "connectionVerifyFailed": {
+    "message": "连接验证失败",
+    "description": "Connection verification failed"
+  },
+  "connectionFailedWithError": {
+    "message": "连接失败",
+    "description": "Connection failed with error"
+  },
+  "apiKeyInvalidPleaseCheck": {
+    "message": "API Key 无效，请检查是否正确",
+    "description": "API Key invalid, please check"
+  },
+  "accessDeniedPleaseCheck": {
+    "message": "访问被拒绝，请检查 API Key 权限",
+    "description": "Access denied, check API Key permissions"
+  },
+  "connectionFailedWithStatus": {
+    "message": "连接失败",
+    "description": "Connection failed with HTTP status"
+  },
+  "saveSettingsFailed": {
+    "message": "保存设置失败",
+    "description": "Save settings failed"
+  },
+  "returnAutoSave": {
+    "message": "返回 (自动保存)",
+    "description": "Return button title with auto-save hint"
+  },
+  "defaultApiUrl": {
+    "message": "https://api.anthropic.com",
+    "description": "Default API URL placeholder"
+  },
+  "defaultModel": {
+    "message": "claude-sonnet-4-20250514",
+    "description": "Default model placeholder"
+  },
+  "defaultModel2": {
+    "message": "deepseek/deepseek-r1",
+    "description": "Default model hint"
+  },
+  "clickToSwitchSession": {
+    "message": "点击切换会话",
+    "description": "Click to switch session title"
+  },
+  "removeImage": {
+    "message": "移除图片",
+    "description": "Remove image tooltip"
+  },
+  "pastedImage": {
+    "message": "粘贴图片",
+    "description": "Pasted image placeholder"
+  },
+  "images": {
+    "message": "{count} 张图片",
+    "description": "Images count with placeholder"
+  },
+  "typingExample1": {
+    "message": "给页面换个皮肤，要旧报纸风格",
+    "description": "Typewriter example 1"
+  },
+  "typingExample2": {
+    "message": "顺便说说一个风格",
+    "description": "Typewriter example 2"
+  },
+  "typingExample3": {
+    "message": "隐藏这个元素",
+    "description": "Typewriter example 3"
+  },
+  "typingExample4": {
+    "message": "增加行间距，让阅读更舒适",
+    "description": "Typewriter example 4"
+  },
+  "maxImagesReached": {
+    "message": "已达到最大图片数量",
+    "description": "Max images reached warning"
+  },
+  "imageTooLarge": {
+    "message": "图片过大",
+    "description": "Image too large warning"
+  },
+  "invalidFileType": {
+    "message": "无效的文件类型",
+    "description": "Invalid file type warning"
+  },
+  "stylesConfirmed": {
+    "message": "样式已确认",
+    "description": "Styles confirmed log"
+  },
+  "undoLast": {
+    "message": "已直接撤销最后一步样式",
+    "description": "Undid last style step"
+  },
+  "undoFailed": {
+    "message": "撤销失败",
+    "description": "Undo failed"
+  },
+  "undoAll": {
+    "message": "已直接撤销所有样式",
+    "description": "Undid all styles"
+  },
+  "undoAllFailed": {
+    "message": "全部撤销失败",
+    "description": "Undo all failed"
+  },
+  "styleSkillDeleted": {
+    "message": "风格技能已删除",
+    "description": "Style skill deleted"
+  },
+  "skillChipClicked": {
+    "message": "Skill chip clicked",
+    "description": "Log message for skill chip click"
+  },
+  "apiKeyInvalid2": {
+    "message": "API_KEY_INVALID",
+    "description": "Error type: API key invalid"
+  },
+  "networkError": {
+    "message": "NETWORK_ERROR",
+    "description": "Error type: network error"
+  },
+  "apiError": {
+    "message": "API_ERROR",
+    "description": "Error type: API error"
+  },
+  "retry": {
+    "message": "重试",
+    "description": "Retry button"
+  },
+  "applyMyStyle": {
+    "message": "Apply my \"{name}\" style",
+    "description": "Apply user style prompt"
+  },
+  "typewriterNothing": {
+    "message": "缺少必要的 DOM 元素",
+    "description": "Typewriter missing DOM elements warning"
+  },
+  "newUserProfile": {
+    "message": "新用户，暂无风格偏好记录",
+    "description": "New user default profile message"
+  }
+}
