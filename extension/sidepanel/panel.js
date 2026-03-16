@@ -31,6 +31,23 @@ import { SkillLoader } from "./skill-loader.js";
 import { runGetUserProfile, runUpdateUserProfile } from "./profile.js";
 
 // ============================================================================
+// Icon Utility — Iconify 图标辅助函数
+// ============================================================================
+
+/**
+ * 生成 Iconify 图标的 HTML 字符串
+ * 使用 CSS mask-image 方案，颜色继承 currentColor
+ * @param {string} name - 图标名称，对应 CSS 类 .icon-{name}
+ * @param {number} size - 图标尺寸（px）
+ * @param {string} [extraClass] - 额外的 CSS 类名
+ * @returns {string} 图标 HTML 字符串
+ */
+function iconHtml(name, size, extraClass = '') {
+  const cls = extraClass ? ` ${extraClass}` : '';
+  return `<span class="icon icon-${name}${cls}" style="width:${size}px;height:${size}px" aria-hidden="true"></span>`;
+}
+
+// ============================================================================
 // DOM Element References
 // ============================================================================
 
@@ -665,7 +682,7 @@ function applyTopBarState(config) {
     // 添加样式徽标
     const badge = document.createElement("span");
     badge.className = "style-badge";
-    badge.textContent = "✨";
+    badge.innerHTML = iconHtml('sparkles', 10);
     badge.title = "当前页面有样式生效";
     DOM.statusDot.appendChild(badge);
   } else if (!config.showStyleBadge && existingBadge) {
@@ -726,7 +743,7 @@ function applyChatAreaState(config) {
       const tip = document.createElement("div");
       tip.className = "restricted-tip";
       tip.innerHTML = `
-        <div class="restricted-icon">🔒</div>
+        <div class="restricted-icon">${iconHtml('lock', 48)}</div>
         <div class="restricted-title">此页面不支持样式修改</div>
         <div class="restricted-desc">Chrome 扩展无法操作浏览器内部页面（chrome://、扩展商店等）</div>
       `;
@@ -2220,13 +2237,13 @@ const BUILT_IN_SKILLS = [
   {
     id: "dark-mode-template",
     name: "Dark Mode",
-    icon: "🌙",
+    icon: iconHtml('moon', 14),
     prompt: "Apply dark mode style",
   },
   {
     id: "minimal-template",
     name: "Minimal",
-    icon: "✨",
+    icon: iconHtml('sparkles', 14),
     prompt: "Apply minimal style",
   },
 ];
@@ -2555,15 +2572,15 @@ function showSkillContextMenu(e, skill) {
   menu.className = "skill-context-menu";
   menu.innerHTML = `
     <div class="context-menu-item" data-action="apply">
-      <span class="menu-icon">✨</span>
+      <span class="menu-icon">${iconHtml('sparkles', 14)}</span>
       <span>应用</span>
     </div>
     <div class="context-menu-item" data-action="view">
-      <span class="menu-icon">📄</span>
+      <span class="menu-icon">${iconHtml('file-text', 14)}</span>
       <span>查看详情</span>
     </div>
     <div class="context-menu-item danger" data-action="delete">
-      <span class="menu-icon">🗑️</span>
+      <span class="menu-icon">${iconHtml('trash', 14)}</span>
       <span>删除</span>
     </div>
   `;
@@ -2941,7 +2958,7 @@ async function createSessionCard(sessionItem, domain, currentSessionId) {
     </div>
     <div class="session-actions">
       <button class="session-delete-btn" title="删除会话" ${id === currentSessionId ? "disabled" : ""}>
-        🗑️
+        ${iconHtml('trash', 13)}
       </button>
     </div>
   `;
@@ -3402,7 +3419,7 @@ async function initSettingsView() {
     toggleKeyBtn.addEventListener("click", () => {
       const type = DOM.settingsApiKey.type;
       DOM.settingsApiKey.type = type === "password" ? "text" : "password";
-      toggleKeyBtn.textContent = type === "password" ? "🙈" : "👁";
+      toggleKeyBtn.innerHTML = type === "password" ? iconHtml('eye-off', 16) : iconHtml('eye', 16);
     });
   }
 
@@ -3653,7 +3670,7 @@ function createStaticSkillItem(skill, isEnabled) {
 
   item.innerHTML = `
     <div class="static-skill-info">
-      <span class="static-skill-icon">📄</span>
+      <span class="static-skill-icon">${iconHtml('file-text', 16)}</span>
       <div class="static-skill-text">
         <span class="static-skill-name">${escapeHtml(skill.name)}</span>
         <span class="static-skill-desc">${escapeHtml(skill.description || "No description")}</span>
@@ -3740,8 +3757,8 @@ function createUserSkillItem(skill, isEnabled) {
         <input type="checkbox" ${isEnabled ? "checked" : ""}>
         <span class="toggle-slider"></span>
       </label>
-      <button class="btn-icon-small" data-action="edit" title="编辑">✏️</button>
-      <button class="btn-icon-small" data-action="delete" title="删除">🗑️</button>
+      <button class="btn-icon-small" data-action="edit" title="编辑">${iconHtml('pencil', 13)}</button>
+      <button class="btn-icon-small" data-action="delete" title="删除">${iconHtml('trash', 13)}</button>
     </div>
   `;
 
@@ -4538,9 +4555,7 @@ function showEmptyState() {
   emptyState.className = "chat-area-empty";
   emptyState.innerHTML = `
     <div class="empty-state-icon">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="m21.64 3.64l-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72M14 7l3 3M5 6v4m14 4v4M10 2v2M7 8H3m18 8h-4M11 3H9"/>
-      </svg>
+      ${iconHtml('wand', 22)}
     </div>
     <div class="empty-state-title">你想改变什么？</div>
     <div class="empty-state-description">用自然语言描述你想要的效果，我来处理 CSS</div>
@@ -4878,11 +4893,11 @@ class ToolCardManager {
     card.innerHTML = `
       <div class="tool-card-header">
         <div class="tool-card-title">
-          <span class="tool-card-icon">${isTask ? "🤖" : "🔧"}</span>
+          <span class="tool-card-icon">${isTask ? iconHtml('bot', 14) : iconHtml('wrench', 14)}</span>
           <span class="tool-card-name">${displayName}</span>
         </div>
         <div class="tool-card-status processing">
-          <span class="status-indicator">◌</span>
+          <span class="status-indicator">${iconHtml('loader', 12, 'spin')}</span>
           <span class="status-text">${isTask ? "子智能体运行中…" : "进行中"}</span>
         </div>
       </div>
@@ -4931,11 +4946,11 @@ class ToolCardManager {
       card.innerHTML = `
         <div class="tool-card-header">
           <div class="tool-card-title">
-            <span class="tool-card-icon">🤖</span>
+            <span class="tool-card-icon">${iconHtml('bot', 14)}</span>
             <span class="tool-card-name">${taskTitle}</span>
             ${agentBadge}
           </div>
-          <div class="tool-card-expand">▸</div>
+          <div class="tool-card-expand">${iconHtml('chevron-right', 12)}</div>
         </div>
         <div class="tool-card-body">
           ${summaryHtml}
@@ -4949,10 +4964,10 @@ class ToolCardManager {
       card.innerHTML = `
         <div class="tool-card-header">
           <div class="tool-card-title">
-            <span class="tool-card-icon">✅</span>
+            <span class="tool-card-icon">${iconHtml('check-circle', 14)}</span>
             <span class="tool-card-name">${displayName}</span>
           </div>
-          <div class="tool-card-expand">▸</div>
+          <div class="tool-card-expand">${iconHtml('chevron-right', 12)}</div>
         </div>
         <div class="tool-card-body">
           <div class="tool-card-section">
@@ -5208,9 +5223,9 @@ class ToolCardManager {
  * 任务状态图标映射
  */
 const TODO_STATUS_ICONS = {
-  pending: "⏳",
-  in_progress: "🔄",
-  completed: "✅",
+  pending: iconHtml('clock', 13),
+  in_progress: iconHtml('refresh', 13, 'spin'),
+  completed: iconHtml('check-circle', 13),
 };
 
 /**
@@ -5437,7 +5452,7 @@ class TodoCardManager {
 
     const todosHtml = todos
       .map((todo) => {
-        const icon = TODO_STATUS_ICONS[todo.status] || "⏳";
+        const icon = TODO_STATUS_ICONS[todo.status] || iconHtml('clock', 13);
         const statusClass = `todo-item-${todo.status}`;
         return `
         <div class="todo-item ${statusClass}">
@@ -5587,10 +5602,10 @@ function createSubAgentPanel(taskId, input) {
   const header = document.createElement("div");
   header.className = "subagent-panel-header";
   header.innerHTML = `
-    <span class="subagent-panel-icon">🤖</span>
+    <span class="subagent-panel-icon">${iconHtml('bot', 14)}</span>
     <span class="subagent-panel-label">${escapeHtml(agentType)}</span>
     ${description ? `<span class="subagent-panel-desc">${escapeHtml(description)}</span>` : ""}
-    <span class="subagent-panel-toggle">▾</span>
+    <span class="icon icon-chevron-down subagent-panel-toggle" style="width:12px;height:12px" aria-hidden="true"></span>
   `;
   panel.appendChild(header);
 
@@ -5601,8 +5616,7 @@ function createSubAgentPanel(taskId, input) {
 
   // 折叠/展开交互
   header.addEventListener("click", () => {
-    const collapsed = panel.classList.toggle("collapsed");
-    header.querySelector(".subagent-panel-toggle").textContent = collapsed ? "▸" : "▾";
+    panel.classList.toggle("collapsed");
   });
 
   addMessageToContainer(panel);
@@ -5823,7 +5837,7 @@ class ConfirmationOverlay {
             <div class="confirmation-dropdown-wrapper" style="position: relative;">
               <button class="confirmation-dropdown-trigger" data-action="dropdown">
                 ↶ 撤销最后一步
-                <span class="arrow">▾</span>
+                <span class="icon icon-chevron-down arrow" style="width:10px;height:10px" aria-hidden="true"></span>
               </button>
               <div class="confirmation-dropdown hidden">
                 <button class="confirmation-dropdown-item" data-action="undo-last">

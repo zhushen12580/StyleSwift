@@ -213,6 +213,66 @@
 }
 
 /* ============================================================
+   1.5 Iconify 图标系统 — Lucide 线条风格
+   使用 mask-image 方案，颜色完全继承 currentColor
+   图标源：https://api.iconify.design
+   ============================================================ */
+
+.icon {
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: middle;
+  background-color: currentColor;
+  -webkit-mask-image: var(--icon-src);
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  -webkit-mask-position: center;
+  mask-image: var(--icon-src);
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  mask-position: center;
+}
+
+/* 图标定义 — Lucide 图标集 */
+.icon-zap           { --icon-src: url("https://api.iconify.design/lucide/zap.svg"); }
+.icon-chevron-down  { --icon-src: url("https://api.iconify.design/lucide/chevron-down.svg"); }
+.icon-chevron-left  { --icon-src: url("https://api.iconify.design/lucide/chevron-left.svg"); }
+.icon-chevron-right { --icon-src: url("https://api.iconify.design/lucide/chevron-right.svg"); }
+.icon-settings      { --icon-src: url("https://api.iconify.design/lucide/settings-2.svg"); }
+.icon-plus          { --icon-src: url("https://api.iconify.design/lucide/plus.svg"); }
+.icon-x             { --icon-src: url("https://api.iconify.design/lucide/x.svg"); }
+.icon-alert         { --icon-src: url("https://api.iconify.design/lucide/alert-triangle.svg"); }
+.icon-wand          { --icon-src: url("https://api.iconify.design/lucide/wand-2.svg"); }
+.icon-mouse         { --icon-src: url("https://api.iconify.design/lucide/mouse-pointer.svg"); }
+.icon-image         { --icon-src: url("https://api.iconify.design/lucide/image.svg"); }
+.icon-send          { --icon-src: url("https://api.iconify.design/lucide/send.svg"); }
+.icon-stop          { --icon-src: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='4' y='4' width='16' height='16' rx='2'/%3E%3C/svg%3E"); }
+.icon-eye           { --icon-src: url("https://api.iconify.design/lucide/eye.svg"); }
+.icon-eye-off       { --icon-src: url("https://api.iconify.design/lucide/eye-off.svg"); }
+.icon-sparkles      { --icon-src: url("https://api.iconify.design/lucide/sparkles.svg"); }
+.icon-lock          { --icon-src: url("https://api.iconify.design/lucide/lock.svg"); }
+.icon-moon          { --icon-src: url("https://api.iconify.design/lucide/moon.svg"); }
+.icon-file-text     { --icon-src: url("https://api.iconify.design/lucide/file-text.svg"); }
+.icon-trash         { --icon-src: url("https://api.iconify.design/lucide/trash-2.svg"); }
+.icon-pencil        { --icon-src: url("https://api.iconify.design/lucide/pencil.svg"); }
+.icon-bot           { --icon-src: url("https://api.iconify.design/lucide/bot.svg"); }
+.icon-wrench        { --icon-src: url("https://api.iconify.design/lucide/wrench.svg"); }
+.icon-check-circle  { --icon-src: url("https://api.iconify.design/lucide/check-circle-2.svg"); }
+.icon-clock         { --icon-src: url("https://api.iconify.design/lucide/clock.svg"); }
+.icon-refresh       { --icon-src: url("https://api.iconify.design/lucide/refresh-cw.svg"); }
+.icon-loader        { --icon-src: url("https://api.iconify.design/lucide/loader-2.svg"); }
+
+/* 图标动画 */
+@keyframes icon-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.icon.spin {
+  animation: icon-spin 1s linear infinite;
+}
+
+/* ============================================================
    2. Base Styles (重置与基础样式)
    ============================================================ */
 
@@ -647,14 +707,12 @@ pre code {
 }
 
 .skill-chip.built-in .skill-icon {
-  font-size: 0;
   display: inline-flex;
   align-items: center;
-}
-
-.skill-chip.built-in .skill-icon svg {
-  width: 12px;
-  height: 12px;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
 }
 
 .skill-chip.built-in .skill-name {
@@ -714,7 +772,12 @@ pre code {
 }
 
 .skill-chip.empty-action .skill-icon {
-  font-size: var(--font-size-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
 }
 
 .skill-chip.empty-action .skill-name {
@@ -1841,8 +1904,12 @@ pre code {
 }
 
 .tool-card-icon {
-  font-size: var(--font-size-md);
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
 }
 
 .tool-card-name {
@@ -1869,7 +1936,12 @@ pre code {
 }
 
 .tool-card-status .status-indicator {
-  font-size: var(--font-size-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
 }
 
 .tool-card-expand {
@@ -2038,8 +2110,13 @@ pre code {
 }
 
 .subagent-panel-icon {
-  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  color: var(--color-text-secondary);
 }
 
 .subagent-panel-label {
@@ -2061,8 +2138,13 @@ pre code {
   color: var(--color-text-secondary);
   margin-left: auto;
   flex-shrink: 0;
-  font-size: 10px;
-  transition: transform 0.15s;
+  width: 12px;
+  height: 12px;
+  transition: transform 0.15s var(--easing-default);
+}
+
+.subagent-panel.collapsed .subagent-panel-toggle {
+  transform: rotate(-90deg);
 }
 
 .subagent-panel-body {
@@ -2322,10 +2404,12 @@ pre code {
 }
 
 .todo-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
   width: 16px;
-  text-align: center;
-  font-size: 12px;
+  height: 16px;
 }
 
 .todo-content {
@@ -3999,10 +4083,20 @@ pre code {
 .settings-group .form-group select {
   cursor: pointer;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-image: url("https://api.iconify.design/lucide/chevron-down.svg?color=%23666666");
   background-repeat: no-repeat;
   background-position: right var(--spacing-sm) center;
   padding-right: var(--spacing-xl);
+}
+
+[data-theme="dark"] .settings-group .form-group select {
+  background-image: url("https://api.iconify.design/lucide/chevron-down.svg?color=%23999999");
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .settings-group .form-group select {
+    background-image: url("https://api.iconify.design/lucide/chevron-down.svg?color=%23999999");
+  }
 }
 
 /* 输入框带操作按钮 */
@@ -4217,8 +4311,13 @@ pre code {
 }
 
 .static-skill-icon {
-  font-size: var(--font-size-lg);
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-secondary);
 }
 
 .static-skill-text {
@@ -4396,7 +4495,7 @@ pre code {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
   transition: all var(--duration-fast) var(--easing-default);
 }
 
@@ -4639,8 +4738,10 @@ pre code {
   position: absolute;
   top: -4px;
   right: -8px;
-  font-size: 10px;
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
   animation: sparkle 2s ease-in-out infinite;
 }
 
@@ -4671,9 +4772,12 @@ pre code {
 }
 
 .restricted-tip .restricted-icon {
-  font-size: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-bottom: var(--spacing-lg);
-  opacity: 0.8;
+  opacity: 0.6;
+  color: var(--color-text-tertiary);
 }
 
 .restricted-tip .restricted-title {
@@ -4840,9 +4944,12 @@ pre code {
 }
 
 .skill-context-menu .menu-icon {
-  font-size: 14px;
-  width: 20px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
 }
 
 /* ============================================================
