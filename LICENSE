@@ -1,0 +1,45 @@
+Server Side Public License
+===========================
+
+Copyright (c) 2026 数字女娲 (StyleSwift) Team
+
+This program is free software: you can redistribute it and/or modify it under the terms of the Server Side Public License, version 1, as published by MongoDB, Inc.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the Server Side Public License for more details.
+
+You should have received a copy of the Server Side Public License along with this program. If not, see <http://www.mongodb.com/licensing/server-side-public-license>.
+
+---
+
+## Summary
+
+This license allows you to:
+
+- Use the software for personal and internal purposes
+- Modify and distribute the source code
+- Deploy as a service (with source code requirements)
+
+But prevents you from:
+
+- Using it as a proprietary commercial product
+- Offering it as a commercial SaaS service without full source disclosure
+- Selling or embedding in commercial products
+
+## Full License Text
+
+The full text of the Server Side Public License, version 1, is available at:
+http://www.mongodb.com/licensing/server-side-public-license
+
+---
+
+## Commercial Licensing
+
+For commercial use, proprietary integration, or SaaS services without source code requirements, please contact us for a commercial license:
+
+- Email: 2270364052@qq.com
+- Website: https://github.com/zhushen12580/StyleSwift
+
+Commercial licenses are available for:
+- Embedding 数字女娲 (StyleSwift) in commercial products
+- Offering 数字女娲 (StyleSwift) as a commercial SaaS service
+- Proprietary modifications and distributions
