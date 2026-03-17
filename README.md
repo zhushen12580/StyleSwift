@@ -6,6 +6,8 @@
 
 **一句话，给常逛的网页换皮肤**
 
+[![Chrome Web Store](https://img.shields.io/badge/Chrome-Extension-blue.svg)](https://github.com/zhushen12580/StyleSwift) [![Open Source](https://badges.frapsoft.com/os/v1/open-source.svg?v=103)](https://github.com/zhushen12580/StyleSwift)
+
 [English](#english) | [中文](#中文)
 
 </div>
