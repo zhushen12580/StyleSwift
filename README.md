@@ -265,6 +265,18 @@ npm run lint
 - 感谢 [learn-claude-code](https://github.com/shareAI-lab/learn-claude-code) 项目，本项目遵循了其 Agent 设计哲学
 - 灵感来源于用户对个性化浏览体验的需求
 
+### 赞助
+
+特别感谢 **[PPIO](https://ppio.com/)** 为本项目提供了研发所需的大部分 AI Token 支持。
+
+<div align="center">
+
+[![PPIO](https://img.shields.io/badge/PPIO-Sponsor-blue.svg)](https://ppio.com/)
+
+</div>
+
+PPIO 是一个去中心化的存储与计算平台，致力于为开发者提供高效、安全、低成本的基础设施服务。
+
 ---
 
 ## English
@@ -518,6 +530,18 @@ See [LICENSE](LICENSE) file for full details.
 - Thanks to [impeccable](https://github.com/pbakaus/impeccable) project for significantly improving style generation quality
 - Thanks to [learn-claude-code](https://github.com/shareAI-lab/learn-claude-code) project—this project follows its Agent design philosophy
 - Inspired by users' need for personalized browsing experience
+
+### Sponsorship
+
+Special thanks to **[PPIO](https://ppio.com/)** for providing most of the AI tokens used in this project's development.
+
+<div align="center">
+
+[![PPIO](https://img.shields.io/badge/PPIO-Sponsor-blue.svg)](https://ppio.com/)
+
+</div>
+
+PPIO is a decentralized storage and computing platform dedicated to providing developers with efficient, secure, and cost-effective infrastructure services.
 
 ---
 
