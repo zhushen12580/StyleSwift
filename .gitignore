@@ -15,3 +15,7 @@ node_modules/
 # !.prettierrc
 # !.eslintrc
 # !.editorconfig
+
+# IDE 和工具生成的文件
+tasks.json
+biome.json
