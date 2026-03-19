@@ -19,3 +19,6 @@ node_modules/
 # IDE 和工具生成的文件
 tasks.json
 biome.json
+
+# 压缩文件
+*.zip
