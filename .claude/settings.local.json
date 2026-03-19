@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(wc -l D:/PRODUCT/PRODUCT/StyleSwift/doc/ARCHITECTURE.md D:/PRODUCT/PRODUCT/StyleSwift/doc/ADR/*.md)"
-    ]
-  }
-}
