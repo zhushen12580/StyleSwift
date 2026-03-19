@@ -146,84 +146,266 @@ function t(key) {
 // ============================================================
 
 const PRESET_STYLES = [
+	// ============================================================
+	// 通用风格 (General)
+	// ============================================================
 	{
-		id: "dark-mode",
-		name: "深色模式",
-		nameEn: "Dark Mode",
-		desc: "护眼深色主题，适合夜间浏览",
-		descEn: "Eye-friendly dark theme, perfect for night browsing",
+		id: "minimalism",
+		name: "极简瑞士风",
+		nameEn: "Minimalism & Swiss Style",
+		desc: "干净简洁的高对比度设计，大量留白",
+		descEn: "Clean, simple design with high contrast and generous whitespace",
 		prompt:
-			"将页面切换为深色模式，背景使用深色，文字使用浅色，保持良好的对比度，减少眼睛疲劳",
-		preview: { bg: "#1a1a2e", text: "#e8e8e8" },
+			"极简瑞士风格设计。使用单色配色（纯黑#000000和纯白#FFFFFF为主），大量留白，高对比度。采用无衬线字体，基于网格的布局，避免多余装饰。过渡动画简洁（200-250ms），强调内容层级和功能优先。适合专业工具、文档站点、企业应用。",
+		preview: { bg: "#FFFFFF", text: "#000000" },
 	},
 	{
-		id: "light-minimal",
-		name: "极简白",
-		nameEn: "Minimal White",
-		desc: "干净简约的白色主题",
-		descEn: "Clean and minimalist white theme",
+		id: "neumorphism",
+		name: "新拟物化",
+		nameEn: "Neumorphism",
+		desc: "柔和凸起效果，精致阴影质感",
+		descEn: "Soft UI with subtle raised depth and refined shadows",
 		prompt:
-			"极简白色主题，去除多余装饰，使用大量留白，字体简洁现代，营造清爽干净的阅读体验",
-		preview: { bg: "#fafafa", text: "#333" },
+			"新拟物化设计风格。使用柔和的淡色调背景（柔蓝#C8E0F4、柔粉#F5E0E8、柔灰#E8E8E8），通过多层阴影创造凸起或凹陷的3D效果（box-shadow: -5px -5px 15px, 5px 5px 15px）。圆角（12-16px），单色调配色，过渡平缓（150ms）。适合健康应用、冥想平台。",
+		preview: { bg: "#E8E8E8", text: "#5a5a5a" },
 	},
 	{
-		id: "cyberpunk",
-		name: "赛博朋克",
-		nameEn: "Cyberpunk",
-		desc: "未来科技感，霓虹配色",
-		descEn: "Futuristic tech aesthetic with neon colors",
+		id: "glassmorphism",
+		name: "玻璃拟态",
+		nameEn: "Glassmorphism",
+		desc: "半透明毛玻璃效果，层次分明",
+		descEn: "Frosted glass effect with translucent layers",
 		prompt:
-			"赛博朋克风格，使用霓虹蓝紫配色，添加发光边框效果，字体使用科技感字体，营造未来都市氛围",
-		preview: { bg: "#0a0a0a", text: "#00ffcc" },
+			"玻璃拟态设计。使用半透明白色背景（rgba(255,255,255,0.1-0.3)），配合背景模糊效果（backdrop-filter: blur(10-20px)）。鲜艳的渐变背景（电蓝#0080FF、霓紫#8B00FF、亮粉#FF1493），细腻的边框（1px solid rgba(255,255,255,0.2)）。营造层次分明的现代感。适合SaaS、金融仪表板、现代企业应用。",
+		preview: {
+			bg: "linear-gradient(135deg, #0080FF, #8B00FF)",
+			text: "#FFFFFF",
+		},
 	},
 	{
-		id: "newspaper",
-		name: "旧报纸",
-		nameEn: "Old Newspaper",
-		desc: "复古报纸风格，怀旧阅读体验",
-		descEn: "Vintage newspaper style, nostalgic reading experience",
+		id: "brutalism",
+		name: "粗野主义",
+		nameEn: "Brutalism",
+		desc: "原始粗犷，高对比度，反设计美学",
+		descEn: "Raw, unpolished design with high contrast anti-aesthetic",
 		prompt:
-			"旧报纸风格，使用泛黄的纸张背景，衬线字体，黑色文字，添加纸张纹理效果，营造复古新闻阅读体验",
-		preview: { bg: "#f4e4c1", text: "#2d2d2d" },
+			"粗野主义设计。使用原始未修饰的风格，高对比度配色（纯红#FF0000、纯蓝#0000FF、纯黄#FFFF00、黑白）。无渐变，instant过渡，尖锐的边角（0px），粗体字（700+），可见的边框和网格。大胆的排版，不对称布局，打破传统设计规则。适合设计作品集、艺术项目、编辑类网站。",
+		preview: { bg: "#FFFF00", text: "#000000" },
 	},
 	{
-		id: "nature",
-		name: "自然森林",
-		nameEn: "Nature Forest",
-		desc: "清新自然的绿色主题",
-		descEn: "Fresh and natural green theme",
+		id: "claymorphism",
+		name: "粘土拟态",
+		nameEn: "Claymorphism",
+		desc: "柔软3D，玩具般的圆润质感",
+		descEn: "Soft 3D, toy-like bubbly shapes with thick borders",
 		prompt:
-			"自然森林主题，使用深绿色背景，浅绿色点缀，自然纹理元素，营造清新自然的浏览氛围",
-		preview: { bg: "#2d5a27", text: "#90ee90" },
+			"粘土拟态设计。使用柔和的粉彩色调（柔桃#FDBCB4、婴儿蓝#ADD8E6、薄荷#98FF98、淡紫#E6E6FA）。元素呈圆润的球状（border-radius: 16-24px），配合双层阴影创造蓬松的3D效果。粗边框（3-4px），柔和的按压缩放动画（200ms ease-out）。营造可爱、友好的氛围。适合教育应用、儿童产品、创意工具。",
+		preview: { bg: "#FDBCB4", text: "#4a4a4a" },
 	},
 	{
-		id: "ocean",
-		name: "海洋蓝",
-		nameEn: "Ocean Blue",
-		desc: "深邃海洋主题，平静放松",
-		descEn: "Deep ocean theme, calm and relaxing",
+		id: "aurora-ui",
+		name: "极光界面",
+		nameEn: "Aurora UI",
+		desc: "绚丽渐变，流动的北极光效果",
+		descEn: "Vibrant flowing gradients like Northern Lights",
 		prompt:
-			"海洋蓝主题，使用深海蓝配色，添加波浪渐变效果，营造深邃平静的浏览体验",
-		preview: { bg: "#006994", text: "#e0f7fa" },
+			"极光风格设计。使用鲜艳的渐变配色（蓝→紫→粉→青），营造极光般的流动感。大面积的CSS/SVG渐变，配合8-12秒的柔和动画。互补配色（蓝橙、紫黄），渐变融合效果（screen/multiply混合模式）。层次通过颜色叠加表现。适合创意机构、音乐平台、高端产品展示。",
+		preview: {
+			bg: "linear-gradient(135deg, #0080FF, #8B00FF, #FF1493, #00FFFF)",
+			text: "#FFFFFF",
+		},
 	},
 	{
-		id: "sunset",
-		name: "日落橙",
-		nameEn: "Sunset Orange",
-		desc: "温暖活力的橙色调",
-		descEn: "Warm and vibrant orange tones",
-		prompt: "日落橙主题，使用温暖的橙红配色，渐变背景，营造活力温暖的浏览体验",
-		preview: { bg: "#ff6b35", text: "#fff5f0" },
+		id: "retro-futurism",
+		name: "复古未来主义",
+		nameEn: "Retro-Futurism",
+		desc: "80年代科幻风，霓虹辉光效果",
+		descEn: "80s sci-fi aesthetic with neon glow effects",
+		prompt:
+			"复古未来主义风格。使用霓虹配色（霓蓝#0080FF、亮粉#FF006E、青色#00FFFF、深黑#1A1A2E）。CRT扫描线效果（::before伪元素），霓虹发光（text-shadow + box-shadow），故障艺术动画（skew/offset keyframes）。网格背景，深色基调。适合游戏、音乐平台、科技品牌、赛博朋克风格产品。",
+		preview: { bg: "#1A1A2E", text: "#00FFFF" },
 	},
 	{
-		id: "midnight",
-		name: "午夜紫",
-		nameEn: "Midnight Purple",
-		desc: "神秘优雅的紫色调",
-		descEn: "Mysterious and elegant purple tones",
+		id: "flat-design",
+		name: "扁平化设计",
+		nameEn: "Flat Design",
+		desc: "简洁2D，无阴影现代风格",
+		descEn: "Clean 2D design without shadows",
 		prompt:
-			"午夜紫主题，使用深紫色背景，淡紫色点缀，营造神秘优雅的夜间浏览体验",
-		preview: { bg: "#0f0f23", text: "#9575cd" },
+			"扁平化设计。使用明亮纯色（红、橙、蓝、绿），无渐变无阴影。简洁的形状，干净的线条，以字体为核心。简洁的悬停效果（颜色/透明度变化），快速加载，过渡简洁（150-200ms ease）。有限的调色板（4-6色）。适合Web应用、移动应用、初创MVP、SaaS、仪表板。",
+		preview: { bg: "#3498db", text: "#FFFFFF" },
+	},
+	{
+		id: "dark-mode-oled",
+		name: "深色OLED模式",
+		nameEn: "Dark Mode (OLED)",
+		desc: "纯黑深色主题，护眼省电",
+		descEn: "Pure black dark theme, eye-friendly and power efficient",
+		prompt:
+			"OLED深色模式设计。使用纯黑背景（#000000），深灰色调（#121212、#0A0E27）。鲜艳的强调色（霓绿#39FF14、电蓝#0080FF、金色#FFD700、等离子紫#BF00FF）。最小化发光效果（text-shadow: 0 0 10px），深色到浅色的文字过渡，高可读性，可见的焦点状态。适合夜间模式应用、编程平台、娱乐类产品。",
+		preview: { bg: "#000000", text: "#39FF14" },
+	},
+	{
+		id: "neubrutalism",
+		name: "新粗野主义",
+		nameEn: "Neubrutalism",
+		desc: "大胆边框，粗犷阴影，玩味十足",
+		descEn: "Bold borders, thick shadows, playful and loud",
+		prompt:
+			"新粗野主义设计。使用明亮的主色（黄#FFEB3B、红#FF5252、蓝#2196F3），粗黑边框（border: 3px solid #000），45度偏移阴影（box-shadow: 4px 4px 0 #000）。无渐变，尖锐边角（0px），粗体字。大胆的悬停偏移动画。适合Z世代品牌、初创公司、创意机构、Figma风格界面。",
+		preview: { bg: "#FFEB3B", text: "#000000" },
+	},
+	{
+		id: "bento-grid",
+		name: "便当盒网格",
+		nameEn: "Bento Box Grid",
+		desc: "模块化卡片，苹果风格展示",
+		descEn: "Modular cards, Apple-style display",
+		prompt:
+			"便当盒网格设计。使用中性底色（#FFFFFF、#F5F5F5）配合品牌强调色。模块化卡片布局，不对称网格（grid-template），变化的卡片尺寸（span属性）。圆角（16px），柔和阴影，悬停放大（scale: 1.02），平滑过渡。干净的层级结构，大片负空间。适合仪表板、产品页面、作品集、SaaS。",
+		preview: { bg: "#F5F5F7", text: "#1D1D1F" },
+	},
+	{
+		id: "y2k-aesthetic",
+		name: "Y2K千禧风",
+		nameEn: "Y2K Aesthetic",
+		desc: "于禧年代美学，金属光泽复古",
+		descEn: "Y2K millennium aesthetic with metallic gloss",
+		prompt:
+			"Y2K千禧风格。使用霓虹粉（#FF69B4）、青色（#00FFFF）、银色（#C0C0C0）、紫色（##9400D3）。金属渐变效果，光泽按钮，3D铬金效果，发光动画，气泡形状。复古未来主义，怀旧感。适合时尚品牌、音乐平台、Z世代品牌、娱乐产品。",
+		preview: {
+			bg: "linear-gradient(135deg, #FF69B4, #00FFFF, #C0C0C0)",
+			text: "#FFFFFF",
+		},
+	},
+	{
+		id: "cyberpunk-ui",
+		name: "赛博朋克UI",
+		nameEn: "Cyberpunk UI",
+		desc: "霓虹终端，科幻感界面",
+		descEn: "Neon terminal, sci-fi interface aesthetic",
+		prompt:
+			"赛博朋克UI设计。使用深黑背景（#0D0D0D），霓虹绿（#00FF00）、品红（#FF00FF）、青色（#00FFFF）。终端风格字体，霓虹发光效果（text-shadow），故障艺术动画（skew/offset），扫描线覆盖（::before伪元素）。HUD元素，矩阵数字雨效果。适合游戏平台、科技产品、加密应用、开发工具。",
+		preview: { bg: "#0D0D0D", text: "#00FF00" },
+	},
+	{
+		id: "organic-biophilic",
+		name: "有机亲和设计",
+		nameEn: "Organic Biophilic",
+		desc: "自然纹理，有机曲线，可持续美学",
+		descEn: "Natural textures, organic curves, sustainable aesthetic",
+		prompt:
+			"有机亲和设计。使用自然色调（森林绿#228B22、土棕#8B4513、天蓝#87CEEB、米色#F5F5DC）。有机曲线（border-radius变化），自然阴影，流动的SVG形状，圆角（16-24px）。天然纹理背景。适合健康应用、可持续品牌、生态产品、冥想应用。",
+		preview: { bg: "#228B22", text: "#F5F5DC" },
+	},
+	{
+		id: "ai-native-ui",
+		name: "AI原生界面",
+		nameEn: "AI-Native UI",
+		desc: "对话式，极简边框，流式文本",
+		descEn: "Conversational, minimal chrome, streaming text",
+		prompt:
+			"AI原生界面设计。使用中性色背景（#F5F5F5）配合单一强调色（AI紫#6366F1）。极简边框，对话气泡风格，流式文本动画（三点脉冲指示器），打字效果。上下文卡片，平滑揭示动画。适合AI产品、聊天机器人、语音助手、AI辅助工具。",
+		preview: { bg: "#F5F5F5", text: "#6366F1" },
+	},
+	{
+		id: "memphis-design",
+		name: "孟菲斯设计",
+		nameEn: "Memphis Design",
+		desc: "80年代几何，玩味图案，波普艺术",
+		descEn: "80s geometric, playful patterns, pop art",
+		prompt:
+			"孟菲斯设计。使用明亮的几何配色（亮粉#FF71CE、黄色#FFCE5C、青色#86CCCA、紫蓝#6A7BB4）。重复的几何图案（三角形、波浪线、圆形），clip-path多边形，mix-blend-mode混合模式。大胆的形状，80年代后现代美学。适合创意机构、音乐网站、Z世代品牌、活动推广。",
+		preview: { bg: "#FF71CE", text: "#FFFFFF" },
+	},
+	{
+		id: "vaporwave",
+		name: "蒸汽波",
+		nameEn: "Vaporwave",
+		desc: "合成波，80-90年代复古霓虹",
+		descEn: "Synthwave, 80s-90s retro neon aesthetic",
+		prompt:
+			"蒸汽波设计。使用霓虹配色（粉#FF71CE、青#01CDFE、薄荷#05FFA1、紫#B967FF）。日落渐变，故障覆盖，VHS效果，复古扫描线。文字发光阴影效果，hue-rotate滤镜动画。怀旧复古未来主义，梦幻氛围。适合音乐平台、游戏、创意作品集、科技初创公司。",
+		preview: {
+			bg: "linear-gradient(135deg, #FF71CE, #01CDFE, #05FFA1, #B967FF)",
+			text: "#FFFFFF",
+		},
+	},
+	{
+		id: "spatial-ui",
+		name: "空间UI (VisionOS)",
+		nameEn: "Spatial UI (VisionOS)",
+		desc: "空间计算，深度层次，凝视交互",
+		descEn: "Spatial computing, depth layers, gaze interaction",
+		prompt:
+			"空间UI设计。使用毛玻璃效果（#FFFFFF 15-30%透明度），系统白色。深色阴影创造深度感，视差深度效果，动态光照响应，凝视悬停效果，焦点缩放动画。通透的层次感。适合空间计算应用、VR/AR界面、沉浸式媒体、未来仪表板。",
+		preview: { bg: "rgba(255,255,255,0.2)", text: "#1D1D1F" },
+	},
+	{
+		id: "gen-z-chaos",
+		name: "Z世代混沌",
+		nameEn: "Gen Z Chaos / Maximalism",
+		desc: "混乱美学，贴纸拼贴，互联网文化",
+		descEn: "Chaos aesthetic, stickers collage, internet culture",
+		prompt:
+			"Z世代混沌设计。使用冲突的明亮色（#FF00FF、#00FF00、#FFFF00、#0000FF）。渐变、彩虹、故障、噪点、饱和度混合。滚动字幕动画、抖动、贴纸层叠、GIF过载、随机放置。打破秩序的互联网文化美学。适合Z世代生活方式品牌、音乐艺术家、创意作品集、病毒式营销。",
+		preview: { bg: "#FF00FF", text: "#00FF00" },
+	},
+	// ============================================================
+	// 落地页风格 (Landing Page)
+	// ============================================================
+	{
+		id: "hero-centric",
+		name: "英雄中心设计",
+		nameEn: "Hero-Centric Design",
+		desc: "大英雄区，醒目标题，高对比CTA",
+		descEn: "Large hero section, compelling headline, high-contrast CTA",
+		prompt:
+			"英雄中心落地页设计。大尺寸英雄区域，醒目的标题，高对比度的CTA按钮。品牌主色，白色/浅色背景保证对比度，强调色用于CTA。滚动揭示动画，英雄区淡入效果，背景视差，CTA发光/脉冲效果。适合SaaS落地页、产品发布、服务落地页、B2B平台。",
+		preview: { bg: "#FFFFFF", text: "#2563EB" },
+	},
+	{
+		id: "conversion-optimized",
+		name: "转化优化页",
+		nameEn: "Conversion-Optimized",
+		desc: "表单聚焦，单一CTA，信任元素",
+		descEn: "Form-focused, single CTA, trust signals",
+		prompt:
+			"转化优化落地页设计。极简设计，单一CTA焦点，高对比度。紧迫感元素（倒计时、限时优惠），信任信号（客户Logo、评价、安全徽章），社会证明。表单焦点悬停动画，加载微调，成功反馈。适合电商产品页、免费试用注册、潜在客户获取、SaaS定价页。",
+		preview: { bg: "#FFFFFF", text: "#22C55E" },
+	},
+	{
+		id: "social-proof",
+		name: "社交证明页",
+		nameEn: "Social Proof-Focused",
+		desc: "客户评价，成功案例，信任标记",
+		descEn: "Testimonials, case studies, credibility markers",
+		prompt:
+			"社交证明落地页设计。突出的客户评价，客户Logo展示，成功案例区块，评分/星级，用户头像，成功指标。主品牌色，信任蓝，成功绿用于增长指标。评价轮播动画，Logo网格淡入，数字计数动画。适合B2B SaaS、专业服务、高级产品、电商转化页。",
+		preview: { bg: "#F8FAFC", text: "#1E40AF" },
+	},
+	// ============================================================
+	// 数据可视化风格 (BI/Analytics)
+	// ============================================================
+	{
+		id: "data-dashboard",
+		name: "数据密集仪表板",
+		nameEn: "Data-Dense Dashboard",
+		desc: "多图表，KPI卡片，空间高效",
+		descEn: "Multiple charts, KPI cards, space-efficient",
+		prompt:
+			"数据密集仪表板设计。多图表/小部件，数据表格，KPI卡片，最小内边距，网格布局。中控配色（浅灰#F5F5F5），数据色（蓝绿红），深色文字#333333。成功绿#22C55E、警告橙#F59E0B、警报红#EF4444用于状态。悬停工具提示，图表点击缩放，行高亮，平滑过滤动画。适合BI仪表板、财务分析、企业报告。",
+		preview: { bg: "#F5F5F5", text: "#333333" },
+	},
+	{
+		id: "realtime-monitoring",
+		name: "实时监控面板",
+		nameEn: "Real-Time Monitoring",
+		desc: "实时更新，状态指示，流式图表",
+		descEn: "Live updates, status indicators, streaming charts",
+		prompt:
+			"实时监控面板设计。实时数据更新，状态指示器，警报通知。警报色：紧急红#FF0000、警告橙#FFA500、正常绿#22C55E、更新蓝。状态指示闪烁动画，警报脉冲/发光，平滑数据流更新，加载效果。适合系统监控、DevOps仪表板、实时分析、股票看板、直播跟踪。",
+		preview: { bg: "#1E1E1E", text: "#22C55E" },
 	},
 ];
 
@@ -574,8 +756,18 @@ function renderStyleCards() {
 		card.className = "style-card";
 		card.dataset.style = style.id;
 
+		// 根据背景类型处理：渐变或纯色
+		let bgStyle;
+		if (style.preview.bg.includes("gradient")) {
+			// 渐变背景直接使用
+			bgStyle = style.preview.bg;
+		} else {
+			// 纯色背景生成渐变效果
+			bgStyle = `linear-gradient(135deg, ${style.preview.bg} 0%, ${lightenColor(style.preview.bg, 15)} 100%)`;
+		}
+
 		card.innerHTML = `
-      <div class="style-card-preview" style="background: linear-gradient(135deg, ${style.preview.bg} 0%, ${lightenColor(style.preview.bg, 10)} 100%); color: ${style.preview.text}">
+      <div class="style-card-preview" style="background: ${bgStyle}; color: ${style.preview.text}">
         ${style.name.charAt(0)}
       </div>
       <div class="style-card-content">
@@ -630,8 +822,16 @@ function showStyleModal(style) {
 	stylePromptCode.textContent = style.prompt;
 	styleDescription.textContent = locale === "zh_CN" ? style.desc : style.descEn;
 
-	// 设置预览样式
-	stylePreview.style.background = `linear-gradient(135deg, ${style.preview.bg} 0%, ${lightenColor(style.preview.bg, 10)} 100%)`;
+	// 根据背景类型处理：渐变或纯色
+	let bgStyle;
+	if (style.preview.bg.includes("gradient")) {
+		// 渐变背景直接使用
+		bgStyle = style.preview.bg;
+	} else {
+		// 纯色背景生成渐变效果
+		bgStyle = `linear-gradient(135deg, ${style.preview.bg} 0%, ${lightenColor(style.preview.bg, 15)} 100%)`;
+	}
+	stylePreview.style.background = bgStyle;
 	stylePreview.style.color = style.preview.text;
 	stylePreview.textContent = style.name.charAt(0);
 

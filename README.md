@@ -263,6 +263,7 @@ npm run lint
 - 感谢所有贡献者
 - 感谢 [impeccable](https://github.com/pbakaus/impeccable) 项目，为样式生成质量提供了重要帮助
 - 感谢 [learn-claude-code](https://github.com/shareAI-lab/learn-claude-code) 项目，本项目遵循了其 Agent 设计哲学
+- 感谢 [ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 项目，为本项目提供了风格提示词参考
 - 灵感来源于用户对个性化浏览体验的需求
 
 ### 赞助
@@ -529,6 +530,7 @@ See [LICENSE](LICENSE) file for full details.
 - Thanks to all contributors
 - Thanks to [impeccable](https://github.com/pbakaus/impeccable) project for significantly improving style generation quality
 - Thanks to [learn-claude-code](https://github.com/shareAI-lab/learn-claude-code) project—this project follows its Agent design philosophy
+- Thanks to [ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) project for providing style prompt references
 - Inspired by users' need for personalized browsing experience
 
 ### Sponsorship
