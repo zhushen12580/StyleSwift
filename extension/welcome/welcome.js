@@ -37,7 +37,6 @@ const i18n = {
 		pinStep2Desc: '在扩展列表中找到"数字女娲"',
 		pinStep3Title: "点击图钉固定",
 		pinStep3Desc: "点击旁边的图钉图标，将其固定到工具栏",
-		pinTip: "固定后，点击图标即可快速打开侧边栏开始使用",
 		detectWaiting: "正在检测置顶状态...",
 		detectSuccess: "已成功置顶！",
 		detectHint: "请按照上述步骤将插件固定到工具栏",
@@ -88,8 +87,6 @@ const i18n = {
 		pinStep2Desc: 'Find "StyleSwift" in the extension list',
 		pinStep3Title: "Click pin icon",
 		pinStep3Desc: "Click the pin icon next to it to pin it to the toolbar",
-		pinTip:
-			"After pinning, click the icon to quickly open sidebar and start using",
 		detectWaiting: "Detecting pin status...",
 		detectSuccess: "Successfully pinned!",
 		detectHint: "Please follow the steps above to pin the extension to toolbar",
@@ -108,12 +105,28 @@ const i18n = {
 	},
 };
 
-// 功能对应的GIF占位符数据（可替换为真实GIF）
+// 功能对应的GIF演示数据
 const FEATURE_DEMOS = [
-	{ title: "网页风格化", gif: null, thumbnail: null },
-	{ title: "样式质检", gif: null, thumbnail: null },
-	{ title: "精准编辑", gif: null, thumbnail: null },
-	{ title: "风格技能复用", gif: null, thumbnail: null },
+	{
+		title: "网页风格化",
+		gif: "../images/网页风格化压缩.gif",
+		thumbnail: "../images/网页风格化压缩.gif",
+	},
+	{
+		title: "样式质检",
+		gif: "../images/质检压缩.gif",
+		thumbnail: "../images/质检压缩.gif",
+	},
+	{
+		title: "精准编辑",
+		gif: "../images/精准编辑压缩.gif",
+		thumbnail: "../images/精准编辑压缩.gif",
+	},
+	{
+		title: "风格技能复用",
+		gif: "../images/风格复用.gif",
+		thumbnail: "../images/风格复用.gif",
+	},
 ];
 
 // 获取当前语言
@@ -288,6 +301,7 @@ function initFeatureList() {
 
 function updateDemoContent(index) {
 	const demoTitle = document.querySelector(".demo-title");
+	const demoPlaceholder = document.getElementById("demo-placeholder");
 
 	// 更新标题
 	if (demoTitle) {
@@ -298,6 +312,14 @@ function updateDemoContent(index) {
 			t("feature4Title"),
 		];
 		demoTitle.textContent = titles[index] || "";
+	}
+
+	// 更新 GIF 演示
+	if (demoPlaceholder && FEATURE_DEMOS[index]?.gif) {
+		const demo = FEATURE_DEMOS[index];
+		demoPlaceholder.innerHTML = `
+			<img src="${demo.gif}" alt="${demo.title}" class="demo-gif" />
+		`;
 	}
 }
 
@@ -704,4 +726,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 	// 显示第一页
 	showPage(1);
+
+	// 显示第一个功能的 GIF 演示
+	updateDemoContent(0);
 });

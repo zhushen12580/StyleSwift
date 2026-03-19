@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![数字女娲 Logo](images/海报.png)
+![数字女娲 Logo](images/banner.png)
 
 **一句话，给常逛的网页换皮肤**
 

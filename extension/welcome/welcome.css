@@ -243,7 +243,7 @@ body {
    ============================================================ */
 
 #welcome-app {
-	max-width: 960px;
+	max-width: 1100px;
 	margin: 0 auto;
 	padding: var(--spacing-2xl) var(--spacing-xl);
 	min-height: 100vh;
@@ -393,7 +393,7 @@ body {
 
 .features-page {
 	display: grid;
-	grid-template-columns: 1fr 1.2fr;
+	grid-template-columns: 360px 1fr;
 	gap: var(--spacing-3xl);
 	align-items: start;
 }
@@ -507,7 +507,7 @@ body {
 
 .demo-container {
 	width: 100%;
-	max-width: 560px;
+	max-width: none;
 }
 
 .demo-placeholder {
@@ -518,12 +518,12 @@ body {
 	);
 	border: 1px solid var(--color-border);
 	border-radius: var(--radius-xl);
-	padding: var(--spacing-3xl);
+	padding: var(--spacing-xl);
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	min-height: 320px;
+	min-height: 420px;
 	box-shadow: var(--shadow-lg);
 	transition: all var(--duration-normal) var(--easing-default);
 }
@@ -561,6 +561,17 @@ body {
 .demo-placeholder .demo-hint {
 	font-size: var(--font-size-sm);
 	color: var(--color-text-tertiary);
+}
+
+.demo-gif {
+	width: 100%;
+	border-radius: var(--radius-lg);
+	object-fit: contain;
+}
+
+/* GIF Display Styles */
+.demo-placeholder:has(.demo-gif) {
+	padding: var(--spacing-lg);
 }
 
 /* ============================================================
@@ -842,35 +853,6 @@ body {
 	font-size: var(--font-size-sm);
 	color: var(--color-text-secondary);
 	line-height: 1.4;
-}
-
-/* Pin Tips */
-.pin-tips {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing-md);
-	padding: var(--spacing-md);
-	background: var(--color-primary-light);
-	border: 1px solid color-mix(in oklch, var(--color-primary) 25%, transparent);
-	border-radius: var(--radius-lg);
-}
-
-.tip-icon {
-	width: 32px;
-	height: 32px;
-	background: var(--color-primary);
-	border-radius: var(--radius-md);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	color: var(--color-text-inverse);
-	flex-shrink: 0;
-}
-
-.pin-tips p {
-	font-size: var(--font-size-sm);
-	color: var(--color-primary-active);
-	line-height: 1.5;
 }
 
 .pin-footer {
