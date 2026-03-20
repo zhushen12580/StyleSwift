@@ -60,7 +60,13 @@
 
 #### 安装
 
-1. **从源码安装**：
+**插件已上架 Chrome 应用商店，推荐直接安装体验：**
+
+https://chromewebstore.google.com/detail/styleswift/llchggmimjgnbjlcgpkjmplhfbkjjcli
+
+---
+
+**或者从源码安装**：
    ```bash
    # 克隆仓库
    git clone https://github.com/yourusername/StyleSwift.git
@@ -278,6 +284,16 @@ npm run lint
 
 PPIO 是一个去中心化的存储与计算平台，致力于为开发者提供高效、安全、低成本的基础设施服务。
 
+### 交流群
+
+<div align="center">
+
+<img src="images/交流群.png" alt="交流群二维码" width="300"/>
+
+**扫码加入交流群**，与其他用户交流使用心得、反馈问题。
+
+</div>
+
 ---
 
 ## English
@@ -326,7 +342,12 @@ Simply describe your design intent, and 数字女娲 understands and intelligent
 
 #### Installation
 
-1. **Install from Source**:
+**Now available on Chrome Web Store - Install directly:**
+https://chromewebstore.google.com/detail/styleswift/llchggmimjgnbjlcgpkjmplhfbkjjcli
+
+---
+
+**Or install from source**:
    ```bash
    # Clone the repository
    git clone https://github.com/yourusername/StyleSwift.git
@@ -544,6 +565,16 @@ Special thanks to **[PPIO](https://ppio.com/)** for providing most of the AI tok
 </div>
 
 PPIO is a decentralized storage and computing platform dedicated to providing developers with efficient, secure, and cost-effective infrastructure services.
+
+### Community
+
+<div align="center">
+
+<img src="images/交流群.png" alt="Community QR Code" width="300"/>
+
+**Scan to join our community group** and connect with other users.
+
+</div>
 
 ---
 
