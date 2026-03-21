@@ -4,7 +4,13 @@
  */
 
 // 导入依赖模块
-import { currentSession, updateStylesSummary } from "./session.js";
+import {
+  currentSession,
+  updateStylesSummary,
+  loadStylesHistory,
+  saveStylesHistory,
+  checkQuotaAndMigrate,
+} from "./session.js";
 import { mergeCSS, checkBraceBalance, repairBraces } from "./css-merge.js";
 import { StyleSkillStore } from "./style-skill.js";
 import { createSkillManager } from "./skill-loader.js";
@@ -600,6 +606,10 @@ async function syncActiveStyles() {
  * 仅维护当前会话的样式，切换会话时自动切换对应样式。
  * 每次操作后同步到 active_styles:{domain}，确保页面刷新后样式不丢失。
  *
+ * 存储策略：
+ * - 当前样式 (sKey): chrome.storage.local (供 early-inject.js 快速读取)
+ * - 样式历史 (hKey): IndexedDB (避免 chrome.storage 配额限制)
+ *
  * @param {string} css - CSS 代码（save 模式必填，rollback 模式不需要）
  * @param {string} mode - 模式：'save' | 'rollback_all'
  * @param {number} [tabId] - 目标 Tab ID（可选，优先于全局锁定）
@@ -612,41 +622,41 @@ async function runApplyStyles(css, mode, tabId) {
 
   try {
     const sKey = currentSession.stylesKey;
-    const hKey = currentSession.stylesHistoryKey;
+    const domain = currentSession.domain;
+    const sessionId = currentSession.sessionId;
     const MAX_HISTORY = 20; // 最多保留 20 层历史
 
     // === rollback_last 模式 ===
     if (mode === "rollback_last") {
-      // 1. 获取历史栈
-      const { [hKey]: history = [] } = await chrome.storage.local.get(hKey);
-      
+      // 1. 从 IndexedDB 获取历史栈
+      const history = await loadStylesHistory(domain, sessionId);
+
       if (history.length <= 1) {  // 只有空字符串或一个元素时不能回滚
         return "没有可回滚的历史。当前无已应用样式或已是最初状态。";
       }
 
       // 2. 从历史栈 pop（移除最后一次保存的状态）
       history.pop();
-      
+
       // 3. 获取回滚后的 CSS（栈顶或空）
       const newCSS = history.length > 0 ? history[history.length - 1] : "";
 
-      // 4. 更新 storage
+      // 4. 更新存储
       if (newCSS.trim()) {
-        await chrome.storage.local.set({ 
-          [sKey]: newCSS,
-          [hKey]: history 
-        });
+        await chrome.storage.local.set({ [sKey]: newCSS });
+        await saveStylesHistory(domain, sessionId, history);
         // 同步到 Content Script
-        await sendToContentScript({ 
-          tool: "replace_css", 
-          args: { css: newCSS } 
+        await sendToContentScript({
+          tool: "replace_css",
+          args: { css: newCSS }
         }, tabId);
       } else {
-        await chrome.storage.local.remove([sKey, hKey]);
+        await chrome.storage.local.remove(sKey);
+        await saveStylesHistory(domain, sessionId, []);
         // 同步到 Content Script（清空）
-        await sendToContentScript({ 
-          tool: "rollback_css", 
-          args: { scope: "all" } 
+        await sendToContentScript({
+          tool: "rollback_css",
+          args: { scope: "all" }
         }, tabId);
       }
 
@@ -666,7 +676,8 @@ async function runApplyStyles(css, mode, tabId) {
         tool: "rollback_css",
         args: { scope: "all" },
       }, tabId);
-      await chrome.storage.local.remove([sKey, hKey]);
+      await chrome.storage.local.remove(sKey);
+      await saveStylesHistory(domain, sessionId, []);
       await syncActiveStyles();
       await updateStylesSummary();
       return "已回滚所有样式。当前无已应用样式。";
@@ -678,14 +689,20 @@ async function runApplyStyles(css, mode, tabId) {
         throw new Error("[runApplyStyles] save 模式需要提供 CSS 代码");
       }
 
-      // 0. 源头校验：检测 AI 提交的 CSS 花括号是否平衡
+      // 0. 检查存储配额，必要时触发迁移
+      const migrationResult = await checkQuotaAndMigrate();
+      if (migrationResult.migrated) {
+        console.log(`[runApplyStyles] 已迁移 ${migrationResult.migratedCount} 个历史到 IndexedDB`);
+      }
+
+      // 1. 源头校验：检测 AI 提交的 CSS 花括号是否平衡
       const { balanced, depth } = checkBraceBalance(css);
       if (!balanced) {
         console.warn('[StyleSwift] AI 提交的 CSS 花括号不平衡，depth:', depth, '| 自动修复后继续');
         css = repairBraces(css);
       }
 
-      // 1. 注入 CSS 到页面（带 CSP 降级）
+      // 2. 注入 CSS 到页面（带 CSP 降级）
       const injectResp = await sendToContentScript({
         tool: "inject_css",
         args: { css },
@@ -694,24 +711,24 @@ async function runApplyStyles(css, mode, tabId) {
         await injectCSSViaScriptingAPI(injectResp.css, tabId);
       }
 
-      // 2. 合并并写入会话样式
+      // 3. 合并并写入会话样式（chrome.storage.local）
       const { [sKey]: existing = "" } = await chrome.storage.local.get(sKey);
       const merged = mergeCSS(existing, css);
       await chrome.storage.local.set({ [sKey]: merged });
 
-      // 3. push 到历史栈（保存当前完整状态，限制最大长度）
-      const { [hKey]: history = [] } = await chrome.storage.local.get(hKey);
+      // 4. push 到历史栈（IndexedDB）
+      const history = await loadStylesHistory(domain, sessionId);
       history.push(merged);
-      // 限制历史长度，超出时移除最早的条目（保留 index 0 的空字符串）
+      // 限制历史长度，超出时移除最早的条目
       if (history.length > MAX_HISTORY) {
-        history.shift(); // 移除最早的（除了空字符串基准）
+        history.shift();
       }
-      await chrome.storage.local.set({ [hKey]: history });
+      await saveStylesHistory(domain, sessionId, history);
 
-      // 4. 同步到 active_styles（供页面刷新时使用）
+      // 5. 同步到 active_styles（供页面刷新时使用）
       await syncActiveStyles();
 
-      // 5. 更新样式摘要
+      // 6. 更新样式摘要
       await updateStylesSummary();
 
       return `样式已应用（历史栈: ${history.length} 层）。`;

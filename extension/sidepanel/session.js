@@ -11,8 +11,9 @@
 // ============================================================================
 
 const DB_NAME = "StyleSwiftDB";
-const DB_VERSION = 1;
+const DB_VERSION = 2; // v2: 添加 styles_history store
 const STORE_NAME = "conversations";
+const STYLES_HISTORY_STORE = "styles_history"; // 存储 CSS 历史栈，避免 chrome.storage 配额限制
 
 // ============================================================================
 // 存储清理常量
@@ -97,6 +98,14 @@ function openDB() {
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           db.createObjectStore(STORE_NAME);
           console.log(`[IndexedDB] Created Object Store: ${STORE_NAME}`);
+        }
+      }
+
+      // 版本 1 → 2: 添加 styles_history store（存储 CSS 历史栈，避免 chrome.storage 配额限制）
+      if (oldVersion < 2) {
+        if (!db.objectStoreNames.contains(STYLES_HISTORY_STORE)) {
+          db.createObjectStore(STYLES_HISTORY_STORE);
+          console.log(`[IndexedDB] Created Object Store: ${STYLES_HISTORY_STORE}`);
         }
       }
 
@@ -331,6 +340,152 @@ async function deleteHistory(domain, sessionId) {
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
+}
+
+// ============================================================================
+// 样式历史存储（IndexedDB）- 避免配额限制
+// ============================================================================
+
+/**
+ * 存储配额阈值（百分比）
+ * 当 chrome.storage.local 使用率达到此阈值时，触发迁移
+ */
+const QUOTA_THRESHOLD_PERCENT = 80;
+
+/**
+ * 保存样式历史到 IndexedDB
+ *
+ * @param {string} domain - 域名
+ * @param {string} sessionId - 会话 ID
+ * @param {Array<string>} history - CSS 历史数组
+ * @returns {Promise<void>}
+ */
+async function saveStylesHistory(domain, sessionId, history) {
+  const db = await openDB();
+  const tx = db.transaction(STYLES_HISTORY_STORE, "readwrite");
+  const store = tx.objectStore(STYLES_HISTORY_STORE);
+
+  store.put(history, `${domain}:${sessionId}`);
+
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+/**
+ * 从 IndexedDB 加载样式历史
+ *
+ * @param {string} domain - 域名
+ * @param {string} sessionId - 会话 ID
+ * @returns {Promise<Array<string>>} CSS 历史数组，无数据时返回空数组
+ */
+async function loadStylesHistory(domain, sessionId) {
+  const db = await openDB();
+  const tx = db.transaction(STYLES_HISTORY_STORE, "readonly");
+  const store = tx.objectStore(STYLES_HISTORY_STORE);
+  const request = store.get(`${domain}:${sessionId}`);
+
+  return new Promise((resolve) => {
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () => resolve([]);
+  });
+}
+
+/**
+ * 从 IndexedDB 删除样式历史
+ *
+ * @param {string} domain - 域名
+ * @param {string} sessionId - 会话 ID
+ * @returns {Promise<void>}
+ */
+async function deleteStylesHistory(domain, sessionId) {
+  const db = await openDB();
+  const tx = db.transaction(STYLES_HISTORY_STORE, "readwrite");
+  const store = tx.objectStore(STYLES_HISTORY_STORE);
+
+  store.delete(`${domain}:${sessionId}`);
+
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+/**
+ * 检查存储配额并在需要时迁移数据
+ *
+ * 当 chrome.storage.local 使用率达到阈值时，将所有会话的样式历史迁移到 IndexedDB。
+ *
+ * @returns {Promise<{migrated: boolean, usage: object}>} 迁移结果和存储使用情况
+ */
+async function checkQuotaAndMigrate() {
+  const { bytes, maxBytes, percent } = await getStorageUsage();
+
+  if (percent < QUOTA_THRESHOLD_PERCENT) {
+    return { migrated: false, usage: { bytes, maxBytes, percent } };
+  }
+
+  console.log(
+    `[Storage] Quota at ${percent}%, migrating styles history to IndexedDB...`
+  );
+
+  try {
+    // 获取所有会话的样式历史并迁移
+    const all = await chrome.storage.local.get(null);
+    const historyKeys = Object.keys(all).filter((k) =>
+      k.endsWith(":styles_history")
+    );
+
+    let migratedCount = 0;
+
+    for (const hKey of historyKeys) {
+      // 解析 key: sessions:{domain}:{sessionId}:styles_history
+      const match = hKey.match(/^sessions:([^:]+):([^:]+):styles_history$/);
+      if (!match) continue;
+
+      const domain = match[1];
+      const sessionId = match[2];
+      const history = all[hKey];
+
+      if (Array.isArray(history) && history.length > 0) {
+        // 迁移到 IndexedDB
+        await saveStylesHistory(domain, sessionId, history);
+        // 从 chrome.storage.local 删除
+        await chrome.storage.local.remove(hKey);
+        migratedCount++;
+      }
+    }
+
+    const newUsage = await getStorageUsage();
+    console.log(
+      `[Storage] Migrated ${migratedCount} style histories. New usage: ${newUsage.percent}%`
+    );
+
+    return { migrated: true, migratedCount, usage: newUsage };
+  } catch (error) {
+    console.error("[Storage] Migration failed:", error);
+    return { migrated: false, error: error.message, usage: { bytes, maxBytes, percent } };
+  }
+}
+
+/**
+ * 迁移指定会话的样式历史到 IndexedDB
+ *
+ * @param {string} domain - 域名
+ * @param {string} sessionId - 会话 ID
+ * @returns {Promise<boolean>} 是否成功迁移
+ */
+async function migrateSessionStylesHistory(domain, sessionId) {
+  const hKey = `sessions:${domain}:${sessionId}:styles_history`;
+  const { [hKey]: history = [] } = await chrome.storage.local.get(hKey);
+
+  if (Array.isArray(history) && history.length > 0) {
+    await saveStylesHistory(domain, sessionId, history);
+    await chrome.storage.local.remove(hKey);
+    return true;
+  }
+  return false;
 }
 
 // ============================================================================
@@ -702,8 +857,10 @@ async function deleteSession(domain, sessionId) {
 
     // 4. 删除 IndexedDB 中的对话历史
     await deleteHistory(domain, sessionId);
+    // 4.1 删除 IndexedDB 中的样式历史
+    await deleteStylesHistory(domain, sessionId);
     console.log(
-      `[Session] Removed IndexedDB history for session: ${sessionId}`,
+      `[Session] Removed IndexedDB data for session: ${sessionId}`,
     );
 
     // 5. 如果是该域名最后一个会话，返回标识
@@ -779,8 +936,9 @@ async function cleanupStorage() {
       for (const session of toDelete) {
         keysToRemove.push(`sessions:${domain}:${session.id}:meta`);
         keysToRemove.push(`sessions:${domain}:${session.id}:styles`);
-        // IndexedDB 中的对话历史也需要清理
+        // IndexedDB 数据清理
         await deleteHistory(domain, session.id);
+        await deleteStylesHistory(domain, session.id);
       }
 
       // 更新索引（如果有删除）
@@ -1044,8 +1202,8 @@ async function rewindToTurn(domain, sessionId, targetTurn) {
 // ============================================================================
 
 // 导出常量供其他模块使用
-export { DB_NAME, DB_VERSION, STORE_NAME, CURRENT_SCHEMA_VERSION };
-export { MAX_SESSIONS_PER_DOMAIN, SESSION_EXPIRE_DAYS };
+export { DB_NAME, DB_VERSION, STORE_NAME, STYLES_HISTORY_STORE, CURRENT_SCHEMA_VERSION };
+export { MAX_SESSIONS_PER_DOMAIN, SESSION_EXPIRE_DAYS, QUOTA_THRESHOLD_PERCENT };
 
 // 导出函数
 export {
@@ -1055,6 +1213,13 @@ export {
   loadHistory,
   deleteHistory,
   checkAndMigrateStorage,
+  // 样式历史 IndexedDB 操作
+  saveStylesHistory,
+  loadStylesHistory,
+  deleteStylesHistory,
+  // 配额迁移
+  checkQuotaAndMigrate,
+  migrateSessionStylesHistory,
 };
 export { cleanupStorage, cleanupStyleSkills, getStorageUsage };
 export { getOrCreateSession, deleteSession, setActiveSession, getActiveSession };
@@ -1091,6 +1256,15 @@ async function initStorage() {
     // 预热 IndexedDB 连接（创建但不等待）
     openDB().catch((err) => {
       console.error("[Storage] Failed to initialize IndexedDB:", err);
+    });
+
+    // 检查配额并迁移样式历史到 IndexedDB（后台执行，不阻塞启动）
+    checkQuotaAndMigrate().then((result) => {
+      if (result.migrated) {
+        console.log(`[Storage] Auto-migrated ${result.migratedCount} style histories to IndexedDB`);
+      }
+    }).catch((err) => {
+      console.error("[Storage] Quota check failed:", err);
     });
 
     console.log("[Storage] Storage layer initialized successfully");
