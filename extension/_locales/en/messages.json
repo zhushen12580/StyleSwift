@@ -231,6 +231,10 @@
     "message": "Processing...",
     "description": "Processing status placeholder"
   },
+  "queuingMessage": {
+    "message": "Messages will be processed in the next Agent iteration...",
+    "description": "Placeholder when Agent is running and messages will be queued"
+  },
   "restrictedPage": {
     "message": "Style modification not supported on this page",
     "description": "Restricted page message"

@@ -1355,6 +1355,70 @@ let toolCallHistory = [];
 const MAX_RETRIES = 2;
 const DUPLICATE_CALL_THRESHOLD = 3;
 
+// --- Pending User Messages Queue ---
+// Stores user messages sent during Agent loop execution
+// These will be injected into the conversation before the next iteration
+
+/**
+ * Queue for pending user messages during Agent loop
+ * When user sends a message while Agent is running, it goes here
+ * and gets injected before the next iteration starts
+ * @type {Array<{content: string|Array, role: string}>}
+ */
+let pendingUserMessages = [];
+
+/**
+ * Callback to notify UI when a queued message is processed
+ * @type {function(string): void|null}
+ */
+let onQueuedMessageProcessed = null;
+
+/**
+ * Queue a user message to be injected in the next Agent iteration
+ * Called from panel.js when user sends a message during Agent loop
+ * @param {string|Array} content - User message content (text or multimodal)
+ * @returns {boolean} - True if queued successfully, false if Agent not running
+ */
+function queueUserMessage(content) {
+  if (!isAgentRunning) {
+    console.log("[Agent] Not running, message not queued");
+    return false;
+  }
+
+  const message = {
+    role: "user",
+    content: typeof content === "string" ? content : content,
+    queuedAt: Date.now(),
+  };
+
+  pendingUserMessages.push(message);
+  console.log("[Agent] User message queued for next iteration:", message);
+  return true;
+}
+
+/**
+ * Get pending user messages count (for UI indication)
+ * @returns {number}
+ */
+function getPendingMessagesCount() {
+  return pendingUserMessages.length;
+}
+
+/**
+ * Clear all pending messages (called when Agent loop ends or is cancelled)
+ */
+function clearPendingMessages() {
+  pendingUserMessages = [];
+}
+
+/**
+ * Set callback for when queued messages are processed
+ * @param {function(string): void|null} callback
+ */
+function setOnQueuedMessageProcessed(callback) {
+  onQueuedMessageProcessed = callback;
+}
+
 // --- Dead Loop Protection ---
 
 function resetToolCallHistory() {
@@ -1719,6 +1783,28 @@ async function agentLoop(prompt, uiCallbacks) {
       if (signal.aborted) {
         throw new DOMException("Aborted", "AbortError");
       }
+
+      // --- Inject pending user messages at the start of each iteration ---
+      // This allows user intervention during agent loops
+      if (pendingUserMessages.length > 0) {
+        console.log(`[Agent] Injecting ${pendingUserMessages.length} pending user message(s) at iteration ${iterations}`);
+        for (const pendingMsg of pendingUserMessages) {
+          const userInjectMsg = {
+            role: "user",
+            content: pendingMsg.content,
+            _queuedAt: pendingMsg.queuedAt,
+          };
+          fullHistory.push(userInjectMsg);
+          llmHistory.push(userInjectMsg);
+
+          // Notify UI that queued message was processed
+          if (onQueuedMessageProcessed && typeof pendingMsg.content === "string") {
+            onQueuedMessageProcessed(pendingMsg.content);
+          }
+        }
+        pendingUserMessages = []; // Clear queue after injection
+      }
+
       if (iterations > 1) {
         uiCallbacks.onNewIteration?.();
       }
@@ -1770,6 +1856,23 @@ async function agentLoop(prompt, uiCallbacks) {
       fullHistory.push(fullMsg);
       llmHistory.push(fullMsg);
       if (response.stop_reason !== "tool_use") {
+        // Check if there are pending user messages - if so, inject and continue
+        if (pendingUserMessages.length > 0) {
+          console.log(`[Agent] No more tool calls, but ${pendingUserMessages.length} user message(s) pending. Injecting and continuing...`);
+          // Inject pending messages
+          for (const pendingMsg of pendingUserMessages) {
+            const userInjectMsg = {
+              role: "user",
+              content: pendingMsg.content,
+              _queuedAt: pendingMsg.queuedAt,
+            };
+            fullHistory.push(userInjectMsg);
+            llmHistory.push(userInjectMsg);
+          }
+          pendingUserMessages = [];
+          continue; // Continue to next iteration to process user input
+        }
+        // No pending messages, done
         break;
       }
       const results = [];
@@ -1946,6 +2049,7 @@ Please provide specific observations based on the above dimensions (with issue l
   } finally {
     isAgentRunning = false;
     currentAbortController = null;
+    clearPendingMessages(); // Clear any remaining pending messages
     unlockTab();
   }
 }
@@ -1957,6 +2061,8 @@ function cancelAgentLoop() {
     currentAbortController = null;
   }
   isAgentRunning = false;
+  // Clear any pending user messages when cancelled
+  clearPendingMessages();
   import("./tools.js")
     .then(({ unlockTab }) => {
       unlockTab();
@@ -2016,4 +2122,9 @@ export {
   BASE_TOOLS,
   SUBAGENT_TOOLS,
   ALL_TOOLS,
+  // User intervention queue functions
+  queueUserMessage,
+  getPendingMessagesCount,
+  clearPendingMessages,
+  setOnQueuedMessageProcessed,
 };

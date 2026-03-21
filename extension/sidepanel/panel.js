@@ -644,13 +644,13 @@ const GLOBAL_STATE_CONFIG = {
 	 * 处理中状态
 	 * - 顶栏：🟡 黄色 + 脉动动画
 	 * - 对话区：流式输出 + 工具卡片
-	 * - 输入区：禁用，停止按钮
+	 * - 输入区：可输入（支持排队消息），停止按钮可见
 	 * - 技能区：正常但不可点击
 	 */
 	processing: {
 		topBar: { status: "running" },
 		chatArea: { mode: "streaming" },
-		inputArea: { mode: "processing" },
+		inputArea: { mode: "queuing" }, // 新模式：允许用户排队消息
 		skillArea: { mode: "disabled" },
 		errorBanner: { show: false },
 	},
@@ -946,7 +946,7 @@ function applyInputAreaState(config) {
 		return;
 
 	// 移除所有状态类
-	DOM.inputArea.classList.remove("processing", "restricted", "hidden");
+	DOM.inputArea.classList.remove("processing", "restricted", "hidden", "queuing");
 	DOM.sendBtn.classList.remove("hidden");
 	DOM.stopBtn.classList.add("hidden");
 
@@ -959,8 +959,19 @@ function applyInputAreaState(config) {
 			typewriterEffect.checkShow();
 			break;
 
+		case "queuing":
+			// 排队态（Agent运行中）：输入框可用 + 发送按钮 + 停止按钮
+			// 用户可以发送消息，消息会被排队到下一轮迭代
+			DOM.inputArea.classList.add("queuing");
+			DOM.messageInput.disabled = false;
+			DOM.messageInput.placeholder = "";
+			DOM.sendBtn.classList.remove("hidden");
+			DOM.stopBtn.classList.remove("hidden"); // 同时显示停止按钮
+			typewriterEffect.hide();
+			break;
+
 		case "processing":
-			// 处理中：输入框禁用 + 停止按钮
+			// 处理中（传统模式，暂不使用）：输入框禁用 + 停止按钮
 			DOM.inputArea.classList.add("processing");
 			DOM.messageInput.disabled = true;
 			DOM.messageInput.placeholder = getMessage("processing");
@@ -1680,12 +1691,6 @@ async function handleSendClick() {
 		return;
 	}
 
-	// 禁止在处理中状态发送
-	if (AppState.agentStatus === "running") {
-		console.warn("[Panel] Agent is running, cannot send message");
-		return;
-	}
-
 	// 禁止在受限页面发送
 	if (AppState.pageStatus === "restricted") {
 		console.warn("[Panel] Page is restricted, cannot send message");
@@ -1734,11 +1739,45 @@ async function handleSendClick() {
 		messageContent = finalMessage;
 	}
 
-	console.log(
-		"[Panel] Sending message:",
-		message,
-		hasImages ? `(+ ${imagesToSend.length} images)` : "",
-	);
+	// --- 检查 Agent 是否正在运行 ---
+	// 如果正在运行，将消息排队到下次迭代注入
+	if (AppState.agentStatus === "running") {
+		console.log("[Panel] Agent is running, queuing user message for next iteration");
+
+		try {
+			// 动态导入 queueUserMessage 函数
+			const { queueUserMessage, getPendingMessagesCount } = await import("./agent-loop.js");
+
+			// 排队用户消息
+			const queued = queueUserMessage(messageContent);
+
+			if (queued) {
+				// 清空输入框并恢复高度
+				DOM.messageInput.value = "";
+				resizeMessageInput();
+
+				// 清除已附加的图片
+				clearAttachedImages();
+
+				// 渲染用户消息气泡（静默排队，不显示额外提示）
+				// 使用 finalMessage 作为显示文本（不含排队提示）
+				const userMessageEl = renderUserMessage(finalMessage, {
+					turn: 0,
+					showRewind: false,
+				});
+				addMessageToContainer(userMessageEl);
+
+				console.log(`[Panel] Message queued successfully.`);
+			} else {
+				console.warn("[Panel] Failed to queue message");
+				showError("无法排队消息，请稍后重试");
+			}
+		} catch (err) {
+			console.error("[Panel] Error queueing message:", err);
+			showError("排队消息时出错");
+		}
+		return;
+	}
 
 	// 清空输入框并恢复高度
 	DOM.messageInput.value = "";
@@ -2741,9 +2780,27 @@ async function renderSkillChips() {
 async function handleSkillChipClick(skill) {
 	console.log("[Panel] Skill chip clicked:", skill.name);
 
-	// Prevent if agent is already running
+	// Prevent if agent is already running - queue the skill prompt instead
 	if (AppState.agentStatus === "running") {
-		console.warn("[Panel] Agent is running, cannot apply skill");
+		console.log("[Panel] Agent is running, queuing skill prompt for next iteration");
+		const prompt = skill.prompt || `Apply my "${skill.name}" style`;
+
+		// Queue the skill prompt
+		(async () => {
+			try {
+				const { queueUserMessage } = await import("./agent-loop.js");
+				queueUserMessage(prompt);
+
+				// Render user message showing skill name (silently queued)
+				const userMessageEl = renderUserMessage(`✨ ${skill.name}`, {
+					turn: 0,
+					showRewind: false,
+				});
+				addMessageToContainer(userMessageEl);
+			} catch (err) {
+				console.error("[Panel] Failed to queue skill:", err);
+			}
+		})();
 		return;
 	}
 

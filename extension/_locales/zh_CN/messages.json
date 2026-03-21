@@ -231,6 +231,10 @@
     "message": "正在处理中...",
     "description": "Processing status placeholder"
   },
+  "queuingMessage": {
+    "message": "输入消息将在Agent下一轮迭代时处理...",
+    "description": "Placeholder when Agent is running and messages will be queued"
+  },
   "restrictedPage": {
     "message": "此页面不支持样式修改",
     "description": "Restricted page message"
