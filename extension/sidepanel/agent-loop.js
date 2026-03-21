@@ -1911,6 +1911,16 @@ Please provide specific observations based on the above dimensions (with issue l
   } catch (err) {
     if (err.name === "AbortError") {
       uiCallbacks.appendText?.("\n(Cancelled)");
+      // 保存取消前的对话历史，确保用户重新打开UI能看到最近那轮对话
+      if (_saveState) {
+        try {
+          const { domain, sessionId, fullHistory, snapshots } = _saveState;
+          await saveHistory(domain, sessionId, { messages: fullHistory, snapshots });
+          console.log("[Agent] History saved after cancellation");
+        } catch (saveErr) {
+          console.error("[Agent] Failed to save history after cancellation:", saveErr);
+        }
+      }
       return;
     }
 
