@@ -1,0 +1,28 @@
+{
+  "name": "styleswift",
+  "version": "1.0.0",
+  "description": "<div align=\"center\">",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "devDependencies": {
+    "jsdom": "^29.0.1",
+    "playwright": "^1.58.2",
+    "vitest": "^4.1.1"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhushen12580/StyleSwift.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/zhushen12580/StyleSwift/issues"
+  },
+  "homepage": "https://github.com/zhushen12580/StyleSwift#readme"
+}

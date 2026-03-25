@@ -1,0 +1,59 @@
+================================================================================
+页面结构提取测试报告 (Playwright 浏览器环境)
+================================================================================
+
+生成时间: 2026-03-25T07:57:36.158Z
+测试 URL: file:///D:/PRODUCT/PRODUCT/StyleSwift/extension/tests/reddit.html
+
+--------------------------------------------------------------------------------
+统计数据
+--------------------------------------------------------------------------------
+页面标题: The web was more fun when it was less polished : r/webdesign
+Token 预算使用: 776/8000 (9.7%)
+结构树深度: 3
+结构节点总数: 20
+Shadow DOM 元素数: 0
+
+--------------------------------------------------------------------------------
+元素类型统计
+--------------------------------------------------------------------------------
+  div                  :     6
+                       :     5
+  iframe               :     3
+  body                 :     1
+  plasmo-csui:nth-of-type(1) :     1
+  img                  :     1
+  exec-ui              :     1
+  div:nth-of-type(1)   :     1
+  div:nth-of-type(3)   :     1
+
+================================================================================
+完整结构信息
+================================================================================
+
+Title: The web was more fun when it was less polished : r/webdesign
+
+body [display:block; flex-direction:row; flex-wrap:nowrap; width:1920px; height:8354px; background-color:rgba(0, 0, 0, 0); color:rgb(51, 61, 66); border-color:rgb(51, 61, 66); opacity:1; font-size:14px; font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif; font-weight:400; line-height:21px; overflow:hidden scroll]
+└── plasmo-csui:nth-of-type(1) [display:inline; background-color:rgba(0, 0, 0, 0); color:rgb(51, 61, 66); opacity:1]
+└── #shreddit-skip-link > span.flex > span.flex [color:rgb(255, 255, 255); font-size:14px; font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif; font-weight:600; line-height:38px] "Skip to main content"
+└── img [background-color:rgba(0, 0, 0, 0); color:rgb(51, 61, 66); opacity:1]
+└── exec-ui [display:block; position:relative; background-color:rgba(0, 0, 0, 0); color:rgb(51, 61, 66); opacity:1]
+└── div:nth-of-type(1) [display:block; width:1920px; background-color:rgba(0, 0, 0, 0); color:rgb(51, 61, 66); opacity:1]
+    ├── div.grecaptcha-badge [display:block; position:fixed; width:256px; height:60px; background-color:rgba(0, 0, 0, 0); color:rgb(51, 61, 66); border-radius:2px; box-shadow:rgb(128, 128, 128) 0px 0px 5px 0px; opacity:1]
+    │├── div.grecaptcha-logo > iframe [display:inline; width:256px; height:60px; background-color:rgba(0, 0, 0, 0); color:rgb(51, 61, 66); opacity:1]
+    │├── div.grecaptcha-error [display:block; width:256px; background-color:rgba(0, 0, 0, 0); color:rgb(51, 61, 66); opacity:1]
+    │└── #g-recaptcha-response-100000 [width:250px; height:40px; background-color:rgb(248, 248, 248); color:rgb(19, 19, 19); border-radius:4px; opacity:1]
+    └── iframe [background-color:rgba(0, 0, 0, 0); color:rgb(51, 61, 66); opacity:1]
+└── #aitdk-csui [display:inline; background-color:rgba(0, 0, 0, 0); color:rgb(51, 61, 66); opacity:1]
+└── #immersive-translate-browser-popup [display:inline; background-color:rgba(0, 0, 0, 0); color:rgb(0, 0, 0); opacity:1]
+└── div:nth-of-type(3) [display:block; width:1920px; background-color:rgba(0, 0, 0, 0); color:rgb(51, 61, 66); opacity:1]
+    ├── div.grecaptcha-badge [display:block; position:fixed; width:256px; height:60px; background-color:rgba(0, 0, 0, 0); color:rgb(51, 61, 66); opacity:1]
+    │├── div.grecaptcha-logo > iframe [display:inline; width:256px; height:60px; background-color:rgba(0, 0, 0, 0); color:rgb(51, 61, 66); opacity:1]
+    │├── div.grecaptcha-error [display:block; width:256px; background-color:rgba(0, 0, 0, 0); color:rgb(51, 61, 66); opacity:1]
+    │└── #g-recaptcha-response-100000 [width:250px; height:40px; background-color:rgb(248, 248, 248); color:rgb(19, 19, 19); border-radius:4px; opacity:1]
+    └── iframe [background-color:rgba(0, 0, 0, 0); color:rgb(51, 61, 66); opacity:1]
+└── iframe [width:1px; height:1px; background-color:rgba(0, 0, 0, 0); color:rgb(51, 61, 66); opacity:1]
+
+================================================================================
+报告结束
+================================================================================

@@ -7,51 +7,34 @@
 
 // === 常量定义 ===
 
-// DOM 元素标签白名单
-const TAG_WHITELIST = new Set([
-  "body",
-  "div",
-  "span",
-  "p",
-  "h1",
-  "h2",
-  "h3",
-  "h4",
-  "h5",
-  "h6",
-  "ul",
-  "ol",
-  "li",
-  "table",
-  "tr",
-  "td",
-  "th",
-  "a",
-  "img",
-  "form",
-  "input",
-  "button",
-  "select",
-  "textarea",
-  "label",
-  "section",
-  "article",
-  "nav",
-  "header",
-  "footer",
-  "aside",
-  "main",
-  "blockquote",
-  "figure",
-  "figcaption",
-  "details",
-  "summary",
-  "video",
-  "audio",
-  "dialog",
+// 需要跳过的无意义标签（黑名单）
+// 这些标签没有结构意义，不参与样式应用
+const SKIP_TAGS = new Set([
+  // 元数据和脚本
+  "script",
+  "style",
+  "noscript",
+  "meta",
+  "link",
+  "base",
+  "head",
+  "title",
+  "template",
+  "slot",
+  // 空元素和换行
+  "br",
+  "hr",
+  "wbr",
+  "embed",
+  "param",
+  "source",
+  "track",
+  "area",
+  "col",
+  "colgroup",
 ]);
 
-// 语义化地标标签
+// 语义化地标标签（获得额外深度）
 const LANDMARKS = new Set([
   "body",
   "header",
@@ -61,8 +44,6 @@ const LANDMARKS = new Set([
   "footer",
   "article",
   "section",
-  "ytd-app",
-  "center",
 ]);
 
 // CSS 样式属性白名单
@@ -468,11 +449,16 @@ function extractMeta() {
 // 链式折叠的最大长度
 const MAX_CHAIN_LENGTH = 5;
 
-// 构建 DOM 树结构
+// 构建 DOM 树结构（纯黑名单模式）
+// 黑名单标签完全跳过，其他所有标签正常输出
 function buildTree(element, depth, maxDepth) {
   let tag = element.tagName?.toLowerCase();
-  if (!tag || !TAG_WHITELIST.has(tag)) return null;
-  if (element.shadowRoot) return null;
+
+  // 无效元素直接返回 null
+  if (!tag) return null;
+
+  // shadowRoot 和黑名单标签完全跳过
+  if (element.shadowRoot || SKIP_TAGS.has(tag)) return null;
 
   // 链式折叠：合并单子元素的 wrapper div 链
   let current = element;
@@ -483,26 +469,27 @@ function buildTree(element, depth, maxDepth) {
       if (getDirectText(current)) break;
 
       const visibleChildren = Array.from(current.children).filter(
-        (c) => TAG_WHITELIST.has(c.tagName?.toLowerCase()) && !c.shadowRoot,
+        (c) => !SKIP_TAGS.has(c.tagName?.toLowerCase()) && !c.shadowRoot,
       );
       if (visibleChildren.length !== 1) break;
 
       const child = visibleChildren[0];
       const childTag = child.tagName.toLowerCase();
+
       if (LANDMARKS.has(childTag)) break;
 
       chainParts.push(uniqueSelector(child));
       current = child;
-      tag = childTag;
     }
   }
 
   const selector = chainParts.join(" > ");
+  const actualTag = current.tagName.toLowerCase();
   const text = getDirectText(current).slice(0, 40);
-  const styles = getComputedStyles(current, tag);
+  const styles = getComputedStyles(current, actualTag);
 
   const childEls = Array.from(current.children).filter(
-    (c) => TAG_WHITELIST.has(c.tagName?.toLowerCase()) && !c.shadowRoot,
+    (c) => !SKIP_TAGS.has(c.tagName?.toLowerCase()) && !c.shadowRoot,
   );
 
   if (depth >= maxDepth || childEls.length === 0) {
@@ -531,29 +518,157 @@ function buildTree(element, depth, maxDepth) {
 }
 
 const TOKEN_LIMIT = 8000;
-const FORMAT_DEPTHS = [4, 8, 12, 16, 24, 32];
+const MAX_BUILD_DEPTH = 32;
 
-function formatOutput(meta, tree) {
-  // 二分查找满足 token 预算的最大深度
-  let lo = 0,
-    hi = FORMAT_DEPTHS.length - 1;
-  let bestResult = "";
+// 计算树节点的 token 大小（递归）
+function estimateNodeTokens(node, depth = 0) {
+  if (!node) return 0;
 
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    const result = formatTree(tree, "", true, FORMAT_DEPTHS[mid]);
-    if (estimateTokens(result) <= TOKEN_LIMIT) {
-      bestResult = result;
-      lo = mid + 1;
-    } else {
-      hi = mid - 1;
+  let size = 0;
+
+  // 选择器
+  size += (node.selector?.length || 0) / 3.5;
+
+  // 样式
+  if (node.styles?.length) {
+    size += node.styles.length * 8;
+  }
+
+  // 文本
+  size += (node.text?.length || 0) / 3.5;
+
+  // 摘要
+  size += (node.summary?.length || 0) / 3.5;
+
+  // 计数
+  if (node.count) size += 3;
+
+  // 子节点
+  if (node.children) {
+    for (const child of node.children) {
+      size += estimateNodeTokens(child, depth + 1);
     }
   }
 
-  // 如果最小深度仍超限，使用紧凑模式
-  if (!bestResult) {
-    bestResult = formatTree(tree, "", true, 2, true);
+  return Math.ceil(size);
+}
+
+// 将深层节点转换为摘要节点（保留信息但减少 token）
+function nodeToSummary(node) {
+  if (!node) return null;
+
+  // 如果是摘要节点（已经没有 children），直接返回
+  if (!node.children || node.children.length === 0) {
+    return { ...node };
   }
+
+  // 生成子元素摘要
+  const summaryParts = [];
+  const counts = {};
+
+  for (const child of node.children) {
+    const key = child.selector || "unknown";
+    counts[key] = (counts[key] || 0) + 1;
+  }
+
+  for (const [key, count] of Object.entries(counts)) {
+    summaryParts.push(count > 1 ? `${key}×${count}` : key);
+  }
+
+  return {
+    selector: node.selector,
+    styles: node.styles,
+    text: node.text,
+    count: node.count,
+    summary: summaryParts.join(", "),
+  };
+}
+
+// 带摘要阈值的树格式化
+function formatTreeWithSummaryThreshold(
+  node,
+  indent,
+  isLast,
+  maxFullDepth,
+  currentDepth = 0,
+) {
+  if (!node) return "";
+
+  // 超过完整深度阈值的节点转换为摘要
+  const effectiveNode =
+    currentDepth >= maxFullDepth && node.children?.length > 0
+      ? nodeToSummary(node)
+      : node;
+
+  const prefix = isLast ? "└── " : "├── ";
+  const childIndent = indent + (isLast ? "    " : "│");
+
+  // 紧凑模式：深层或摘要节点只显示核心样式
+  const isCompact = currentDepth >= STYLE_DEPTH_CUTOFF || currentDepth >= maxFullDepth;
+
+  let line = indent + prefix + effectiveNode.selector;
+  line += formatNodeDecoration(effectiveNode, isCompact);
+  let result = line + "\n";
+
+  // 只有在完整深度内才递归子节点
+  if (
+    currentDepth < maxFullDepth &&
+    effectiveNode !== nodeToSummary(node) &&// 不是摘要节点
+    node.children
+  ) {
+    for (let i = 0; i < node.children.length; i++) {
+      result += formatTreeWithSummaryThreshold(
+        node.children[i],
+        childIndent,
+        i === node.children.length - 1,
+        maxFullDepth,
+        currentDepth + 1,
+      );
+    }
+  }
+
+  return result;
+}
+
+// 格式化根节点（带摘要阈值）
+function formatRootTreeWithSummaryThreshold(node, maxFullDepth) {
+  if (!node) return "";
+
+  let line = node.selector;
+  line += formatNodeDecoration(node, false);
+  let result = line + "\n";
+
+  if (node.children) {
+    for (let i = 0; i < node.children.length; i++) {
+      result += formatTreeWithSummaryThreshold(
+        node.children[i],
+        "",true,
+        maxFullDepth,
+        1,
+      );
+    }
+  }
+
+  return result;
+}
+
+// 渐进式摘要输出：在 token 预算内最大化信息量
+function formatOutput(meta, tree) {
+  // 策略：从完整输出开始，逐步将深层节点转为摘要，直到满足 token 预算
+  // 优先保证浅层完整，深层以摘要形式保留
+
+  // 预设的完整深度档次：从深到浅尝试
+  const depthThresholds = [32, 24, 20, 16, 12, 10, 8, 6, 5, 4, 3, 2];
+
+  for (const threshold of depthThresholds) {
+    const result = formatRootTreeWithSummaryThreshold(tree, threshold);
+    if (estimateTokens(result) <= TOKEN_LIMIT) {
+      return meta + "\n\n" + result;
+    }
+  }
+
+  // 兜底：使用紧凑模式 + 最小深度
+  let bestResult = formatTree(tree, "", true, 2, true);
 
   return meta + "\n\n" + bestResult;
 }
@@ -569,7 +684,8 @@ function getPageStructure() {
     return _structureCache;
   }
   const meta = extractMeta();
-  const tree = buildTree(document.body, 0, 30);
+  // 始终构建完整的 32 层树，输出阶段再根据 token 预算智能裁剪
+  const tree = buildTree(document.body, 0, MAX_BUILD_DEPTH);
   _structureCache = formatOutput(meta, tree);
   _structureCacheTime = now;
   return _structureCache;
@@ -609,7 +725,7 @@ function keywordSearch(keyword, limit) {
   let el;
   while ((el = walker.nextNode()) && results.length < limit) {
     const tag = el.tagName.toLowerCase();
-    if (!TAG_WHITELIST.has(tag)) continue;
+    if (SKIP_TAGS.has(tag)) continue;
 
     if (tag.includes(kw)) {
       results.push(el);
@@ -719,8 +835,8 @@ function formatChildren(el, scope) {
 
   function walk(parent, depth, indent) {
     if (depth > maxDepth) return [];
-    const children = Array.from(parent.children).filter((c) =>
-      TAG_WHITELIST.has(c.tagName?.toLowerCase()),
+    const children = Array.from(parent.children).filter(
+      (c) => !SKIP_TAGS.has(c.tagName?.toLowerCase()),
     );
     const lines = [];
     for (const c of children.slice(0, 10)) {

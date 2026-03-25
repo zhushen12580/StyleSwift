@@ -1,0 +1,194 @@
+================================================================================
+页面结构提取测试报告
+================================================================================
+
+生成时间: 2026-03-24T20:12:51.450Z
+测试文件: extension/tests/reddit.html
+
+--------------------------------------------------------------------------------
+统计数据
+--------------------------------------------------------------------------------
+原始 HTML 大小: 1027.20 KB
+结构信息大小: 22.77 KB
+压缩比: 45.11x
+Token 预算使用: 5830/8000 (72.9%)
+结构树深度: 16
+结构节点总数: 1681
+
+--------------------------------------------------------------------------------
+元素类型统计
+--------------------------------------------------------------------------------
+  div             :   361
+  span            :   326
+  unknown         :   131
+  faceplate-loader :   113
+  div:nth-of-type(2) :   108
+  a               :    64
+  div:nth-of-type(1) :    55
+  shreddit-comment :    53
+  rpl-hovercard   :    53
+  shreddit-comment-badges :    53
+  defs            :    37
+  svg             :    36
+  image           :    35
+  shreddit-comment-tree-ad :    25
+  img             :    21
+  p:nth-of-type(1) :    12
+  shreddit-async-loader :    10
+  p:nth-of-type(2) :    10
+  faceplate-tracker :     6
+  faceplate-screen-reader-content :     6
+  faceplate-partial :     5
+  nav             :     3
+  li              :     3
+  faceplate-tracker:nth-of-type(1) :     3
+  stop:nth-of-type(1) :     3
+  summary         :     3
+  faceplate-auto-height-animator :     3
+  shreddit-async-loader:nth-of-type(1) :     2
+  activate-feature :     2
+  path:nth-of-type(1) :     2
+
+================================================================================
+完整结构信息
+================================================================================
+
+Title: The web was more fun when it was less polished : r/webdesign
+
+body [display:block; padding:var(--faceplate-body-padding); margin:0px auto; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1)); font-size:var(--font-body); line-height:1.5]
+└── plasmo-csui:nth-of-type(1) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+└── #shreddit-skip-link > span.flex > span.flex [color:var(--button-color-text)] "Skip to main content"
+└── shreddit-async-loader > reputation-recaptcha [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+└── shreddit-app.overflow-visible [display:block; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-server-session [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── shreddit-good-visit-tracker [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── shreddit-async-loader > screen-reader-alert-outlet > faceplate-screen-reader-content > span [color:var(--color-neutral-content,var(--color-tone-1))] "The web was more fun when it was less po"
+    ├── shreddit-activated-feature-meta [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── shreddit-page-meta [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── reddit-header-large.nd:visible [display:inline; position:fixed; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    │├── shreddit-async-loader:nth-of-type(1) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    │├── shreddit-async-loader:nth-of-type(2) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    │├── reddit-header-action-items.contents [display:contents; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ││└── header.v2 [display:block; padding:var(--faceplate-body-padding) 1rem; background-color:var(--color-neutral-background); color:var(--color-neutral-content,var(--color-tone-1))]
+    ││    └── nav.h-header-large [display:flex; align-items:center; height:var(--shreddit-header-large-height); background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ││        ├── div.pe-lg [background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))] — #hamburger-button-tooltip, faceplate-tracker.nd:visible > rpl-tooltip.nd:visible
+    ││        ├── div.h-\[40px\] > div.flex > div.flex > search-dynamic-id-cache-controller.contents > reddit-search-large.nd:visible [background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))] — form.reddit-search-bar > div.search-input
+    ││        └── div.ps-lg [background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))] — span.contents, div.flex:nth-of-type(1), div.items-center > rpl-dropdown
+    │├── faceplate-loader [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    │├── faceplate-partial [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    │└── #reddit-chat [display:block; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    │    ├── faceplate-loader [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    │    └── reddit-chat-host.block [background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-loader:nth-of-type(1) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-partial:nth-of-type(1) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-loader:nth-of-type(2) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── alert-controller [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-loader:nth-of-type(3) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-partial:nth-of-type(2) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-loader:nth-of-type(4) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-partial:nth-of-type(3) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-loader:nth-of-type(5) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-partial:nth-of-type(4) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-loader:nth-of-type(6) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-partial:nth-of-type(5) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-loader:nth-of-type(7) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-partial:nth-of-type(6) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-loader:nth-of-type(8) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-partial:nth-of-type(7) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-loader:nth-of-type(9) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-partial:nth-of-type(8) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-loader:nth-of-type(10) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-partial:nth-of-type(9) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-loader:nth-of-type(11) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-partial:nth-of-type(10) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-loader:nth-of-type(12) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-partial:nth-of-type(11) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-loader:nth-of-type(13) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-partial:nth-of-type(12) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-loader:nth-of-type(14) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-partial:nth-of-type(13) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-loader:nth-of-type(15) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-partial:nth-of-type(14) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-loader:nth-of-type(16) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-partial:nth-of-type(15) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-loader:nth-of-type(17) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-partial:nth-of-type(16) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── #canonical-url-updater [display:block; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-partial:nth-of-type(17) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-loader:nth-of-type(18) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-partial:nth-of-type(18) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── div.hidden [background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-loader:nth-of-type(19) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-partial:nth-of-type(19) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-loader:nth-of-type(20) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── report-flow-provider [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    │├── #report-flow-content-modal [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    │├── ctl-reporting-provider > faceplate-partial [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    │└── faceplate-partial [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── protected-community-modal [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── shreddit-recent-communities-data [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── shreddit-screenview-data [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── reddit-page-data [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── cuj-tracker [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── div.grid-container [display:grid; background-color:var(--color-neutral-background); color:var(--color-neutral-content,var(--color-tone-1))]
+    │├── #subgrid-container [display:flex; width:100%; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ││├── shreddit-async-loader.[&:not(:focus-within)]:sr-only > reddit-skip-to-sidebar [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ││└── div.main-container [display:grid; width:100%; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ││    ├── #main-content [display:block; width:100%; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ││    │├── shreddit-title [background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ││    │├── #t3_1rrs8vp [background-color:var(--shreddit-content-background); color:var(--color-neutral-content,var(--color-tone-1))] — #pdp-credit-bar, div:nth-of-type(2), #post-title-t3_1rrs8vp, shreddit-post-flair, div.overflow-hidden, shreddit-post-text-body > div.text-neutral-content > div.mb-sm > #t3_1rrs8vp-post-rtjson-content, #recent-posts-tracker > recent-posts-tracker, faceplate-dropdown-menu.share-dropdown-menu > button.button > span.flex
+    ││    │├── faceplate-loader:nth-of-type(1) [background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ││    │├── faceplate-loader:nth-of-type(2) [background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ││    │├── faceplate-partial [background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ││    │├── faceplate-loader:nth-of-type(3) [background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ││    │├── shreddit-comment-tree-stats [background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ││    │├── comment-body-header.block [background-color:var(--shreddit-content-background); color:var(--color-tone-1)] — shreddit-async-loader, div.flex > shreddit-comments-sort-dropdown.flex
+    ││    │└── #comment-tree-content-anchor-1rrs8vp > faceplate-batch > #comment-tree [background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))] — faceplate-perfmark, #next-comment, shreddit-comment-tree-ad.-mt-md:nth-of-type(1), shreddit-comment.relative:nth-of-type(1), shreddit-comment-tree-ad.-mt-md:nth-of-type(2), shreddit-comment.relative:nth-of-type(2), shreddit-comment-tree-ad.-mt-md:nth-of-type(3), shreddit-comment.relative:nth-of-type(3), cbau-trigger.-mt-md, shreddit-comment-tree-ad.-mt-md:nth-of-type(4), shreddit-comment.relative:nth-of-type(4), shreddit-comment-tree-ad.-mt-md:nth-of-type(5), shreddit-comment.relative:nth-of-type(5), shreddit-comment-tree-ad.-mt-md:nth-of-type(6), shreddit-comment.relative:nth-of-type(6), shreddit-comment-tree-ad.-mt-md:nth-of-type(7), shreddit-comment.relative:nth-of-type(7), shreddit-comment-tree-ad.-mt-md:nth-of-type(8), shreddit-comment.relative:nth-of-type(8), shreddit-comment-tree-ad.-mt-md:nth-of-type(9), shreddit-comment.relative:nth-of-type(9), shreddit-comment-tree-ad.-mt-md:nth-of-type(10), shreddit-comment.relative:nth-of-type(10), shreddit-comment-tree-ad.-mt-md:nth-of-type(11), shreddit-comment.relative:nth-of-type(11), shreddit-comment-tree-ad.-mt-md:nth-of-type(12), shreddit-comment.relative:nth-of-type(12), shreddit-comment-tree-ad.-mt-md:nth-of-type(13), shreddit-comment.relative:nth-of-type(13), shreddit-comment-tree-ad.-mt-md:nth-of-type(14), shreddit-comment.relative:nth-of-type(14), shreddit-comment-tree-ad.-mt-md:nth-of-type(15), shreddit-comment.relative:nth-of-type(15), shreddit-comment-tree-ad.-mt-md:nth-of-type(16), shreddit-comment.relative:nth-of-type(16), shreddit-comment-tree-ad.-mt-md:nth-of-type(17), shreddit-comment.relative:nth-of-type(17), shreddit-comment-tree-ad.-mt-md:nth-of-type(18), shreddit-comment.relative:nth-of-type(18), shreddit-comment-tree-ad.-mt-md:nth-of-type(19), shreddit-comment.relative:nth-of-type(19), shreddit-comment-tree-ad.-mt-md:nth-of-type(20), shreddit-comment.relative:nth-of-type(20), shreddit-comment-tree-ad.-mt-md:nth-of-type(21), shreddit-comment.relative:nth-of-type(21), shreddit-comment-tree-ad.-mt-md:nth-of-type(22), shreddit-comment.relative:nth-of-type(22), shreddit-comment-tree-ad.-mt-md:nth-of-type(23), shreddit-comment.relative:nth-of-type(23), shreddit-comment-tree-ad.-mt-md:nth-of-type(24), shreddit-comment.relative:nth-of-type(24), shreddit-comment-tree-ad.-mt-md:nth-of-type(25), shreddit-comment.relative:nth-of-type(25)
+    ││    ├── #right-sidebar-container [display:block; width:100%; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ││    │├── #right-sidebar-contents [background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))] — #right-rail-experience-root, #subreddit-right-rail__partial
+    ││    │└── div.legal-links > span.text-neutral-content-weak [color:var(--color-neutral-content-weak)] — span.inline-block:nth-of-type(1) > faceplate-tracker > a.a
+    ││    └── #right-rail-entity-panel-root [display:contents; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    │└── #left-sidebar-container > #flex-left-nav-container [display:block; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    │    ├── #flex-nav-buttons [display:block; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    │    │├── rpl-tooltip:nth-of-type(1) > #flex-nav-expand-button [display:inline-block; width:var(--button-height); height:var(--button-height); background-color:var(--color-neutral-background); color:var(--button-color-text); border-radius:999px; box-shadow:var(--button-shadow)]
+    │    ││├── span.flex > span.flex > svg > path [background-color:rgba(0, 0, 0, 0); color:var(--button-color-text)]
+    │    ││└── faceplate-screen-reader-content [background-color:rgba(0, 0, 0, 0); color:var(--button-color-text)] "Expand Navigation"
+    │    │└── rpl-tooltip:nth-of-type(2) > #flex-nav-collapse-button [display:inline-block; width:var(--button-height); height:var(--button-height); background-color:var(--color-neutral-background); color:var(--button-color-text); border-radius:999px; box-shadow:var(--button-shadow)]
+    │    │    ├── span.flex > span.flex > svg > path [background-color:rgba(0, 0, 0, 0); color:var(--button-color-text)]
+    │    │    └── faceplate-screen-reader-content [background-color:rgba(0, 0, 0, 0); color:var(--button-color-text)] "Collapse Navigation"
+    │    └── #flex-left-nav-contents > #left-nav-persistent-container [display:contents; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    │        ├── faceplate-loader [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    │        └── #left-sidebar [display:block; width:100%; height:calc(var(--viewport-height,100vh) - var(--shreddit-header-height) - 1px); background-color:var(--color-neutral-background); color:var(--color-neutral-content,var(--color-tone-1))]
+    │            └── nav.z-2 [background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))] — left-nav-top-section, faceplate-tracker > games-section-badge-controller.nd:visible > faceplate-expandable-section-helper > details.p-0, faceplate-partial:nth-of-type(1) > div, #recent-communities-section > reddit-recent-pages, faceplate-expandable-section-helper > details.p-0, faceplate-loader, faceplate-partial:nth-of-type(2), nav, div.visible > a.no-underline
+    ├── shreddit-media-lightbox [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── achievement-events [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-loader:nth-of-type(21) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-partial:nth-of-type(20) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-loader:nth-of-type(22) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-partial:nth-of-type(21) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-loader:nth-of-type(23) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-partial:nth-of-type(22) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── shreddit-hotkeys-controller [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-loader:nth-of-type(24) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-partial:nth-of-type(23) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── after-login-toast-dispatcher [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── shreddit-meta-pixel [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-partial:nth-of-type(24) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── faceplate-perfmetric-collector [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    │└── data:nth-of-type(1) [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))] × 6
+    └── div:nth-of-type(4) [display:block; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+└── img [background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+└── navigation-indicator.fixed [display:inline; position:fixed; width:100%; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+└── exec-ui [display:block; position:relative; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+└── div:nth-of-type(1) [display:block; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    ├── div.grecaptcha-badge [display:block; position:fixed; width:256px; height:60px; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1)); border-radius:2px; box-shadow:gray 0px 0px 5px]
+    │├── div.grecaptcha-logo > iframe [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    │├── div.grecaptcha-error [display:block; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+    │└── #g-recaptcha-response-100000 [width:250px; height:40px; background-color:rgba(0, 0, 0, 0); color:var(--color-input-text); border-radius:var(--radius-sm)]
+    └── iframe [background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+└── #aitdk-csui [display:inline; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+└── #immersive-translate-browser-popup [display:block; background-color:rgba(0, 0, 0, 0); color:var(--color-neutral-content,var(--color-tone-1))]
+
+================================================================================
+报告结束
+================================================================================
