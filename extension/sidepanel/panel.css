@@ -821,6 +821,51 @@ pre code {
   position: relative;
 }
 
+/* Scroll to Bottom Floating Button */
+.scroll-to-bottom-btn {
+  position: fixed;
+  bottom: calc(var(--input-area-min-height) + 12px);
+  right: 20px;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-primary);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  z-index: var(--z-dropdown);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: all var(--duration-normal) var(--easing-default);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scroll-to-bottom-btn.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.scroll-to-bottom-btn:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.scroll-to-bottom-btn:active {
+  background: var(--color-bg-active);
+  transform: scale(0.95);
+}
+
+.scroll-to-bottom-btn .icon {
+  width: 14px !important;
+  height: 14px !important;
+}
+
 .chat-area-empty {
   position: absolute;
   bottom: var(--spacing-md);

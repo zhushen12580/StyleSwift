@@ -437,7 +437,7 @@ const BASE_TOOLS = [
 
 const SUBAGENT_TOOLS = [...BASE_TOOLS, CAPTURE_SCREENSHOT_TOOL];
 
-const ALL_TOOLS = [...BASE_TOOLS, TASK_TOOL, CAPTURE_SCREENSHOT_TOOL];
+const ALL_TOOLS = [...BASE_TOOLS, TASK_TOOL];
 
 /**
  * 工具名 → input_schema 查找表，供运行时 schema 校验使用。

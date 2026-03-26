@@ -682,5 +682,9 @@
   "newUserProfile": {
     "message": "New user, no style preferences recorded",
     "description": "New user default profile message"
+  },
+  "scrollToBottom": {
+    "message": "Scroll to latest message",
+    "description": "Scroll to bottom button tooltip"
   }
 }

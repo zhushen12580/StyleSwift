@@ -124,10 +124,13 @@ const DOM = {
 	attachedImagesContainer: null,
 	attachedImagesClear: null,
 
-	// Other
+	// 其他
 	loadingOverlay: null,
 	errorToast: null,
 	errorMessage: null,
+
+	// 滚动到底部按钮
+	scrollToBottomBtn: null,
 };
 
 // ============================================================================
@@ -1414,6 +1417,9 @@ async function initMainView() {
 
 	// 初始化打字机效果
 	initTypewriter();
+
+	// 初始化滚动到底部按钮
+	initScrollToBottomButton();
 
 	// 显示空状态（默认）
 	showEmptyState();
@@ -5315,6 +5321,9 @@ function scrollToBottom(options = {}) {
 				top: scrollContainer.scrollHeight,
 				behavior: instant ? "instant" : "smooth",
 			});
+
+			// 滚动到底部后隐藏滚动按钮
+			hideScrollToBottomButton();
 		});
 	});
 }
@@ -7003,6 +7012,96 @@ function initErrorBanner() {
 }
 
 // ============================================================================
+// 滚动到底部按钮
+// ============================================================================
+
+/**
+ * 滚动到底部按钮相关的状态和阈值
+ */
+const SCROLL_BOTTOM_THRESHOLD = 100; // 距离底部多少像素时认为"在底部"
+
+/**
+ * 初始化滚动到底部按钮
+ * 绑定点击事件和滚动监听器
+ */
+function initScrollToBottomButton() {
+	DOM.scrollToBottomBtn = document.getElementById("scroll-to-bottom-btn");
+
+	if (!DOM.scrollToBottomBtn || !DOM.chatArea) {
+		console.warn("[Panel] Scroll to bottom button or chat area not found");
+		return;
+	}
+
+	// 绑定点击事件
+	DOM.scrollToBottomBtn.addEventListener("click", handleScrollToBottomClick);
+
+	// 监听滚动事件
+	DOM.chatArea.addEventListener("scroll", handleChatAreaScroll);
+
+	// 初始状态：隐藏按钮
+	hideScrollToBottomButton();
+
+	console.log("[Panel] Scroll to bottom button initialized");
+}
+
+/**
+ * 处理滚动到底部按钮点击
+ */
+function handleScrollToBottomClick() {
+	scrollToBottom({ instant: false }); // 平滑滚动
+	hideScrollToBottomButton();
+}
+
+/**
+ * 处理聊天区域滚动事件
+ * 根据滚动位置显示或隐藏按钮
+ */
+function handleChatAreaScroll() {
+	if (!DOM.chatArea || !DOM.scrollToBottomBtn) return;
+
+	const { scrollTop, scrollHeight, clientHeight } = DOM.chatArea;
+	const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+	// 如果距离底部超过阈值，显示按钮
+	if (distanceFromBottom > SCROLL_BOTTOM_THRESHOLD) {
+		showScrollToBottomButton();
+	} else {
+		hideScrollToBottomButton();
+	}
+}
+
+/**
+ * 显示滚动到底部按钮
+ */
+function showScrollToBottomButton() {
+	if (DOM.scrollToBottomBtn) {
+		DOM.scrollToBottomBtn.classList.add("visible");
+		DOM.scrollToBottomBtn.classList.remove("hidden");
+	}
+}
+
+/**
+ * 隐藏滚动到底部按钮
+ */
+function hideScrollToBottomButton() {
+	if (DOM.scrollToBottomBtn) {
+		DOM.scrollToBottomBtn.classList.remove("visible");
+		DOM.scrollToBottomBtn.classList.add("hidden");
+	}
+}
+
+/**
+ * 检查是否在底部附近
+ * @returns {boolean}
+ */
+function isNearBottom() {
+	if (!DOM.chatArea) return true;
+
+	const { scrollTop, scrollHeight, clientHeight } = DOM.chatArea;
+	return scrollHeight - scrollTop - clientHeight < SCROLL_BOTTOM_THRESHOLD;
+}
+
+// ============================================================================
 // 导出函数
 // ============================================================================
 
@@ -7030,8 +7129,10 @@ export {
 	getPickedElementInfo,
 	getToolDisplayName,
 	hasAttachedImages,
+	// 错误横幅导出
 	hideConfirmationOverlay,
 	hideErrorBanner,
+	hideScrollToBottomButton,
 	initStateSync,
 	isConfirmationOverlayVisible,
 	renderAssistantMessageContainer,
@@ -7048,6 +7149,7 @@ export {
 	showError,
 	// 错误横幅导出
 	showErrorBanner,
+	showScrollToBottomButton,
 	stateManager,
 	switchView,
 	// 工具调用卡片导出

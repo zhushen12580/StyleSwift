@@ -682,5 +682,9 @@
   "newUserProfile": {
     "message": "新用户，暂无风格偏好记录",
     "description": "New user default profile message"
+  },
+  "scrollToBottom": {
+    "message": "滚动到最新消息",
+    "description": "Scroll to bottom button tooltip"
   }
 }
