@@ -1513,10 +1513,15 @@ async function loadSessionForDomain(domain) {
 
 		if (historyData.messages && historyData.messages.length > 0) {
 			renderHistoryMessages(historyData.messages);
+			// 有历史消息时：标记会话已开始，隐藏技能区
+			stateManager.set("hasConversationStarted", true);
+			setSkillAreaVisible(false);
 			console.log(
 				`[Panel] Loaded ${historyData.messages.length} history messages`,
 			);
 		} else {
+			// 空会话：重置状态，显示技能区
+			stateManager.set("hasConversationStarted", false);
 			showEmptyState();
 		}
 
