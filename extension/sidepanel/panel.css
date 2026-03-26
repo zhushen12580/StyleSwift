@@ -1141,24 +1141,101 @@ pre code {
   background: var(--color-primary-light);
 }
 
-/* 选中元素预览条 — 品牌暖橙色 */
+/* 选中元素预览条 — 品牌暖橙色（支持多选） */
 .picked-element-bar {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--spacing-sm);
-  padding: 5px var(--spacing-md);
+  padding: var(--spacing-xs) var(--spacing-md);
   margin-bottom: var(--spacing-xs);
   background: var(--color-primary-light);
   border: 1px solid color-mix(in oklch, var(--color-primary) 28%, transparent);
   border-radius: var(--radius-lg);
   animation: fadeIn var(--duration-fast) var(--easing-default);
+  flex-wrap: wrap;
 }
 
 .picked-element-icon {
   flex-shrink: 0;
   color: var(--color-primary);
+  margin-top: 3px;
 }
 
+/* 多选元素容器 */
+.picked-elements-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  flex: 1;
+  align-items: center;
+}
+
+/* 单个元素标签 */
+.picked-element-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: color-mix(in oklch, var(--color-primary) 12%, transparent);
+  border: 1px solid color-mix(in oklch, var(--color-primary) 30%, transparent);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--color-primary);
+  max-width: 180px;
+  animation: fadeIn var(--duration-fast) var(--easing-default);
+}
+
+.picked-element-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.picked-element-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: color-mix(in oklch, var(--color-primary) 60%, transparent);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--duration-fast) var(--easing-default);
+  padding: 0;
+}
+
+.picked-element-remove:hover {
+  background: color-mix(in oklch, var(--color-primary) 25%, transparent);
+  color: var(--color-primary);
+}
+
+/* 完成选择按钮 */
+.picked-element-done-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--easing-default);
+  white-space: nowrap;
+}
+
+.picked-element-done-btn:hover {
+  background: var(--color-primary-hover);
+}
+
+/* 兼容旧版单选样式 */
 .picked-element-label {
   flex: 1;
   font-size: var(--font-size-sm);

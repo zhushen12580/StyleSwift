@@ -115,8 +115,7 @@ const DOM = {
 	// Element picker
 	pickerBtn: null,
 	pickedElementBar: null,
-	pickedElementLabel: null,
-	pickedElementClear: null,
+	// Note: 元素标签现在是动态生成的，元素信息存储在 _pickedElementInfo 数组中
 
 	// Image upload
 	imageUploadBtn: null,
@@ -124,12 +123,6 @@ const DOM = {
 	attachedImagesBar: null,
 	attachedImagesContainer: null,
 	attachedImagesClear: null,
-
-	// Element picker
-	pickerBtn: null,
-	pickedElementBar: null,
-	pickedElementLabel: null,
-	pickedElementClear: null,
 
 	// Other
 	loadingOverlay: null,
@@ -502,11 +495,18 @@ class GlobalStateManager {
 const stateManager = new GlobalStateManager();
 
 /**
- * 当前选中的元素信息（由元素选择器设置）
- * 存在时会作为上下文注入到 agentLoop 的 prompt 中
- * @type {Object|null}
+ * 当前选中的元素列表（由元素选择器设置）
+ * 支持多选，存在时会作为上下文注入到 agentLoop 的 prompt 中
+ * @type {Array<Object>}
  */
-let _pickedElementInfo = null;
+let _pickedElementInfo = [];
+
+/**
+ * 当前选中的单个元素（兼容旧代码，指向最后一个选中的元素）
+ * @type {Object|null}
+ * @deprecated Use _pickedElementInfo array instead
+ */
+let _pickedElement = null;
 
 /**
  * 元素选择器是否处于激活状态
@@ -1350,8 +1350,7 @@ async function initMainView() {
 	// 获取元素选择器 DOM 元素
 	DOM.pickerBtn = document.getElementById("picker-btn");
 	DOM.pickedElementBar = document.getElementById("picked-element-bar");
-	DOM.pickedElementLabel = document.getElementById("picked-element-label");
-	DOM.pickedElementClear = document.getElementById("picked-element-clear");
+	// pickedElementLabel 和 pickedElementClear 已移除，由动态生成的容器替代
 
 	// 获取图片上传 DOM 元素
 	DOM.imageUploadBtn = document.getElementById("image-upload-btn");
@@ -1699,22 +1698,45 @@ async function handleSendClick() {
 
 	// 如果有选中的元素，将其信息附加到 prompt 中
 	let finalMessage = message;
-	const pickedInfo = _pickedElementInfo;
-	if (pickedInfo) {
-		const elementContext = [
-			`\n[用户指定元素]`,
-			`选择器: ${pickedInfo.fullPath}`,
-			`标签: ${pickedInfo.tag}`,
-			pickedInfo.id ? `ID: ${pickedInfo.id}` : null,
-			pickedInfo.classes.length
-				? `Classes: ${pickedInfo.classes.join(" ")}`
-				: null,
-			pickedInfo.text ? `文本: "${pickedInfo.text}"` : null,
-			`尺寸: ${pickedInfo.rect.width}×${pickedInfo.rect.height}`,
-		]
-			.filter(Boolean)
-			.join("\n");
-		finalMessage = message + "\n" + elementContext;
+	const pickedElements = _pickedElementInfo;
+	if (pickedElements.length > 0) {
+		// 支持多选：将所有选中元素的信息附加到消息中
+		if (pickedElements.length === 1) {
+			// 单选：保持原有格式
+			const pickedInfo = pickedElements[0];
+			const elementContext = [
+				`\n[用户指定元素]`,
+				`选择器: ${pickedInfo.fullPath}`,
+				`标签: ${pickedInfo.tag}`,
+				pickedInfo.id ? `ID: ${pickedInfo.id}` : null,
+				pickedInfo.classes.length
+					? `Classes: ${pickedInfo.classes.join(" ")}`
+					: null,
+				pickedInfo.text ? `文本: "${pickedInfo.text}"` : null,
+				`尺寸: ${pickedInfo.rect.width}×${pickedInfo.rect.height}`,
+			]
+				.filter(Boolean)
+				.join("\n");
+			finalMessage = message + "\n" + elementContext;
+		} else {
+			// 多选：列出所有元素
+			const elementsContext = pickedElements.map((pickedInfo, index) => {
+				const info = [
+					`[元素 ${index + 1}]`,
+					`选择器: ${pickedInfo.fullPath}`,
+					`标签: ${pickedInfo.tag}`,
+					pickedInfo.id ? `ID: ${pickedInfo.id}` : null,
+					pickedInfo.classes.length
+						? `Classes: ${pickedInfo.classes.join(" ")}`
+						: null,
+					pickedInfo.text ? `文本: "${pickedInfo.text}"` : null,
+					`尺寸: ${pickedInfo.rect.width}×${pickedInfo.rect.height}`,
+				].filter(Boolean).join("\n");
+				return info;
+			}).join("\n\n");
+			
+			finalMessage = message + "\n\n[用户指定了以下多个元素]\n" + elementsContext;
+		}
 		clearPickedElement();
 	}
 
@@ -1804,9 +1826,15 @@ async function handleSendClick() {
 	setSkillAreaVisible(false);
 
 	// 渲染用户消息气泡（附带元素定位标记和图片指示）
-	let displayMessage = pickedInfo
-		? `${message}\n${pickedInfo.selector}`
-		: message;
+	let displayMessage = message;
+	if (pickedElements.length > 0) {
+		// 多选支持：显示所有选中元素的选择器
+		const selectors = pickedElements.map(el => el.selector).join(", ");
+		displayMessage += `\n📍 ${selectors}`;
+		if (pickedElements.length > 1) {
+			displayMessage = message + `\n📍 已选择 ${pickedElements.length} 个元素`;
+		}
+	}
 	if (hasImages) {
 		displayMessage += `\n🖼 ${imagesToSend.length} 张图片`;
 	}
@@ -2147,9 +2175,7 @@ function initElementPicker() {
 	if (DOM.pickerBtn) {
 		DOM.pickerBtn.addEventListener("click", togglePicker);
 	}
-	if (DOM.pickedElementClear) {
-		DOM.pickedElementClear.addEventListener("click", clearPickedElement);
-	}
+	// 注意：picked-element-clear 已移除，删除按钮现在是动态生成的
 
 	chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 		if (message.type === "element_picked") {
@@ -2196,36 +2222,151 @@ function setPickerActive(active) {
 }
 
 /**
- * 元素被选中后的回调
+ * 元素被选中后的回调（支持多选）
+ * 选中元素后会继续保持在选择模式，不自动关闭 picker
  */
 function onElementPicked(info) {
-	_pickedElementInfo = info;
-	setPickerActive(false);
+	// 检查是否已存在相同路径的元素（避免重复选择）
+	const exists = _pickedElementInfo.some(
+		(el) => el.fullPath === info.fullPath || el.selector === info.selector
+	);
+	
+	if (exists) {
+		// 如果已选中，则取消选中（toggle 行为）
+		_pickedElementInfo = _pickedElementInfo.filter(
+			(el) => el.fullPath !== info.fullPath && el.selector !== info.selector
+		);
+	} else {
+		// 添加到选中列表
+		_pickedElementInfo.push(info);
+	}
+	
+	// 更新 _pickedElement 为最后一个元素（兼容旧代码）
+	_pickedElement = _pickedElementInfo.length > 0 
+		? _pickedElementInfo[_pickedElementInfo.length - 1] 
+		: null;
+	
+	// 不自动关闭 picker，保持选择状态
+	// setPickerActive(false);
 
-	if (DOM.pickedElementBar && DOM.pickedElementLabel) {
+	updatePickedElementsBar();
+}
+
+/**
+ * 更新选中元素条的 UI 显示（支持多个元素）
+ */
+function updatePickedElementsBar() {
+	const container = document.getElementById("picked-elements-container");
+	
+	if (!container || !DOM.pickedElementBar) return;
+	
+	// 清空容器
+	container.innerHTML = "";
+	
+	if (_pickedElementInfo.length === 0) {
+		// 没有选中元素时隐藏整个栏
+		DOM.pickedElementBar.classList.add("hidden");
+		return;
+	}
+	
+	// 显示选中元素条
+	DOM.pickedElementBar.classList.remove("hidden");
+	
+	// 渲染每个选中元素
+	_pickedElementInfo.forEach((info, index) => {
 		const label = info.fullPath || info.selector || info.tag;
-		DOM.pickedElementLabel.textContent = label;
-		DOM.pickedElementLabel.title = label;
-		DOM.pickedElementBar.classList.remove("hidden");
+		
+		const elementTag = document.createElement("div");
+		elementTag.className = "picked-element-tag";
+		elementTag.innerHTML = `
+			<span class="picked-element-text" title="${escapeHtml(label)}">${escapeHtml(label)}</span>
+			<button class="picked-element-remove" data-index="${index}" data-i18n-title="removeElement" data-i18n-aria-label="removeElement">
+				<span class="icon icon-x" style="width:10px;height:10px" aria-hidden="true"></span>
+			</button>
+		`;
+		
+		// 绑定删除按钮事件
+		const removeBtn = elementTag.querySelector(".picked-element-remove");
+		removeBtn.addEventListener("click", (e) => {
+			e.stopPropagation();
+			removePickedElement(index);
+		});
+		
+		container.appendChild(elementTag);
+	});
+	
+	// 添加"完成选择"按钮（用于关闭 picker）
+	if (_pickerActive) {
+		const doneBtn = document.createElement("button");
+		doneBtn.className = "picked-element-done-btn";
+		doneBtn.id = "picker-done-btn";
+		doneBtn.innerHTML = `<span>${getMessage("finishPicking")}</span>`;
+		doneBtn.addEventListener("click", async (e) => {
+			e.stopPropagation();
+			await finishPicking();
+		});
+		container.appendChild(doneBtn);
 	}
 }
 
 /**
- * 清除已选中的元素
+ * 移除指定索引的选中元素
+ * @param {number} index - 元素索引
+ */
+function removePickedElement(index) {
+	if (index >= 0 && index < _pickedElementInfo.length) {
+		_pickedElementInfo.splice(index, 1);
+		_pickedElement = _pickedElementInfo.length > 0 
+			? _pickedElementInfo[_pickedElementInfo.length - 1] 
+			: null;
+		updatePickedElementsBar();
+	}
+}
+
+/**
+ * 清除所有已选中的元素
  */
 function clearPickedElement() {
-	_pickedElementInfo = null;
+	_pickedElementInfo = [];
+	_pickedElement = null;
 	if (DOM.pickedElementBar) {
 		DOM.pickedElementBar.classList.add("hidden");
 	}
+	const container = document.getElementById("picked-elements-container");
+	if (container) {
+		container.innerHTML = "";
+	}
 }
 
 /**
- * 获取当前选中的元素信息（供外部模块使用）
- * @returns {Object|null}
+ * 完成选择（关闭 picker）
+ */
+async function finishPicking() {
+	try {
+		const { sendToContentScript } = await import("./tools.js");
+		await sendToContentScript({ tool: "stop_picker" });
+		setPickerActive(false);
+		updatePickedElementsBar();
+	} catch (err) {
+		console.error("[Panel] Failed to stop picker:", err);
+		setPickerActive(false);
+	}
+}
+
+/**
+ * 获取当前选中的元素信息数组（供外部模块使用）
+ * @returns {Array<Object>}
  */
 function getPickedElementInfo() {
 	return _pickedElementInfo;
+}
+
+/**
+ * 检查是否有选中的元素
+ * @returns {boolean}
+ */
+function hasPickedElements() {
+	return _pickedElementInfo.length > 0;
 }
 
 // ============================================================================

@@ -130,13 +130,12 @@
       
       <!-- Input Area -->
       <footer id="input-area" class="input-area">
-        <!-- Picked Element Bar -->
+        <!-- Picked Element Bar (multi-select support) -->
         <div id="picked-element-bar" class="picked-element-bar hidden">
           <span class="icon icon-mouse picked-element-icon" style="width:12px;height:12px" aria-hidden="true"></span>
-          <span id="picked-element-label" class="picked-element-label"></span>
-          <button id="picked-element-clear" class="picked-element-clear" data-i18n-title="removeElement" data-i18n-aria-label="removeElement">
-            <span class="icon icon-x" style="width:10px;height:10px" aria-hidden="true"></span>
-          </button>
+          <div id="picked-elements-container" class="picked-elements-container">
+            <!-- Dynamically generated element tags -->
+          </div>
         </div>
         <!-- Attached Images Bar -->
         <div id="attached-images-bar" class="attached-images-bar hidden">

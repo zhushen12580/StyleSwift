@@ -1170,7 +1170,8 @@ function onPickerClick(e) {
 
   if (!_hoveredElement) return;
   const target = _hoveredElement;
-  stopPicker();
+  // 不再自动关闭 picker，支持多选
+  // stopPicker();
 
   const info = extractElementInfo(target);
   try {

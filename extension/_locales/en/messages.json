@@ -51,6 +51,18 @@
     "message": "Remove selected element",
     "description": "Remove selected element tooltip"
   },
+  "finishPicking": {
+    "message": "Done",
+    "description": "Finish picking elements button label"
+  },
+  "selectedElements_one": {
+    "message": "1 element selected",
+    "description": "Selected elements count (singular)"
+  },
+  "selectedElements_other": {
+    "message": "{count} elements selected",
+    "description": "Selected elements count (plural)"
+  },
   "removeAllImages": {
     "message": "Remove all images",
     "description": "Remove all images tooltip"

@@ -51,6 +51,18 @@
     "message": "移除选中元素",
     "description": "Remove selected element tooltip"
   },
+  "finishPicking": {
+    "message": "完成选择",
+    "description": "Finish picking elements button label"
+  },
+  "selectedElements_one": {
+    "message": "已选择 1 个元素",
+    "description": "Selected elements count (singular)"
+  },
+  "selectedElements_other": {
+    "message": "已选择 {count} 个元素",
+    "description": "Selected elements count (plural)"
+  },
   "removeAllImages": {
     "message": "移除所有图片",
     "description": "Remove all images tooltip"
