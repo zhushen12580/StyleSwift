@@ -1180,13 +1180,13 @@ RULES:
   }
 
   try {
-    const { getSettings, detectProvider } = await import("./api.js");
+    const { getSettings, detectProvider, buildApiUrl } = await import("./api.js");
     const { apiKey, model, apiBase } = await getSettings();
     const provider = detectProvider(apiBase, model);
 
     let resp;
     if (provider === "claude") {
-      resp = await fetch(`${apiBase}/v1/messages`, {
+      resp = await fetch(buildApiUrl(apiBase, "/messages"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1201,7 +1201,7 @@ RULES:
         }),
       });
     } else {
-      resp = await fetch(`${apiBase}/v1/chat/completions`, {
+      resp = await fetch(buildApiUrl(apiBase, "/chat/completions"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1494,10 +1494,11 @@ async function _callOpenAIStream(
   callbacks,
   abortSignal,
 ) {
+  const { buildApiUrl } = await import("./api.js");
   const openaiMessages = serializeToOpenAI(system, messages);
   const openaiTools = serializeToolsToOpenAI(tools);
 
-  const url = `${apiBase}/v1/chat/completions`;
+  const url = buildApiUrl(apiBase, "/chat/completions");
   const requestBody = {
     model,
     messages: openaiMessages,
@@ -1559,10 +1560,11 @@ async function _callClaudeStream(
   callbacks,
   abortSignal,
 ) {
+  const { buildApiUrl } = await import("./api.js");
   const claudeMessages = serializeToClaude(messages);
   const claudeTools = serializeToolsToClaude(tools);
 
-  const url = `${apiBase}/v1/messages`;
+  const url = buildApiUrl(apiBase, "/messages");
   const requestBody = {
     model,
     messages: claudeMessages,

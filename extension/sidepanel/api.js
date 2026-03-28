@@ -15,25 +15,83 @@
 /**
  * 规范化 API 基础地址
  *
- * 移除尾部斜杠和纯技术路径后缀（/v1、/api），
- * 保留有语义的 provider 路径段（/anthropic、/openai），
- * 确保最终拼接正确。
+ * 只移除尾部斜杠，保留用户输入的版本号路径。
+ * 版本号的处理由 buildApiUrl 函数负责。
  *
  * @param {string} apiBase - 用户输入的 API 地址
  * @returns {string} 规范化后的基础地址
+ *
+ * @example
+ * normalizeApiBase("https://api.example.com/v1")           // "https://api.example.com/v1"
+ * normalizeApiBase("https://api.example.com/v4/")           // "https://api.example.com/v4"
+ * normalizeApiBase("https://api.example.com/api/v1")        // "https://api.example.com/api/v1"
+ * normalizeApiBase("https://api.example.com/anthropic/v1")  // "https://api.example.com/anthropic/v1"
  */
 function normalizeApiBase(apiBase) {
   try {
     const url = new URL(apiBase);
-    // 只移除尾部的 /v1、/api 等纯技术路径后缀，保留 /anthropic、/openai 等 provider 路径段
-    let pathname = url.pathname
-      .replace(/\/+$/, "") // 移除尾部斜杠
-      .replace(/\/(v1|api)(\/|$)/gi, "/") // 仅移除 /v1、/api
-      .replace(/\/+$/, ""); // 再次移除尾部斜杠
-
+    // 只移除尾部斜杠，保留用户输入的版本号
+    const pathname = url.pathname.replace(/\/+$/, "");
     return url.origin + pathname;
   } catch {
     return apiBase;
+  }
+}
+
+/**
+ * 检查 URL 路径是否已包含版本号
+ *
+ * @param {string} pathname - URL 路径
+ * @returns {boolean} 是否已包含版本号（如 /v1、/v2、/v4 等）
+ *
+ * @example
+ * hasVersionInPath("/v1/chat/completions")     // true
+ * hasVersionInPath("/api/v4/chat/completions") // true
+ * hasVersionInPath("/openai/chat/completions") // false
+ */
+function hasVersionInPath(pathname) {
+  // 匹配 /v1、/v2、/v4 等版本号路径段
+  return /\/v\d+(?:\/|$)/i.test(pathname);
+}
+
+/**
+ * 构建 API 请求 URL
+ *
+ * 智能拼接 URL：
+ * - 如果 apiBase 已包含版本号（如 /v1、/v4），直接拼接端点路径
+ * - 如果 apiBase 不包含版本号，添加 /v1 前缀
+ *
+ * @param {string} apiBase - API 基础地址（已规范化）
+ * @param {string} endpoint - 端点路径（如 /chat/completions 或 /messages）
+ * @returns {string} 完整的 API URL
+ *
+ * @example
+ * buildApiUrl("https://api.example.com", "/chat/completions")
+ *   // "https://api.example.com/v1/chat/completions"
+ * buildApiUrl("https://api.example.com/v4", "/chat/completions")
+ *   // "https://api.example.com/v4/chat/completions"
+ * buildApiUrl("https://api.example.com/api/v1", "/chat/completions")
+ *   // "https://api.example.com/api/v1/chat/completions"
+ */
+function buildApiUrl(apiBase, endpoint) {
+  try {
+    const url = new URL(apiBase);
+    const pathname = url.pathname.replace(/\/+$/, "");
+
+    if (hasVersionInPath(pathname)) {
+      // 已包含版本号，直接拼接端点
+      return url.origin + pathname + endpoint;
+    }
+
+    // 未包含版本号，添加 /v1 前缀
+    return url.origin + pathname + "/v1" + endpoint;
+  } catch {
+    // URL 解析失败，尝试简单拼接
+    const base = apiBase.replace(/\/+$/, "");
+    if (hasVersionInPath(base)) {
+      return base + endpoint;
+    }
+    return base + "/v1" + endpoint;
   }
 }
 
@@ -358,8 +416,12 @@ async function ensureApiPermission(apiBase) {
  * 验证 API 连接有效性
  *
  * 根据 provider 类型自动选择验证端点和请求格式：
- * - OpenAI 兼容：POST {apiBase}/v1/chat/completions
- * - Claude 原生：POST {apiBase}/v1/messages（带 anthropic-version 头）
+ * - OpenAI 兼容：POST {apiBase}/v1/chat/completions（或使用用户指定的版本号）
+ * - Claude 原生：POST {apiBase}/v1/messages（或使用用户指定的版本号）
+ *
+ * 智能处理版本号：
+ * - 如果 apiBase 已包含版本号（如 /v4），则直接使用
+ * - 如果 apiBase 不包含版本号，则自动添加 /v1
  *
  * @param {string} apiKey - API Key
  * @param {string} apiBase - API 基础地址
@@ -379,7 +441,8 @@ async function validateConnection(apiKey, apiBase, model = DEFAULT_MODEL) {
 
   try {
     if (provider === "claude") {
-      const url = `${apiBase}/v1/messages`;
+      // 使用 buildApiUrl 智能拼接 URL
+      const url = buildApiUrl(apiBase, "/messages");
       const resp = await fetch(url, {
         method: "POST",
         headers: {
@@ -395,7 +458,8 @@ async function validateConnection(apiKey, apiBase, model = DEFAULT_MODEL) {
       });
       return { ok: resp.ok, status: resp.status };
     } else {
-      const url = `${apiBase}/v1/chat/completions`;
+      // 使用 buildApiUrl 智能拼接 URL
+      const url = buildApiUrl(apiBase, "/chat/completions");
       const resp = await fetch(url, {
         method: "POST",
         headers: {
@@ -455,6 +519,8 @@ export {
   SETTINGS_KEY,
   CLAUDE_API_DOMAINS,
   normalizeApiBase,
+  hasVersionInPath,
+  buildApiUrl,
   detectProvider,
   getSettings,
   getSettingsForRequest,
