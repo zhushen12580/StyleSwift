@@ -1,6 +1,7 @@
 /** StyleSwift Agent Loop：主循环与系统提示词 */
 
 import { BASE_TOOLS, SUBAGENT_TOOLS, ALL_TOOLS, getSkillManager } from "./tools.js";
+import { calculateTokenBudget } from "./model-context.js";
 
 // --- 跨 Provider 消息序列化/反序列化 (ICF) ---
 
@@ -499,6 +500,49 @@ Workflow: Call load_skill(frontend-design) → form a systematic plan →
   Never guess class names or IDs based on assumptions.
 </validation-rules>
 
+### Page Structure Analysis Protocol
+
+When analyzing page structure, answer these questions systematically:
+
+<page-analysis-protocol>
+**0. Are key regions clear?** (Header, Navigation, Main, Sidebar, Footer)
+- Look for structural signatures: fixed/sticky elements at top → navigation
+- Largest content area in center → main content
+- Fixed elements at sides → sidebars/ads
+- Elements at bottom → footer
+- Modern pages may use custom tags (<app-header>, <my-nav>, <page-content>)
+- Detection: Look for semantic words in tag names (header, nav, main, content, sidebar, footer, panel, section)
+
+**1. What is the PRIMARY PURPOSE of this page?**
+- Identify the main content area and its role
+- Is it content consumption, navigation, form submission, or mixed?
+
+**2. Which elements DOMINATE the viewport?** (above-the-fold priority)
+- Fixed/sticky elements at top → First impression, navigation
+- Large text (font-size ≥24px) → Headings, key messages
+- Prominent colors → Calls-to-action, key sections
+- Interactive clusters → Buttons, links, forms
+
+**3. What is the existing COLOR SCHEME?**
+- Harmonize with or intentionally contrast existing colors
+- Extract primary, secondary, accent colors from get_current_styles
+- Note: AI clichés to avoid: cyan-on-dark, purple-blue gradients, neon accents
+
+**4. What TYPOGRAPHY system is in use?**
+- Font families (headings vs body)
+- Font scale (h1, h2, h3 sizes)
+- Line heights and letter spacing
+
+**5. What SPACING RHYTHM exists?**
+- Look for consistent patterns: 4/8/12/16/24/32/48 px
+- Note: Use only allowed values (0/4/8/12/16/24/32/48/64/96)
+
+**6. What LAYOUT mode?**
+- Flexbox (display: flex, flex-direction, justify-content, align-items)
+- Grid (display: grid, grid-template-columns)
+- Traditional (float, position, block/inline)
+</page-analysis-protocol>
+
 ## Style Operations
 
 <operation-guide>
@@ -826,8 +870,25 @@ async function getDisabledUserSkills() {
 
 // --- Conversation History and Token Budget ---
 
-/** Token budget threshold that triggers history compression (~50k, leaving space for tool results and output) */
-const TOKEN_BUDGET = 50000;
+/**
+ * 动态计算 token 预算
+ * 根据当前使用的模型上下文窗口计算，默认使用 90% 的上下文窗口减去系统开销
+ * 
+ * @param {string} modelName - 模型名称
+ * @returns {number} token 预算
+ */
+function getDynamicTokenBudget(modelName) {
+  if (!modelName) {
+    console.warn('[Token Budget] No model name provided, using default 50000');
+    return 50000;
+  }
+  const budget = calculateTokenBudget(modelName, 0.9, 4000);
+  console.log(`[Token Budget] Calculated for model "${modelName}": ${budget} tokens`);
+  return budget;
+}
+
+/** Default token budget for backward compatibility and as fallback */
+const DEFAULT_TOKEN_BUDGET = 50000;
 
 /** CJK character regex */
 const CJK_RE = /[\u2e80-\u9fff\uf900-\ufaff\ufe30-\ufe4f\uff00-\uffef]/g;
@@ -981,15 +1042,17 @@ function extractEffectiveHistory(fullHistory) {
 /** When over budget, summarize old messages + keep recent context, truncate large tool results if still over
  * @returns {CompressionResult} Object with fullHistory and llmHistory
  */
-async function checkAndCompressHistory(history, estimatedTokens, callbacks) {
-  if (estimatedTokens <= TOKEN_BUDGET) {
+async function checkAndCompressHistory(history, estimatedTokens, callbacks, tokenBudget) {
+  const budget = tokenBudget || DEFAULT_TOKEN_BUDGET;
+  
+  if (estimatedTokens <= budget) {
     return { fullHistory: history, llmHistory: history };
   }
 
   // Notify UI that compression is starting
   callbacks?.onCompressionStart?.();
 
-  const keepFrom = findKeepBoundary(history, TOKEN_BUDGET);
+  const keepFrom = findKeepBoundary(history, budget);
 
   if (keepFrom <= 0) {
     callbacks?.onCompressionProgress?.("compressing_tool_results");
@@ -1071,7 +1134,7 @@ async function checkAndCompressHistory(history, estimatedTokens, callbacks) {
   ];
 
   const postEstimate = estimateTokenCount(llmHistory);
-  if (postEstimate > TOKEN_BUDGET) {
+  if (postEstimate > budget) {
     callbacks?.onCompressionProgress?.("compressing_tool_results");
     llmHistory = truncateLargeToolResults(llmHistory);
   }
@@ -2080,6 +2143,18 @@ async function agentLoop(prompt, uiCallbacks) {
     countUserTextMessages,
   } = await import("./session.js");
   const { getProfileOneLiner   } = await import("./profile.js");
+  const { getSettings, DEFAULT_MODEL } = await import("./api.js");
+  
+  // Get model name for dynamic token budget calculation
+  let currentModelName = DEFAULT_MODEL;
+  try {
+    const settings = await getSettings();
+    currentModelName = settings.model || DEFAULT_MODEL;
+  } catch (err) {
+    console.warn("[Token Budget] Failed to get model name, using default:", err);
+  }
+  const tokenBudget = getDynamicTokenBudget(currentModelName);
+  
   let _saveState = null;
 
   try {
@@ -2172,15 +2247,15 @@ async function agentLoop(prompt, uiCallbacks) {
       console.log("[Token Budget] Check:", {
         iteration: iterations,
         tokenCount,
-        TOKEN_BUDGET,
+        tokenBudget,
         lastInputTokens,
         historyLength: llmHistory.length,
-        willCompress: tokenCount > TOKEN_BUDGET,
+        willCompress: tokenCount > tokenBudget,
       });
       
-      if (tokenCount > TOKEN_BUDGET) {
+      if (tokenCount > tokenBudget) {
         console.log("[Token Budget] Triggering compression...");
-        const compressionResult = await checkAndCompressHistory(llmHistory, tokenCount, uiCallbacks);
+        const compressionResult = await checkAndCompressHistory(llmHistory, tokenCount, uiCallbacks, tokenBudget);
         // Update both histories: fullHistory stores everything, llmHistory excludes _isCompressed
         fullHistory = compressionResult.fullHistory;
         llmHistory = compressionResult.llmHistory;
@@ -2444,7 +2519,8 @@ export {
   AGENT_TYPES,
   buildSessionContext,
   buildSkillDescriptions,
-  TOKEN_BUDGET,
+  DEFAULT_TOKEN_BUDGET,
+  getDynamicTokenBudget,
   findKeepBoundary,
   checkAndCompressHistory,
   extractEffectiveHistory,

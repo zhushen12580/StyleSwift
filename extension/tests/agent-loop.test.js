@@ -10,7 +10,8 @@
  * 测试标准：
  * - SYSTEM_BASE 包含所有关键指引
  * - buildSessionContext 输出包含域名和会话标题，有画像时包含偏好提示
- * - TOKEN_BUDGET 为 50000
+ * - DEFAULT_TOKEN_BUDGET 为 50000（旧版常量，用于兼容）
+ * - getDynamicTokenBudget 动态计算模型 token 预算
  * - 未超预算不压缩
  * - 超预算后全量摘要旧消息 + 动态保留最近上下文
  */
@@ -21,7 +22,8 @@ import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   SYSTEM_BASE,
   buildSessionContext,
-  TOKEN_BUDGET,
+  DEFAULT_TOKEN_BUDGET,
+  getDynamicTokenBudget,
   findKeepBoundary,
   checkAndCompressHistory,
   extractEffectiveHistory,
@@ -155,9 +157,25 @@ describe("buildSessionContext 函数", () => {
 // §6.3 Layer 2 — 对话历史与 Token 预算控制 测试
 // =============================================================================
 
-describe("TOKEN_BUDGET 常量", () => {
-  test("TOKEN_BUDGET 定义为 50000", () => {
-    expect(TOKEN_BUDGET).toBe(50000);
+describe("DEFAULT_TOKEN_BUDGET 常量", () => {
+  test("DEFAULT_TOKEN_BUDGET 定义为 50000", () => {
+    expect(DEFAULT_TOKEN_BUDGET).toBe(50000);
+  });
+});
+
+describe("getDynamicTokenBudget 函数", () => {
+  test("未知模型使用默认预算", () => {
+    // 未知模型应该返回保守值或默认值的90%
+    const budget = getDynamicTokenBudget("unknown-model");
+    expect(budget).toBeGreaterThan(0);
+    expect(budget).toBeLessThanOrEqual(500000); // 不应超过50万
+  });
+  
+  test("返回合理的预算值", () => {
+    // 即使模型名称变化，也应返回正数
+    const budget = getDynamicTokenBudget("some-model");
+    expect(typeof budget).toBe("number");
+    expect(budget).toBeGreaterThan(10000); // 最小值保护
   });
 });
 
@@ -167,11 +185,11 @@ describe("findKeepBoundary 函数", () => {
       { role: "user", content: "消息1" },
       { role: "assistant", content: [{ type: "text", text: "回复1" }] },
     ];
-    expect(findKeepBoundary(history, TOKEN_BUDGET)).toBe(0);
+    expect(findKeepBoundary(history, DEFAULT_TOKEN_BUDGET)).toBe(0);
   });
 
   test("空历史返回 0", () => {
-    expect(findKeepBoundary([], TOKEN_BUDGET)).toBe(0);
+    expect(findKeepBoundary([], DEFAULT_TOKEN_BUDGET)).toBe(0);
   });
 
   test("切分点落在 user 消息上", () => {
@@ -181,7 +199,7 @@ describe("findKeepBoundary 函数", () => {
       history.push({ role: "user", content: "x".repeat(3000) });
       history.push({ role: "assistant", content: [{ type: "text", text: "y".repeat(3000) }] });
     }
-    const boundary = findKeepBoundary(history, TOKEN_BUDGET);
+    const boundary = findKeepBoundary(history, DEFAULT_TOKEN_BUDGET);
     if (boundary > 0 && boundary < history.length) {
       expect(history[boundary].role).toBe("user");
     }

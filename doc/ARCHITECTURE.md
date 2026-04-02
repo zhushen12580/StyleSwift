@@ -114,7 +114,9 @@ Chrome Extension (Manifest V3)
 - **执行环境**：Agent Loop 运行在 Side Panel（`extension/sidepanel/agent-loop.js`）。
 - **Provider 兼容**：同一套 ICF 消息结构，按 Provider 序列化为 OpenAI ChatCompletions 或 Claude Messages；并支持流式解析与工具调用。
 - **上下文管理**：
-  - token 预算（主循环约 50k）触发“历史压缩”（对旧对话做摘要 + 截断大 tool_result），避免上下文爆炸。
+  - **动态 Token 预算**：根据模型上下文窗口动态计算 token 预算，而非固定值。计算公式：`budget = context_window × 90% - system_overhead`。支持的模型及其上下文窗口定义在 `extension/sidepanel/model-context.js`。
+  - **模型上下文窗口映射**：主流模型（Claude、GPT、DeepSeek、Gemini 等）的上下文窗口大小已内置，未知模型使用保守默认值（128k）。
+  - **历史压缩**：当超过 token 预算时触发"历史压缩"（对旧对话做摘要 + 截断大 tool_result），避免上下文爆炸。
   - 旧 assistant 的 `_reasoning` 会被剥离，仅保留最后一条（节省上下文）。
 - **死循环保护**：连续多次相同 tool + args 会触发去重保护并返回提示，避免无效重复调用。
 - **并发保护**：同一时间仅允许一个 Agent Loop 运行；并提供取消（abort）能力。
