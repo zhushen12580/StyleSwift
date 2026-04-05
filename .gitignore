@@ -1,24 +1,44 @@
-# 依赖目录
+# Dependencies
 node_modules/
 
-#宣传物料
+# Build artifacts
+dist/
+
+# Test artifacts
+tests/integration/screenshots/
+extension/tests/integration/screenshots/
+
+# IDE and editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python (project is JavaScript only)
+.venv/
+.ruff_cache/
+*.pyc
+__pycache__/
+
+# Misc
+.specstory/
+*.log
+
+# Marketing materials (localized)
 宣传物料/
 
-# 忽略所有以 "." 开头的文件夹
+# Hidden files (keep exceptions)
 .*/
-
-# 但保留 .gitignore 文件本身
 !.gitignore
+!.claude/
 
-# 常见的需要保留的配置文件（根据需要取消注释）
-# !.env.example
-# !.prettierrc
-# !.eslintrc
-# !.editorconfig
-
-# IDE 和工具生成的文件
+# IDE config files
 tasks.json
 biome.json
 
-# 压缩文件
+# Archives
 *.zip

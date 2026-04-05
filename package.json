@@ -1,26 +1,37 @@
 {
   "name": "styleswift",
-  "version": "1.0.0",
-  "description": "<div align=\"center\">",
-  "main": "index.js",
+  "version": "1.0.2",
+  "description": "AI Agent for web page style personalization",
+  "type": "module",
+  "main": "extension/sidepanel/index.html",
   "directories": {
     "doc": "docs"
   },
-  "devDependencies": {
-    "jsdom": "^29.0.1",
-    "playwright": "^1.58.2",
-    "vitest": "^4.1.1"
-  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "lint": "eslint extension/"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.1",
+    "playwright": "^1.58.2",
+    "jsdom": "^29.0.1",
+    "eslint": "^8.57.0",
+    "@playwright/test": "^1.58.2"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/zhushen12580/StyleSwift.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "ai-agent",
+    "chrome-extension",
+    "style-personalization",
+    "css"
+  ],
+  "author": "StyleSwift Team",
+  "license": "SSPL-1.0",
   "bugs": {
     "url": "https://github.com/zhushen12580/StyleSwift/issues"
   },
