@@ -40,7 +40,7 @@ import {
   generateToolCallKey,
   detectDeadLoop,
   executeToolWithRetry,
-} from "../sidepanel/agent-loop.js";
+} from "../sidepanel/agent/agent-loop.js";
 
 describe("SYSTEM_BASE 常量", () => {
   test("SYSTEM_BASE 定义为字符串", () => {
@@ -77,14 +77,14 @@ describe("SYSTEM_BASE 常量", () => {
 describe("工具数组导出验证", () => {
   test("可以从 agent-loop.js 导入 SYSTEM_BASE", async () => {
     // 验证模块可以正常导入
-    const agentLoop = await import("../sidepanel/agent-loop.js");
+    const agentLoop = await import("../sidepanel/agent/agent-loop.js");
     expect(agentLoop.SYSTEM_BASE).toBeDefined();
     expect(typeof agentLoop.SYSTEM_BASE).toBe("string");
   });
 
   test("agent-loop.js 导出 BASE_TOOLS 和 ALL_TOOLS", async () => {
     // 验证模块导出
-    const agentLoop = await import("../sidepanel/agent-loop.js");
+    const agentLoop = await import("../sidepanel/agent/agent-loop.js");
 
     // 这两个变量应该被导出
     expect(agentLoop).toHaveProperty("BASE_TOOLS");

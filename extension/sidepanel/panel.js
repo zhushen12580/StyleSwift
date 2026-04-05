@@ -1779,7 +1779,7 @@ async function handleSendClick() {
 
 		try {
 			// 动态导入 queueUserMessage 函数
-			const { queueUserMessage, getPendingMessagesCount } = await import("./agent-loop.js");
+			const { queueUserMessage, getPendingMessagesCount } = await import("./agent/agent-loop.js");
 
 			// 排队用户消息
 			const queued = queueUserMessage(messageContent);
@@ -1940,7 +1940,7 @@ async function handleSendClick() {
 
 	// 动态导入 agent-loop 模块
 	try {
-		const { agentLoop, cancelAgentLoop } = await import("./agent-loop.js");
+		const { agentLoop, cancelAgentLoop } = await import("./agent/agent-loop.js");
 
 		// UI 回调函数
 		const uiCallbacks = {
@@ -2166,7 +2166,7 @@ async function handleStopClick() {
 
 	try {
 		// 动态导入 agent-loop 模块
-		const { cancelAgentLoop } = await import("./agent-loop.js");
+		const { cancelAgentLoop } = await import("./agent/agent-loop.js");
 
 		// 取消 Agent Loop
 		cancelAgentLoop();
@@ -2964,7 +2964,7 @@ async function handleSkillChipClick(skill) {
 		// Queue the skill prompt
 		(async () => {
 			try {
-				const { queueUserMessage } = await import("./agent-loop.js");
+				const { queueUserMessage } = await import("./agent/agent-loop.js");
 				queueUserMessage(prompt);
 
 				// Render user message showing skill name (silently queued)
@@ -3070,7 +3070,7 @@ async function handleSkillChipClick(skill) {
 	}
 
 	try {
-		const { agentLoop, cancelAgentLoop } = await import("./agent-loop.js");
+		const { agentLoop, cancelAgentLoop } = await import("./agent/agent-loop.js");
 
 		// Record skill as recently used
 		await StyleSkillStore.recordUsage(skill.id, skill.type);
@@ -6327,12 +6327,12 @@ class TodoCardManager {
 				});
 
 				if (editedTodos.length === 0) {
-					const { rejectPlan } = await import("./todo-manager.js");
+					const { rejectPlan } = await import("./agent/todo-manager.js");
 					rejectPlan();
 					return;
 				}
 
-				const { confirmPlan } = await import("./todo-manager.js");
+				const { confirmPlan } = await import("./agent/todo-manager.js");
 				confirmPlan(editedTodos);
 			});
 		}
@@ -6341,7 +6341,7 @@ class TodoCardManager {
 		const cancelBtn = container.querySelector(".todo-cancel-btn");
 		if (cancelBtn) {
 			cancelBtn.addEventListener("click", async () => {
-				const { rejectPlan } = await import("./todo-manager.js");
+				const { rejectPlan } = await import("./agent/todo-manager.js");
 				rejectPlan();
 			});
 		}

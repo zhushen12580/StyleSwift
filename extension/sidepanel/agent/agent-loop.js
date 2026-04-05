@@ -9,7 +9,7 @@
  * - llm-client.js: LLM API streaming calls
  */
 
-import { BASE_TOOLS, SUBAGENT_TOOLS, ALL_TOOLS, getSkillManager } from "./tools.js";
+import { BASE_TOOLS, SUBAGENT_TOOLS, ALL_TOOLS, getSkillManager } from "../tools.js";
 import { SYSTEM_BASE, AGENT_TYPES } from "./system-prompt.js";
 import {
   DEFAULT_TOKEN_BUDGET,
@@ -275,7 +275,7 @@ export async function runTask(description, prompt, agentType, abortSignal, tabId
 
   let enrichedPrompt = prompt;
   try {
-    const { getProfileOneLiner } = await import("./profile.js");
+    const { getProfileOneLiner } = await import("../profile.js");
     const profileHint = await getProfileOneLiner();
     if (profileHint) {
       enrichedPrompt = `[User Style Preference: ${profileHint}]\n\n${prompt}`;
@@ -290,7 +290,7 @@ export async function runTask(description, prompt, agentType, abortSignal, tabId
       : SUBAGENT_TOOLS.filter((t) => config.tools.includes(t.name));
 
   const { executeTool, getTargetTabId, captureScreenshot } =
-    await import("./tools.js");
+    await import("../tools.js");
 
   const resolvedTabId = tabId ?? await getTargetTabId();
   let firstUserContent;
@@ -469,7 +469,7 @@ export async function agentLoop(prompt, uiCallbacks) {
   resetTodos();
   setTodoUpdateCallback(uiCallbacks.onTodoUpdate || null);
   const { getTargetTabId, lockTab, unlockTab, executeTool, captureScreenshot } =
-    await import("./tools.js");
+    await import("../tools.js");
   const {
     getOrCreateSession,
     loadAndPrepareHistory,
@@ -480,9 +480,9 @@ export async function agentLoop(prompt, uiCallbacks) {
     setCurrentSession,
     currentSession,
     countUserTextMessages,
-  } = await import("./session.js");
-  const { getProfileOneLiner   } = await import("./profile.js");
-  const { getSettings, DEFAULT_MODEL } = await import("./api.js");
+  } = await import("../session.js");
+  const { getProfileOneLiner   } = await import("../profile.js");
+  const { getSettings, DEFAULT_MODEL } = await import("../api.js");
 
   // Get model name for dynamic token budget calculation
   let currentModelName = DEFAULT_MODEL;
@@ -825,7 +825,7 @@ export function cancelAgentLoop() {
   }
   isAgentRunning = false;
   clearPendingMessages();
-  import("./tools.js")
+  import("../tools.js")
     .then(({ unlockTab }) => {
       unlockTab();
     })

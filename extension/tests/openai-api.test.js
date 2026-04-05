@@ -52,7 +52,7 @@ describe('OpenAI API Format', () => {
     });
 
     // 动态导入模块
-    const agentLoopModule = await import('../sidepanel/agent-loop.js');
+    const agentLoopModule = await import('../sidepanel/agent/agent-loop.js');
     
     // 调用 API（通过内部函数）
     const system = 'You are a helpful assistant';

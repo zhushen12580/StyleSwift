@@ -73,7 +73,7 @@ async function callOpenAIStream(
   callbacks,
   abortSignal,
 ) {
-  const { buildApiUrl } = await import("./api.js");
+  const { buildApiUrl } = await import("../api.js");
   const openaiMessages = serializeToOpenAI(system, messages);
   const openaiTools = serializeToolsToOpenAI(tools);
 
@@ -142,7 +142,7 @@ async function callClaudeStream(
   callbacks,
   abortSignal,
 ) {
-  const { buildApiUrl } = await import("./api.js");
+  const { buildApiUrl } = await import("../api.js");
   const claudeMessages = serializeToClaude(messages);
   const claudeTools = serializeToolsToClaude(tools);
 
@@ -223,7 +223,7 @@ async function callClaudeStream(
  */
 export async function callLLMStream(system, messages, tools, callbacks, abortSignal) {
   const hasImages = detectImages(messages);
-  const { getSettingsForRequest } = await import("./api.js");
+  const { getSettingsForRequest } = await import("../api.js");
   const { apiKey, model, apiBase, provider } = await getSettingsForRequest(hasImages);
 
   // Debug: Log vision model detection

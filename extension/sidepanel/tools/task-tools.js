@@ -99,12 +99,12 @@ export const TASK_TOOL = {
 export function createTaskToolHandlers() {
   return {
     TodoWrite: async (args) => {
-      const { updateTodos } = await import("../todo-manager.js");
+      const { updateTodos } = await import("../agent/todo-manager.js");
       return updateTodos(args.todos);
     },
 
     Task: async (args, context) => {
-      const { runTask } = await import("../agent-loop.js").catch(() => ({
+      const { runTask } = await import("../agent/agent-loop.js").catch(() => ({
         runTask: null,
       }));
       if (runTask) {

@@ -422,7 +422,7 @@ RULES:
   }
 
   try {
-    const { getSettings, detectProvider, buildApiUrl } = await import("./api.js");
+    const { getSettings, detectProvider, buildApiUrl } = await import("../api.js");
     const { apiKey, model, apiBase } = await getSettings();
     const provider = detectProvider(apiBase, model);
 
