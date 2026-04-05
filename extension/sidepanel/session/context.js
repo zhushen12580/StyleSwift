@@ -71,6 +71,14 @@ export class SessionContext {
   get sessionIndex() {
     return `sessions:${this.domain}:index`;
   }
+
+  /**
+   * 获取域名永久样式的 chrome.storage.local key
+   * @returns {string} 格式: 'persistent:{domain}'
+   */
+  get persistKey() {
+    return `persistent:${this.domain}`;
+  }
 }
 
 // =============================================================================

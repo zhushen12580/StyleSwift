@@ -10,15 +10,18 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test",
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "playwright test --project=chrome-extension",
+    "test:e2e": "playwright test --project=e2e",
+    "test:all": "npm run test && npm run test:integration",
     "lint": "eslint extension/"
   },
   "devDependencies": {
-    "vitest": "^4.1.1",
-    "playwright": "^1.58.2",
-    "jsdom": "^29.0.1",
+    "@playwright/test": "^1.58.2",
     "eslint": "^8.57.0",
-    "@playwright/test": "^1.58.2"
+    "jsdom": "^29.0.1",
+    "playwright": "^1.58.2",
+    "vitest": "^4.1.1"
   },
   "repository": {
     "type": "git",

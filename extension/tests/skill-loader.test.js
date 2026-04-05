@@ -15,11 +15,11 @@ describe("SkillLoader", () => {
   const mockSkillsDir = "chrome-extension://test-id";
   let loader;
 
-  // Mock skill files content
+  // Mock skill files content — must match knownFiles in skill-loader.js
   const mockSkillFiles = {
-    "skills/design-principles.md": `---
-name: design-principles
-description: 设计原则 - 视觉设计的核心原则与最佳实践
+    "skills/frontend-design.md": `---
+name: frontend-design
+description: 前端设计 - 视觉设计的核心原则与最佳实践
 tags: design, contrast, hierarchy
 ---
 
@@ -31,9 +31,19 @@ tags: design, contrast, hierarchy
 
 对比度创造视觉层级和焦点。`,
 
-    "skills/color-theory.md": `---
-name: color-theory
-description: 配色理论 - 色彩基础与网页配色最佳实践
+    "skills/audit.md": `---
+name: audit
+description: 视觉审计 - 页面质量检查与问题发现
+tags: audit, quality, accessibility
+---
+
+# 视觉审计
+
+> 内置知识：页面质量检查与问题发现`,
+
+    "skills/colorize.md": `---
+name: colorize
+description: 配色方案 - 色彩基础与网页配色最佳实践
 tags: color, design, palette
 ---
 
@@ -41,15 +51,141 @@ tags: color, design, palette
 
 > 内置知识：色彩基础与网页配色最佳实践`,
 
-    "skills/css-selectors-guide.md": `---
-name: css-selectors
-description: CSS选择器最佳实践 - 高效、可维护的选择器编写指南
-tags: css, selectors, best-practices
+    "skills/polish.md": `---
+name: polish
+description: 细节打磨 - 提升视觉品质的精细化技巧
+tags: polish, refinement, details
 ---
 
-# CSS 选择器最佳实践
+# 细节打磨
 
-> 内置知识：高效、可维护的选择器编写指南`,
+> 内置知识：提升视觉品质的精细化技巧`,
+
+    "skills/normalize.md": `---
+name: normalize
+description: 样式归一化 - 跨浏览器一致性处理
+tags: normalize, css, cross-browser
+---
+
+# 样式归一化
+
+> 内置知识：跨浏览器一致性处理`,
+
+    "skills/distill.md": `---
+name: distill
+description: 内容提炼 - 信息层次与视觉简化
+tags: distill, simplification, hierarchy
+---
+
+# 内容提炼
+
+> 内置知识：信息层次与视觉简化`,
+
+    "skills/delight.md": `---
+name: delight
+description: 惊喜设计 - 微交互与愉悦体验设计
+tags: delight, micro-interaction, animation
+---
+
+# 惊喜设计
+
+> 内置知识：微交互与愉悦体验设计`,
+
+    "skills/critique.md": `---
+name: critique
+description: 设计评审 - 视觉设计的质量评估
+tags: critique, review, evaluation
+---
+
+# 设计评审
+
+> 内置知识：视觉设计的质量评估`,
+
+    "skills/animate.md": `---
+name: animate
+description: 动画设计 - CSS 动画与过渡效果最佳实践
+tags: animate, css, transition
+---
+
+# 动画设计
+
+> 内置知识：CSS 动画与过渡效果最佳实践`,
+
+    "skills/adapt.md": `---
+name: adapt
+description: 响应式适配 - 多设备屏幕适配策略
+tags: responsive, adapt, mobile
+---
+
+# 响应式适配
+
+> 内置知识：多设备屏幕适配策略`,
+
+    "skills/bolder.md": `---
+name: bolder
+description: 大胆设计 - 突破常规的视觉方案
+tags: bold, creative, experimental
+---
+
+# 大胆设计
+
+> 内置知识：突破常规的视觉方案`,
+
+    "skills/reference/color-and-contrast.md": `---
+name: reference/color-and-contrast
+description: 色彩与对比度参考
+tags: reference, color, contrast
+---
+
+# 色彩与对比度参考`,
+
+    "skills/reference/interaction-design.md": `---
+name: reference/interaction-design
+description: 交互设计参考
+tags: reference, interaction, ux
+---
+
+# 交互设计参考`,
+
+    "skills/reference/motion-design.md": `---
+name: reference/motion-design
+description: 动效设计参考
+tags: reference, motion, animation
+---
+
+# 动效设计参考`,
+
+    "skills/reference/responsive-design.md": `---
+name: reference/responsive-design
+description: 响应式设计参考
+tags: reference, responsive, layout
+---
+
+# 响应式设计参考`,
+
+    "skills/reference/spatial-design.md": `---
+name: reference/spatial-design
+description: 空间设计参考
+tags: reference, spatial, layout
+---
+
+# 空间设计参考`,
+
+    "skills/reference/typography.md": `---
+name: reference/typography
+description: 排版参考
+tags: reference, typography, font
+---
+
+# 排版参考`,
+
+    "skills/reference/ux-writing.md": `---
+name: reference/ux-writing
+description: UX 写作参考
+tags: reference, ux, writing
+---
+
+# UX 写作参考`,
 
     "skills/style-templates/dark-mode.md": `---
 name: dark-mode-template
@@ -110,11 +246,11 @@ tags: template, minimal, clean
 
   describe("_parseFrontmatter", () => {
     test("解析带 frontmatter 的文件", () => {
-      const text = mockSkillFiles["skills/design-principles.md"];
+      const text = mockSkillFiles["skills/frontend-design.md"];
       const { meta, body } = loader._parseFrontmatter(text);
 
-      expect(meta.name).toBe("design-principles");
-      expect(meta.description).toBe("设计原则 - 视觉设计的核心原则与最佳实践");
+      expect(meta.name).toBe("frontend-design");
+      expect(meta.description).toBe("前端设计 - 视觉设计的核心原则与最佳实践");
       expect(meta.tags).toBe("design, contrast, hierarchy");
       expect(body).toContain("# 设计原则");
       expect(body).not.toContain("---");
@@ -140,8 +276,8 @@ tags: template, minimal, clean
 
   describe("_extractNameFromPath", () => {
     test("从路径提取名称", () => {
-      expect(loader._extractNameFromPath("skills/design-principles.md")).toBe(
-        "design_principles",
+      expect(loader._extractNameFromPath("skills/frontend-design.md")).toBe(
+        "frontend_design",
       );
       expect(
         loader._extractNameFromPath("skills/style-templates/dark-mode.md"),
@@ -172,8 +308,8 @@ tags: template, minimal, clean
       await loader.init();
       const descs = loader.getDescriptions();
 
-      expect(descs).toContain("design-principles");
-      expect(descs).toContain("设计原则");
+      expect(descs).toContain("frontend-design");
+      expect(descs).toContain("前端设计");
       expect(descs).toContain("[design, contrast, hierarchy]");
     });
 
@@ -188,9 +324,9 @@ tags: template, minimal, clean
   describe("getContent", () => {
     test("返回技能内容", async () => {
       await loader.init();
-      const content = loader.getContent("design-principles");
+      const content = loader.getContent("frontend-design");
 
-      expect(content).toContain('<skill name="design-principles">');
+      expect(content).toContain('<skill name="frontend-design">');
       expect(content).toContain("# 设计原则");
       expect(content).toContain("</skill>");
     });
@@ -207,7 +343,7 @@ tags: template, minimal, clean
     test("检查技能是否存在", async () => {
       await loader.init();
 
-      expect(loader.has("design-principles")).toBe(true);
+      expect(loader.has("frontend-design")).toBe(true);
       expect(loader.has("nonexistent")).toBe(false);
     });
   });

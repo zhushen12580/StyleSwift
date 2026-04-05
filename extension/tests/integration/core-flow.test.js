@@ -9,14 +9,15 @@
  * 参考: §14.2 集成测试覆盖
  */
 
-import { describe, test, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { test, expect } from '@playwright/test';
 import {
   launchBrowser,
   closeBrowser,
-  getExtensionId,
+  getExtensionIdFromServiceWorker,
   getSidePanelPage,
   navigateToTestPage,
   getExtensionPath,
+  waitForExtensionReady,
 } from './setup.js';
 import {
   waitForElement,
@@ -30,17 +31,20 @@ import {
   takeScreenshot,
 } from './helpers.js';
 
-describe('StyleSwift 核心流程集成测试', () => {
+// 测试超时设置
+const TEST_TIMEOUT = 60000;
+const SETUP_TIMEOUT = 30000;
+
+test.describe('StyleSwift 核心流程集成测试', () => {
+  test.setTimeout(TEST_TIMEOUT);
+
   let browser;
+  let context;
   let page;
   let extensionId;
   let sidePanelPage;
 
-  // 测试超时设置
-  const TEST_TIMEOUT = 60000;
-  const SETUP_TIMEOUT = 30000;
-
-  beforeAll(async () => {
+  test.beforeAll(async () => {
     // 启动浏览器并加载扩展
     const result = await launchBrowser({
       headless: false, // 集成测试需要非无头模式
@@ -48,16 +52,18 @@ describe('StyleSwift 核心流程集成测试', () => {
     });
     
     browser = result.browser;
+    context = result.context;
     page = result.page;
     
     // 获取扩展 ID
-    extensionId = await getExtensionId(browser);
+    await waitForExtensionReady(browser, SETUP_TIMEOUT);
+    extensionId = await getExtensionIdFromServiceWorker(browser);
     expect(extensionId).toBeDefined();
     
     console.log(`[Core Flow Tests] 扩展已加载，ID: ${extensionId}`);
-  }, SETUP_TIMEOUT);
+  });
 
-  afterAll(async () => {
+  test.afterAll(async () => {
     if (browser) {
       await closeBrowser(browser);
     }
@@ -67,8 +73,8 @@ describe('StyleSwift 核心流程集成测试', () => {
   // §14.2.1 Side Panel ↔ Content Script 通信
   // ============================================================================
 
-  describe('Side Panel ↔ Content Script 通信', () => {
-    beforeEach(async () => {
+  test.describe('Side Panel ↔ Content Script 通信', () => {
+    test.beforeEach(async () => {
       // 导航到测试页面
       await navigateToTestPage(page, 'https://example.com');
       await sleep(1000); // 等待页面加载完成
@@ -90,7 +96,7 @@ describe('StyleSwift 核心流程集成测试', () => {
       // 验证返回的域名
       expect(domain).toBeDefined();
       expect(domain).toBe('example.com');
-    }, TEST_TIMEOUT);
+    });
 
     test('get_page_structure 返回有效树形结构', async () => {
       const tabId = await getActiveTabId(sidePanelPage);
@@ -109,7 +115,7 @@ describe('StyleSwift 核心流程集成测试', () => {
       expect(structure).toContain('URL:');
       expect(structure).toContain('Title:');
       expect(structure).toContain('example.com');
-    }, TEST_TIMEOUT);
+    });
 
     test('grep 关键词搜索结果正确', async () => {
       const tabId = await getActiveTabId(sidePanelPage);
@@ -129,7 +135,7 @@ describe('StyleSwift 核心流程集成测试', () => {
       expect(typeof result).toBe('string');
       // example.com 页面应该有 h1 标签
       // 注意：具体内容取决于 example.com 的实际 DOM 结构
-    }, TEST_TIMEOUT);
+    });
 
     test('inject_css 样式生效（DOM 验证）', async () => {
       const tabId = await getActiveTabId(sidePanelPage);
@@ -153,7 +159,7 @@ describe('StyleSwift 核心流程集成测试', () => {
       // 验证样式已应用到页面
       const bgColor = await getComputedStyleProperty(page, 'body', 'background-color');
       expect(bgColor).toContain('rgb(255, 0, 0)'); // 或者 'rgb(255,0,0)'
-    }, TEST_TIMEOUT);
+    });
 
     test('rollback_css 样式恢复', async () => {
       const tabId = await getActiveTabId(sidePanelPage);
@@ -180,7 +186,7 @@ describe('StyleSwift 核心流程集成测试', () => {
       // 验证样式已回滚
       color = await getComputedStyleProperty(page, 'body', 'color');
       expect(color).not.toContain('rgb(0, 255, 0)');
-    }, TEST_TIMEOUT);
+    });
 
     test('连续注入多个 CSS 并逐个回滚', async () => {
       const tabId = await getActiveTabId(sidePanelPage);
@@ -230,15 +236,15 @@ describe('StyleSwift 核心流程集成测试', () => {
       // 验证所有样式已清除
       borderLeft = await getComputedStyleProperty(page, 'body', 'border-left-width');
       expect(borderLeft).not.toBe('10px');
-    }, TEST_TIMEOUT);
+    });
   });
 
   // ============================================================================
   // §14.2.2 存储读写
   // ============================================================================
 
-  describe('chrome.storage.local CRUD 操作', () => {
-    beforeEach(async () => {
+  test.describe('chrome.storage.local CRUD 操作', () => {
+    test.beforeEach(async () => {
       sidePanelPage = await getSidePanelPage(browser);
     });
 
@@ -256,7 +262,7 @@ describe('StyleSwift 核心流程集成测试', () => {
       
       expect(result.test_key_1).toBe('value_1');
       expect(result.test_key_2).toBe('value_2');
-    }, TEST_TIMEOUT);
+    });
 
     test('应该可以存储会话元数据', async () => {
       const domain = 'test-domain.com';
@@ -274,7 +280,7 @@ describe('StyleSwift 核心流程集成测试', () => {
       const result = await getChromeStorage(sidePanelPage, metaKey);
       expect(result[metaKey].title).toBe('测试会话');
       expect(result[metaKey].message_count).toBe(5);
-    }, TEST_TIMEOUT);
+    });
 
     test('应该可以存储会话样式', async () => {
       const domain = 'test-domain.com';
@@ -287,7 +293,7 @@ describe('StyleSwift 核心流程集成测试', () => {
       
       const result = await getChromeStorage(sidePanelPage, stylesKey);
       expect(result[stylesKey]).toBe(css);
-    }, TEST_TIMEOUT);
+    });
 
     test('应该可以存储永久样式', async () => {
       const domain = 'test-persistent.com';
@@ -299,7 +305,7 @@ describe('StyleSwift 核心流程集成测试', () => {
       
       const result = await getChromeStorage(sidePanelPage, persistKey);
       expect(result[persistKey]).toBe(css);
-    }, TEST_TIMEOUT);
+    });
 
     test('应该可以删除存储数据', async () => {
       const testKey = 'test_delete_key';
@@ -320,7 +326,7 @@ describe('StyleSwift 核心流程集成测试', () => {
       // 验证数据已删除
       result = await getChromeStorage(sidePanelPage, testKey);
       expect(result[testKey]).toBeUndefined();
-    }, TEST_TIMEOUT);
+    });
 
     test('应该可以存储用户画像', async () => {
       const profile = '用户偏好深色主题，喜欢圆角设计，偏好高对比度颜色';
@@ -329,7 +335,7 @@ describe('StyleSwift 核心流程集成测试', () => {
       
       const result = await getChromeStorage(sidePanelPage, 'userProfile');
       expect(result.userProfile).toBe(profile);
-    }, TEST_TIMEOUT);
+    });
 
     test('应该可以存储设置', async () => {
       const settings = {
@@ -343,11 +349,11 @@ describe('StyleSwift 核心流程集成测试', () => {
       const result = await getChromeStorage(sidePanelPage, 'settings');
       expect(result.settings.apiKey).toBe('test-api-key-123');
       expect(result.settings.model).toBe('claude-sonnet-4-20250514');
-    }, TEST_TIMEOUT);
+    });
   });
 
-  describe('IndexedDB 对话历史读写', () => {
-    beforeEach(async () => {
+  test.describe('IndexedDB 对话历史读写', () => {
+    test.beforeEach(async () => {
       sidePanelPage = await getSidePanelPage(browser);
     });
 
@@ -417,7 +423,7 @@ describe('StyleSwift 核心流程集成测试', () => {
       expect(loaded).toBeDefined();
       expect(loaded.length).toBe(2);
       expect(loaded[0].content).toBe('把背景改成蓝色');
-    }, TEST_TIMEOUT);
+    });
 
     test('应该可以删除对话历史', async () => {
       const domain = 'test-idb-delete.com';
@@ -490,11 +496,11 @@ describe('StyleSwift 核心流程集成测试', () => {
       }, { domain, sessionId });
       
       expect(loaded).toBeUndefined();
-    }, TEST_TIMEOUT);
+    });
   });
 
-  describe('StyleSkillStore 增删查改', () => {
-    beforeEach(async () => {
+  test.describe('StyleSkillStore 增删查改', () => {
+    test.beforeEach(async () => {
       sidePanelPage = await getSidePanelPage(browser);
     });
 
@@ -522,7 +528,7 @@ describe('StyleSwift 核心流程集成测试', () => {
       // 验证保存成功
       const result = await getChromeStorage(sidePanelPage, `skills:user:${skillId}`);
       expect(result[`skills:user:${skillId}`]).toBe(skillContent);
-    }, TEST_TIMEOUT);
+    });
 
     test('应该可以列出所有风格技能', async () => {
       // 添加几个测试技能
@@ -554,7 +560,7 @@ describe('StyleSwift 核心流程集成测试', () => {
       
       expect(Array.isArray(index)).toBe(true);
       expect(index.length).toBeGreaterThanOrEqual(2);
-    }, TEST_TIMEOUT);
+    });
 
     test('应该可以删除风格技能', async () => {
       const skillId = 'skill-delete-test';
@@ -588,19 +594,19 @@ describe('StyleSwift 核心流程集成测试', () => {
       // 验证已删除
       const result = await getChromeStorage(sidePanelPage, `skills:user:${skillId}`);
       expect(result[`skills:user:${skillId}`]).toBeUndefined();
-    }, TEST_TIMEOUT);
+    });
   });
 
   // ============================================================================
   // §14.2.4 永久样式注入
   // ============================================================================
 
-  describe('永久样式注入', () => {
+  test.describe('永久样式注入', () => {
     const testDomain = 'example.com';
     const testCSS = 'body { border-top: 5px solid green !important; }';
     const persistKey = `persistent:${testDomain}`;
 
-    beforeEach(async () => {
+    test.beforeEach(async () => {
       sidePanelPage = await getSidePanelPage(browser);
       
       // 清除之前的永久样式
@@ -614,13 +620,13 @@ describe('StyleSwift 核心流程集成测试', () => {
       await setChromeStorage(sidePanelPage, { [persistKey]: testCSS });
       
       // 刷新页面
-      await page.reload({ waitUntil: 'networkidle0' });
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await sleep(1000);
       
       // 验证样式已注入
       const borderTop = await getComputedStyleProperty(page, 'body', 'border-top-width');
       expect(borderTop).toBe('5px');
-    }, TEST_TIMEOUT);
+    });
 
     test('页面刷新后样式仍生效', async () => {
       // 保存永久样式
@@ -634,13 +640,13 @@ describe('StyleSwift 核心流程集成测试', () => {
       expect(borderTop).toBe('5px');
       
       // 刷新页面
-      await page.reload({ waitUntil: 'networkidle0' });
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await sleep(1000);
       
       // 验证样式仍然存在
       borderTop = await getComputedStyleProperty(page, 'body', 'border-top-width');
       expect(borderTop).toBe('5px');
-    }, TEST_TIMEOUT);
+    });
 
     test('不同域名的永久样式应该隔离', async () => {
       // 为 example.com 设置样式
@@ -665,14 +671,14 @@ describe('StyleSwift 核心流程集成测试', () => {
       
       expect(borderLeft).toBe('20px');
       expect(borderRight).not.toBe('20px');
-    }, TEST_TIMEOUT);
+    });
 
     test('清除永久样式后刷新页面不应有样式', async () => {
       // 保存永久样式
       await setChromeStorage(sidePanelPage, { [persistKey]: testCSS });
       
       // 刷新验证样式存在
-      await page.reload({ waitUntil: 'networkidle0' });
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await sleep(1000);
       
       let borderTop = await getComputedStyleProperty(page, 'body', 'border-top-width');
@@ -684,20 +690,20 @@ describe('StyleSwift 核心流程集成测试', () => {
       }, persistKey);
       
       // 再次刷新
-      await page.reload({ waitUntil: 'networkidle0' });
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await sleep(1000);
       
       // 验证样式已清除
       borderTop = await getComputedStyleProperty(page, 'body', 'border-top-width');
       expect(borderTop).not.toBe('5px');
-    }, TEST_TIMEOUT);
+    });
   });
 
   // ============================================================================
   // 综合场景测试
   // ============================================================================
 
-  describe('综合场景', () => {
+  test.describe('综合场景', () => {
     test('完整的样式应用和回滚流程', async () => {
       const domain = 'example.com';
       const sessionId = 'integration-test-session';
@@ -763,7 +769,7 @@ describe('StyleSwift 核心流程集成测试', () => {
       // 验证所有样式已清除
       bgColor = await getComputedStyleProperty(page, 'body', 'background-color');
       expect(bgColor).not.toContain('rgb(128, 128, 128)');
-    }, TEST_TIMEOUT);
+    });
 
     test('会话样式与永久样式的分离', async () => {
       const domain = 'example.com';
@@ -808,6 +814,6 @@ describe('StyleSwift 核心流程集成测试', () => {
       marginTop = await getComputedStyleProperty(page, 'body', 'margin-top');
       expect(padding).not.toBe('30px');
       expect(marginTop).toBe('15px');
-    }, TEST_TIMEOUT);
+    });
   });
 });

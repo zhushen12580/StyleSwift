@@ -7,6 +7,12 @@ dist/
 # Test artifacts
 tests/integration/screenshots/
 extension/tests/integration/screenshots/
+playwright-report/
+test-results/
+结构信息*.txt
+
+# Playwright
+.playwright-mcp/
 
 # IDE and editor
 .vscode/

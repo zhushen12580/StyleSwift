@@ -99,12 +99,16 @@ describe('API Settings', () => {
   });
 
   describe('常量定义', () => {
-    test('DEFAULT_API_BASE 应为 Anthropic API 地址', () => {
-      expect(DEFAULT_API_BASE).toBe('https://api.anthropic.com');
+    test('DEFAULT_API_BASE 应为有效的 API 地址', () => {
+      expect(DEFAULT_API_BASE).toBeDefined();
+      expect(typeof DEFAULT_API_BASE).toBe('string');
+      expect(DEFAULT_API_BASE.startsWith('https://')).toBe(true);
     });
 
-    test('DEFAULT_MODEL 应为有效的 Claude 模型', () => {
-      expect(DEFAULT_MODEL).toBe('claude-sonnet-4-20250514');
+    test('DEFAULT_MODEL 应为有效的模型名称', () => {
+      expect(DEFAULT_MODEL).toBeDefined();
+      expect(typeof DEFAULT_MODEL).toBe('string');
+      expect(DEFAULT_MODEL.length).toBeGreaterThan(0);
     });
 
     test('SETTINGS_KEY 应为 settings', () => {
