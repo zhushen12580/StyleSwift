@@ -331,10 +331,10 @@ export async function rewindToTurn(domain, sessionId, targetTurn) {
     ]);
   }
 
-  const prevSession = currentSession;
-  currentSession = session;
+  const prevSession = getCurrentSession();
+  setCurrentSession(session);
   await updateStylesSummary();
-  currentSession = prevSession;
+  setCurrentSession(prevSession);
 
   return { messages: truncated, snapshots: prunedSnapshots, css };
 }

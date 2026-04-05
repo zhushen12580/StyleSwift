@@ -31,6 +31,7 @@ export {
   saveStylesHistory,
   loadStylesHistory,
   deleteStylesHistory,
+  checkAndMigrateStorage,
   checkQuotaAndMigrate,
   migrateSessionStylesHistory,
   getStorageUsage,
